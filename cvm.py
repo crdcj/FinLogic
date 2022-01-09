@@ -6,22 +6,22 @@ URL_CVM = 'http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/'
 
 
 def download_files(url: str) -> bool:
-    """Baixar arquivo do portal. Retorna True se o arquivo foi baixado"""
+    """Download file from CVM portal. Return True if file is downloaded or updated"""
     nome_arq = url[-23:]  # nome do arquivo = final da url
     cam_arq = 'data/' + nome_arq
     with requests.Session() as s:
         r = s.get(url, stream=True)
         if r.status_code != requests.codes.ok:
-            print(f'{nome_arq} não encontrado no servidor')
+            print(f'{nome_arq} not found in CVM server -> pass')
             return False
         tam_arq_arm = 0
         if os.path.isfile(cam_arq):
             tam_arq_arm = os.path.getsize(cam_arq)
         tam_arq_url = int(r.headers['Content-Length'])
         if(tam_arq_arm == tam_arq_url):
-            print(f'{nome_arq} está atualizado -> não baixar')
+            print(f'{nome_arq} is already up to date -> pass')
             return False
-        print(f'{nome_arq} está desatualizado -> baixar')
+        print(f'{nome_arq} is out of date -> update file')
         with open(cam_arq, 'wb') as f:
             f.write(r.content)
         return True
