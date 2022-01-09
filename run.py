@@ -1,5 +1,5 @@
 import importlib
-import BrFin.cvm as cvm
+import cvm as cvm
 importlib.reload(cvm)
 
 
