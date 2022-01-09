@@ -7,21 +7,21 @@ URL_CVM = 'http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/'
 
 def download_files(url: str) -> bool:
     """Download file from CVM portal. Return True if file is downloaded or updated"""
-    nome_arq = url[-23:]  # nome do arquivo = final da url
-    cam_arq = 'data/' + nome_arq
+    file_name = url[-23:]  # nome do arquivo = final da url
+    cam_arq = 'data/' + file_name
     with requests.Session() as s:
         r = s.get(url, stream=True)
         if r.status_code != requests.codes.ok:
-            print(f'{nome_arq} not found in CVM server -> pass')
+            print(f'{file_name} not found in CVM server -> pass')
             return False
         tam_arq_arm = 0
         if os.path.isfile(cam_arq):
             tam_arq_arm = os.path.getsize(cam_arq)
         tam_arq_url = int(r.headers['Content-Length'])
         if(tam_arq_arm == tam_arq_url):
-            print(f'{nome_arq} is already up to date -> pass')
+            print(f'{file_name} is already up to date -> pass')
             return False
-        print(f'{nome_arq} is out of date -> update file')
+        print(f'{file_name} is out of date -> update file')
         with open(cam_arq, 'wb') as f:
             f.write(r.content)
         return True
@@ -59,14 +59,14 @@ def update_files() -> int:
 def load_metadata() -> pd.DataFrame:
     """retorna um dataframe com os metadados da base PORTAL"""
     df = pd.DataFrame()
-    nomes_arqs = sorted(os.listdir('data/'))
+    files_names = sorted(os.listdir('data/'))
     kwargs = {'sep': ';', 'encoding': 'iso-8859-1', 'dtype': str}
-    for n, nome_arq in enumerate(nomes_arqs):
-        cam_arquivo = 'data/' + nome_arq
+    for n, file_name in enumerate(files_names):
+        cam_arquivo = 'data/' + file_name
         arquivo = zf.ZipFile(cam_arquivo)
         # print(f'{n}: {nom_arquivo}, ')
-        nome_arq_md = nome_arq[0:-3] + 'csv'
-        df_arquivo = pd.read_csv(arquivo.open(nome_arq_md), **kwargs)
+        file_name_md = file_name[0:-3] + 'csv'
+        df_arquivo = pd.read_csv(arquivo.open(file_name_md), **kwargs)
         df = pd.concat([df, df_arquivo])
 
     cols_int = ['VERSAO', 'CD_CVM', 'ID_DOC']
