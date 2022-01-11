@@ -59,10 +59,10 @@ def update_files() -> int:
 def load_metadata() -> pd.DataFrame:
     """retorna um dataframe com os metadados da base PORTAL"""
     df = pd.DataFrame()
-    files_names = sorted(os.listdir('data/'))
+    files_names = sorted(os.listdir('data/raw/'))
     kwargs = {'sep': ';', 'encoding': 'iso-8859-1', 'dtype': str}
     for n, file_name in enumerate(files_names):
-        cam_arquivo = 'data/' + file_name
+        cam_arquivo = 'data/raw/' + file_name
         arquivo = zf.ZipFile(cam_arquivo)
         # print(f'{n}: {nom_arquivo}, ')
         file_name_md = file_name[0:-3] + 'csv'
