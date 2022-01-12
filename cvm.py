@@ -3,33 +3,34 @@ import zipfile as zf
 import requests
 import pandas as pd
 
-URL_CVM = 'http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/'
+URL_DFP = 'http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/'
+URL_ITR = 'http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/'
 PATH_RAW = 'data/raw/'
 
 
-def download_files(url: str) -> bool:
-    """Download file from CVM portal. Return True if file is downloaded or updated"""
+def update_raw_file(url: str) -> bool:
+    """Update file from CVM portal. Return True if file is updated"""
     file_name = url[-23:]  # nome do arquivo = final da url
     cam_arq = PATH_RAW + file_name
     with requests.Session() as s:
         r = s.get(url, stream=True)
         if r.status_code != requests.codes.ok:
-            print(f'{file_name} not found in CVM server -> pass')
+            print(f'{file_name} not found in CVM server -> continue')
             return False
         tam_arq_arm = 0
         if os.path.isfile(cam_arq):
             tam_arq_arm = os.path.getsize(cam_arq)
         tam_arq_url = int(r.headers['Content-Length'])
         if(tam_arq_arm == tam_arq_url):
-            print(f'{file_name} is already up to date -> pass')
+            print(f'{file_name} already updated -> continue')
             return False
-        print(f'{file_name} is out of date -> update file')
+        print(f'{file_name} outdated -> download file')
         with open(cam_arq, 'wb') as f:
             f.write(r.content)
         return True
 
 
-def update_files() -> int:
+def update_raw_dataset() -> list:
     """
     Atualizar a base de arquivos do Portal da CVM
     Urls com os links para as tabelas de dados:
@@ -43,19 +44,22 @@ def update_files() -> int:
     Por conta disso, soma-se 2 ano ano atual (o segundo limite da função range
     é exlusivo)
     """
-    n_arqs_baixados = 0
-    ano_i = 2010  # Primeiro ano da base da CVM
-    ano_f = pd.Timestamp.now().year + 2
-    lista_anos = [ano for ano in range(ano_i, ano_f)]
-    for ano in lista_anos:
-        url_dfp = f'{URL_CVM}DFP/DADOS/dfp_cia_aberta_{ano}.zip'
-        url_itr = f'{URL_CVM}ITR/DADOS/itr_cia_aberta_{ano}.zip'
-        if download_files(url_dfp):
-            n_arqs_baixados += 1
-        if download_files(url_itr):
-            n_arqs_baixados += 1
-
-    return n_arqs_baixados
+    files_updated = []
+    first_year = 2010  # first year avaible at CVM Portal
+    last_year = pd.Timestamp.now().year + 1
+    years = [year for year in range(first_year, last_year + 1)]
+    # DFPs update
+    for year in years:
+        file_name = f'dfp_cia_aberta_{year}.zip'
+        url_dfp = f'{URL_DFP}{file_name}'
+        is_updated = update_raw_file(url_dfp)
+        files_updated.append(file_name) if is_updated else None
+    # ITRs update -> only the last 3 years will be used for ltm calculations
+    for year in years[-3:]:
+        file_name = f'itr_cia_aberta_{year}.zip'
+        is_updated = update_raw_file(f'{URL_ITR}{file_name}')
+        files_updated.append(file_name) if is_updated else None
+    return files_updated
 
 
 def load_metadata() -> pd.DataFrame:
@@ -76,8 +80,3 @@ def load_metadata() -> pd.DataFrame:
     df.drop(columns=['CNPJ_CIA', 'DENOM_CIA', 'LINK_DOC'], inplace=True)
     df.reset_index(drop=True, inplace=True)
     return df
-
-
-def listar_docs() -> set:
-    df = load_metadata()
-    return set(df['ID_DOC'].sort_values())
