@@ -2,13 +2,15 @@ import os
 import zipfile as zf
 import requests
 import pandas as pd
+
 URL_CVM = 'http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/'
+PATH_RAW = 'data/raw/'
 
 
 def download_files(url: str) -> bool:
     """Download file from CVM portal. Return True if file is downloaded or updated"""
     file_name = url[-23:]  # nome do arquivo = final da url
-    cam_arq = 'data/' + file_name
+    cam_arq = PATH_RAW + file_name
     with requests.Session() as s:
         r = s.get(url, stream=True)
         if r.status_code != requests.codes.ok:
@@ -59,7 +61,7 @@ def update_files() -> int:
 def load_metadata() -> pd.DataFrame:
     """retorna um dataframe com os metadados da base PORTAL"""
     df = pd.DataFrame()
-    files_names = sorted(os.listdir('data/raw/'))
+    files_names = sorted(os.listdir(PATH_RAW))
     kwargs = {'sep': ';', 'encoding': 'iso-8859-1', 'dtype': str}
     for n, file_name in enumerate(files_names):
         cam_arquivo = 'data/raw/' + file_name
