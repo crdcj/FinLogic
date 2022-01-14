@@ -46,21 +46,27 @@ def update_dataset() -> list:
     Por conta disso, soma-se 2 ano ano atual (o segundo limite da função range
     é exlusivo)
     """
+    # DFPs update
     files_updated = []
     first_year = 2010  # first year avaible at CVM Portal
-    last_year = pd.Timestamp.now().year + 1
+    last_year = pd.Timestamp.now().year
     years = [year for year in range(first_year, last_year + 1)]
-    # DFPs update
     for year in years:
         file_name = f'dfp_cia_aberta_{year}.zip'
         url_dfp = f'{URL_DFP}{file_name}'
         was_updated = update_raw_file(url_dfp)
         files_updated.append(file_name) if was_updated else None
-    # ITRs update -> only the last 3 years will be used for ltm calculations
-    for year in years[-3:]:
+
+    # ITRs update -> they have one more year
+    last_year = pd.Timestamp.now().year + 1
+    # Only the last 4 years will be used for ltm calculations
+    first_year = last_year - 4
+    years = [year for year in range(first_year, last_year + 1)]
+    for year in years:
         file_name = f'itr_cia_aberta_{year}.zip'
         was_updated = update_raw_file(f'{URL_ITR}{file_name}')
         files_updated.append(file_name) if was_updated else None
+
     # Update parquet dataset
     for parent_file_name in files_updated:
         print(parent_file_name)
