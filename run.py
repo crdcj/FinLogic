@@ -1,6 +1,6 @@
 import importlib
-import cvm as cvm
+import cvm
 importlib.reload(cvm)
 
-files_updated = cvm.update_raw_dataset()
+files_updated = cvm.update_dataset()
 print(files_updated)

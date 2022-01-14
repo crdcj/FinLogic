@@ -2,10 +2,12 @@ import os
 import zipfile as zf
 import requests
 import pandas as pd
+import numpy as np
 
 URL_DFP = 'http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/'
 URL_ITR = 'http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/'
-PATH_RAW = 'data/raw/'
+PATH_RAW = './data/raw/'
+PATH_PROCESSED = './data/processed/'
 
 
 def update_raw_file(url: str) -> bool:
@@ -30,7 +32,7 @@ def update_raw_file(url: str) -> bool:
         return True
 
 
-def update_raw_dataset() -> list:
+def update_dataset() -> list:
     """
     Atualizar a base de arquivos do Portal da CVM
     Urls com os links para as tabelas de dados:
@@ -52,15 +54,79 @@ def update_raw_dataset() -> list:
     for year in years:
         file_name = f'dfp_cia_aberta_{year}.zip'
         url_dfp = f'{URL_DFP}{file_name}'
-        is_updated = update_raw_file(url_dfp)
-        files_updated.append(file_name) if is_updated else None
+        was_updated = update_raw_file(url_dfp)
+        files_updated.append(file_name) if was_updated else None
     # ITRs update -> only the last 3 years will be used for ltm calculations
     for year in years[-3:]:
         file_name = f'itr_cia_aberta_{year}.zip'
-        is_updated = update_raw_file(f'{URL_ITR}{file_name}')
-        files_updated.append(file_name) if is_updated else None
+        was_updated = update_raw_file(f'{URL_ITR}{file_name}')
+        files_updated.append(file_name) if was_updated else None
+    # Update parquet dataset
+    for parent_file_name in files_updated:
+        print(parent_file_name)
+        parent_file = zf.ZipFile(f'{PATH_RAW}{parent_file_name}')
+        df_year = pd.DataFrame()
+        child_file_names = parent_file.namelist()
+        for child_file_name in child_file_names[1:]:
+            child_file = parent_file.open(child_file_name)
+            kwargs = {
+                'sep': ';',
+                'encoding': 'iso-8859-1',
+                'dtype': str,
+                'parse_dates': ['DT_REFER', 'DT_FIM_EXERC']}
+            df_child = pd.read_csv(child_file, **kwargs)
+            df_child = process_child_dataframe(df_child)        
+            df_year = pd.concat([df_year, df_child], ignore_index=True)
+
+        sort_by = ['CD_CVM', 'GRUPO_DFP', 'ORDEM_EXERC', 'DT_REFER', 'CD_CONTA']
+        df_year.sort_values(by=sort_by, ignore_index=True, inplace=True)
+        df_year.to_parquet(
+            f'{PATH_PROCESSED}{parent_file_name[:-4]}.parquet',
+            index=False,
+            compression='zstd')
+
     return files_updated
 
+def process_child_dataframe(df) -> pd.DataFrame:
+    df.VERSAO = df.VERSAO.astype(np.int8)  # unique -> ['3', '2', '4', '1', '7', '5', '6', '9', '8']
+    df.CD_CVM = df.CD_CVM.astype(np.int32)  # max < 600_000
+    df.VL_CONTA = df.VL_CONTA.astype(float)
+
+    # df.MOEDA.value_counts()
+    # REAL    43391302
+    df.drop(columns=['MOEDA'], inplace=True)
+    
+    # df.ESCALA_MOEDA.value_counts()
+    # MIL        40483230
+    # UNIDADE     2908072
+    df.ESCALA_MOEDA = df.ESCALA_MOEDA.map({'MIL': 1000, 'UNIDADE': 1})
+
+    # unit base currency
+    df.VL_CONTA = df.VL_CONTA * df.ESCALA_MOEDA
+    df.drop(columns=['ESCALA_MOEDA'], inplace=True)
+
+    # df.ST_CONTA_FIXA.unique() -> ['S', 'N']
+    df.ST_CONTA_FIXA = df.ST_CONTA_FIXA.map({'S': True, 'N': False})
+
+    # df.ORDEM_EXERC.unique() -> ['PENÚLTIMO', 'ÚLTIMO']
+    df.ORDEM_EXERC = df.ORDEM_EXERC.map({'ÚLTIMO': 0, 'PENÚLTIMO': -1})
+    df.ORDEM_EXERC = df.ORDEM_EXERC.astype(np.int8)
+
+    # BPA, BPP and DFC files have no DT_INI_EXERC column
+    if 'DT_INI_EXERC' in df.columns:
+        df.DT_INI_EXERC = pd.to_datetime(df.DT_INI_EXERC)
+    else:
+        # column_order.remove('DT_INI_EXERC')
+        df['DT_INI_EXERC'] = pd.NaT
+    if 'COLUNA_DF' not in df.columns: df['COLUNA_DF'] = np.nan
+
+    column_order = [
+        'CD_CVM', 'CNPJ_CIA', 'DENOM_CIA', 'GRUPO_DFP', 'VERSAO', 'DT_REFER',
+        'DT_INI_EXERC', 'DT_FIM_EXERC', 'ORDEM_EXERC', 'CD_CONTA', 'DS_CONTA',
+        'ST_CONTA_FIXA', 'COLUNA_DF', 'VL_CONTA']
+
+    df = df[column_order]
+    return df 
 
 def load_metadata() -> pd.DataFrame:
     """retorna um dataframe com os metadados da base PORTAL"""
