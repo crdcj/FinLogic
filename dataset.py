@@ -1,13 +1,21 @@
 import os
 import zipfile as zf
+from concurrent.futures import ProcessPoolExecutor
+import zipfile as zf
 import requests
 import pandas as pd
 import numpy as np
+import joblib
 
 URL_DFP = 'http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/'
 URL_ITR = 'http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/'
 PATH_RAW = './data/raw/'
 PATH_PROCESSED = './data/processed/'
+READ_OPTIONS = {
+    'sep': ';',
+    'encoding': 'iso-8859-1',
+    'dtype': str,
+}
 
 
 def update_raw_file(url: str) -> bool:
@@ -68,13 +76,13 @@ def update_dataset() -> list:
         files_updated.append(file_name) if was_updated else None
 
     # Update parquet dataset
-    for parent_file_name in files_updated:
-        print(parent_file_name)
-        parent_file = zf.ZipFile(f'{PATH_RAW}{parent_file_name}')
+    for parent_filename in files_updated:
+        print(parent_filename)
+        parent_file = zf.ZipFile(f'{PATH_RAW}{parent_filename}')
         df_year = pd.DataFrame()
-        child_file_names = parent_file.namelist()
-        for child_file_name in child_file_names[1:]:
-            child_file = parent_file.open(child_file_name)
+        child_filenames = parent_file.namelist()
+        for child_filename in child_filenames[1:]:
+            child_file = parent_file.open(child_filename)
             kwargs = {
                 'sep': ';',
                 'encoding': 'iso-8859-1',
@@ -87,7 +95,7 @@ def update_dataset() -> list:
         sort_by = ['CD_CVM', 'GRUPO_DFP', 'ORDEM_EXERC', 'DT_REFER', 'CD_CONTA']
         df_year.sort_values(by=sort_by, ignore_index=True, inplace=True)
         df_year.to_parquet(
-            f'{PATH_PROCESSED}{parent_file_name[:-4]}.parquet',
+            f'{PATH_PROCESSED}{parent_filename[:-4]}.parquet',
             index=False,
             compression='zstd')
 
@@ -118,20 +126,24 @@ def process_child_dataframe(df) -> pd.DataFrame:
     df.ORDEM_EXERC = df.ORDEM_EXERC.map({'ÚLTIMO': 0, 'PENÚLTIMO': -1})
     df.ORDEM_EXERC = df.ORDEM_EXERC.astype(np.int8)
 
+    df.DT_REFER = pd.to_datetime(df.DT_REFER)
+    df.DT_FIM_EXERC = pd.to_datetime(df.DT_FIM_EXERC)
     # BPA, BPP and DFC files have no DT_INI_EXERC column
     if 'DT_INI_EXERC' in df.columns:
         df.DT_INI_EXERC = pd.to_datetime(df.DT_INI_EXERC)
     else:
         # column_order.remove('DT_INI_EXERC')
         df['DT_INI_EXERC'] = pd.NaT
-    if 'COLUNA_DF' not in df.columns: df['COLUNA_DF'] = np.nan
+    if 'COLUNA_DF' not in df.columns:
+        df['COLUNA_DF'] = np.nan
 
     column_order = [
         'CD_CVM', 'CNPJ_CIA', 'DENOM_CIA', 'GRUPO_DFP', 'VERSAO', 'DT_REFER',
         'DT_INI_EXERC', 'DT_FIM_EXERC', 'ORDEM_EXERC', 'CD_CONTA', 'DS_CONTA',
-        'ST_CONTA_FIXA', 'COLUNA_DF', 'VL_CONTA']
-
+        'ST_CONTA_FIXA', 'COLUNA_DF', 'VL_CONTA'
+    ]
     df = df[column_order]
+
     return df 
 
 def load_metadata() -> pd.DataFrame:
@@ -152,3 +164,45 @@ def load_metadata() -> pd.DataFrame:
     df.drop(columns=['CNPJ_CIA', 'DENOM_CIA', 'LINK_DOC'], inplace=True)
     df.reset_index(drop=True, inplace=True)
     return df
+
+
+def process_zip(parent_filename):
+    df = pd.DataFrame()
+    parent_path = PATH_RAW + parent_filename
+    # print(parent_path, flush=True)
+    parent_file = zf.ZipFile(parent_path)
+    child_filenames = parent_file.namelist()
+    for child_filename in child_filenames[1:]:
+        # print(child_parent_file_name)
+        child_file = parent_file.open(child_filename)
+        df_child = pd.read_csv(child_file, **READ_OPTIONS)
+        df_child = process_child_dataframe(df_child)        
+        df = pd.concat([df, df_child], ignore_index=True)
+    print(len(df.index))
+    return df
+
+
+def update_dataset():
+    filenames = sorted(os.listdir('./data/raw/'))
+    with ProcessPoolExecutor() as executor:
+        results = executor.map(process_zip, filenames)
+
+    lista_dfs = []
+    [lista_dfs.append(df) for df in results]
+
+    # print('concatenar dataframes...')
+    df = pd.concat(lista_dfs, ignore_index=True)
+
+    sort_by = [
+        'CD_CVM', 'GRUPO_DFP', 'VERSAO', 'ORDEM_EXERC', 'DT_REFER', 'CD_CONTA'
+    ]
+    df.sort_values(by=sort_by, ignore_index=True, inplace=True)
+    print('Dataset sorted')
+    columns_category = df.columns[0:-1]
+    df[columns_category] = df[columns_category].astype('category')
+
+    file_path = PATH_PROCESSED + 'dataset.pkl'
+    with open(file_path, 'wb') as f:
+        joblib.dump(df, f, compress='lz4')
+    print('Dataset saved')
+
