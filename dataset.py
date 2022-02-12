@@ -178,7 +178,7 @@ def process_zip(parent_filename):
         df_child = pd.read_csv(child_file, **READ_OPTIONS)
         df_child = process_child_dataframe(df_child)        
         df = pd.concat([df, df_child], ignore_index=True)
-    print(len(df.index))
+    print(parent_path)
     return df
 
 
@@ -202,7 +202,7 @@ def update_dataset():
     df[columns_category] = df[columns_category].astype('category')
 
     file_path = PATH_PROCESSED + 'dataset.pkl'
-    with open(file_path, 'wb') as f:
-        joblib.dump(df, f, compress='lz4')
+    df.to_pickle(file_path, compression='zstd')
+    # with open(file_path, 'wb') as f:
+    #     joblib.dump(df, f, compress='lz4')
     print('Dataset saved')
-
