@@ -5,7 +5,6 @@ import zipfile as zf
 import requests
 import pandas as pd
 import numpy as np
-import joblib
 
 URL_DFP = 'http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/'
 URL_ITR = 'http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/'
@@ -40,7 +39,7 @@ def update_raw_file(url: str) -> bool:
         return True
 
 
-def update_dataset() -> list:
+def list_urls() -> list:
     """
     Atualizar a base de arquivos do Portal da CVM
     Urls com os links para as tabelas de dados:
@@ -56,52 +55,41 @@ def update_dataset() -> list:
     """
     # DFPs update
     files_updated = []
-    first_year = 2010  # first year avaible at CVM Portal
-    last_year = pd.Timestamp.now().year
-    years = [year for year in range(first_year, last_year + 1)]
-    for year in years:
-        file_name = f'dfp_cia_aberta_{year}.zip'
-        url_dfp = f'{URL_DFP}{file_name}'
-        was_updated = update_raw_file(url_dfp)
-        files_updated.append(file_name) if was_updated else None
-
-    # ITRs update -> they have one more year
+    # first year avaible at CVM Portal
+    first_year = 2010
+    # Next year files will appear during current year
     last_year = pd.Timestamp.now().year + 1
-    # Only the last 4 years will be used for ltm calculations
-    first_year = last_year - 4
-    years = [year for year in range(first_year, last_year + 1)]
+    years = list(range(first_year, last_year + 1))  # 
+    first_year_itr = last_year - 3
+    urls = []    
     for year in years:
-        file_name = f'itr_cia_aberta_{year}.zip'
-        was_updated = update_raw_file(f'{URL_ITR}{file_name}')
-        files_updated.append(file_name) if was_updated else None
+        filename = f'dfp_cia_aberta_{year}.zip'
+        url = f'{URL_DFP}{filename}'
+        urls.append(url)
+        if year >= first_year_itr:
+            filename = f'itr_cia_aberta_{year}.zip'
+            url = f'{URL_ITR}{filename}'
+            urls.append(url)
 
-    # Update parquet dataset
-    for parent_filename in files_updated:
-        print(parent_filename)
-        parent_file = zf.ZipFile(f'{PATH_RAW}{parent_filename}')
-        df_year = pd.DataFrame()
-        child_filenames = parent_file.namelist()
-        for child_filename in child_filenames[1:]:
-            child_file = parent_file.open(child_filename)
-            kwargs = {
-                'sep': ';',
-                'encoding': 'iso-8859-1',
-                'dtype': str,
-                'parse_dates': ['DT_REFER', 'DT_FIM_EXERC']}
-            df_child = pd.read_csv(child_file, **kwargs)
-            df_child = process_child_dataframe(df_child)        
-            df_year = pd.concat([df_year, df_child], ignore_index=True)
+    return urls
 
-        sort_by = ['CD_CVM', 'GRUPO_DFP', 'ORDEM_EXERC', 'DT_REFER', 'CD_CONTA']
-        df_year.sort_values(by=sort_by, ignore_index=True, inplace=True)
-        df_year.to_parquet(
-            f'{PATH_PROCESSED}{parent_filename[:-4]}.parquet',
-            index=False,
-            compression='zstd')
 
-    return files_updated
+def update_raw_dataset():
+    urls = list_urls()
+    with ProcessPoolExecutor() as executor:
+        results = executor.map(update_raw_file, urls)
 
-def process_child_dataframe(df) -> pd.DataFrame:
+    was_updated = []
+    [was_updated.append(r) for r in results]
+    updated_urls = []
+    for t in zip(was_updated, urls):
+        if t[0]:
+            updated_urls.append(t[1])
+    return updated_urls
+
+
+def clean_raw_df(df) -> pd.DataFrame:
+    "converts raw dataframe into processed dataframe"
     df.VERSAO = df.VERSAO.astype(np.int8)  # unique -> ['3', '2', '4', '1', '7', '5', '6', '9', '8']
     df.CD_CVM = df.CD_CVM.astype(np.int32)  # max < 600_000
     df.VL_CONTA = df.VL_CONTA.astype(float)
@@ -146,27 +134,8 @@ def process_child_dataframe(df) -> pd.DataFrame:
 
     return df 
 
-def load_metadata() -> pd.DataFrame:
-    """retorna um dataframe com os metadados da base PORTAL"""
-    df = pd.DataFrame()
-    files_names = sorted(os.listdir(PATH_RAW))
-    kwargs = {'sep': ';', 'encoding': 'iso-8859-1', 'dtype': str}
-    for n, file_name in enumerate(files_names):
-        cam_arquivo = 'data/raw/' + file_name
-        arquivo = zf.ZipFile(cam_arquivo)
-        # print(f'{n}: {nom_arquivo}, ')
-        file_name_md = file_name[0:-3] + 'csv'
-        df_arquivo = pd.read_csv(arquivo.open(file_name_md), **kwargs)
-        df = pd.concat([df, df_arquivo])
 
-    cols_int = ['VERSAO', 'CD_CVM', 'ID_DOC']
-    df[cols_int] = df[cols_int].astype(int)
-    df.drop(columns=['CNPJ_CIA', 'DENOM_CIA', 'LINK_DOC'], inplace=True)
-    df.reset_index(drop=True, inplace=True)
-    return df
-
-
-def process_zip(parent_filename):
+def process_raw_file(parent_filename):
     df = pd.DataFrame()
     parent_path = PATH_RAW + parent_filename
     # print(parent_path, flush=True)
@@ -176,16 +145,16 @@ def process_zip(parent_filename):
         # print(child_parent_file_name)
         child_file = parent_file.open(child_filename)
         df_child = pd.read_csv(child_file, **READ_OPTIONS)
-        df_child = process_child_dataframe(df_child)        
+        df_child = clean_raw_df(df_child)        
         df = pd.concat([df, df_child], ignore_index=True)
     print(parent_path)
     return df
 
 
-def update_dataset():
+def update_processed_dataset():
     filenames = sorted(os.listdir('./data/raw/'))
     with ProcessPoolExecutor() as executor:
-        results = executor.map(process_zip, filenames)
+        results = executor.map(process_raw_file, filenames)
 
     lista_dfs = []
     [lista_dfs.append(df) for df in results]
