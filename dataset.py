@@ -212,12 +212,13 @@ def update_processed_dataset():
     df.sort_values(by=sort_by, ignore_index=True, inplace=True)
     print('Dataset sorted')
 
+    # Convert all columns, except bool and float64, to category
     # for column, c_type in zip(df.columns, df.dtypes):
-    #     if (c_type != 'float64'):  # and (c_type != 'int8') and (c_type != 'bool')
+    #     if (c_type != 'float64') and (c_type != 'bool'): # (c_type != 'int8'):
     #         # print(column, c_type)
     #         df[f'{column}'] = df[f'{column}'].astype('category')
     df = df.astype('category')
-    print('Columns of type int32, object and datetime64 changed to category')
+    print('Columns of type int, str and datetime changed to category')
 
     file_path = PATH_PROCESSED + 'dataset.pkl'
     df.to_pickle(file_path, compression='zstd')
