@@ -125,12 +125,51 @@ def clean_raw_df(df) -> pd.DataFrame:
     if 'COLUNA_DF' not in df.columns:
         df['COLUNA_DF'] = np.nan
 
-    column_order = [
-        'CD_CVM', 'CNPJ_CIA', 'DENOM_CIA', 'GRUPO_DFP', 'VERSAO', 'DT_REFER',
-        'DT_INI_EXERC', 'DT_FIM_EXERC', 'ORDEM_EXERC', 'CD_CONTA', 'DS_CONTA',
-        'ST_CONTA_FIXA', 'COLUNA_DF', 'VL_CONTA'
+    """
+    The first part of CD_CONTA accounting code is the financial statement type
+    df['CD_CONTA'].str[0].unique() -> [1, 2, 3, 4, 5, 6, 7]
+    Table of correspondences:
+        1 -> Balanço Patrimonial Ativo
+        2 -> Balanço Patrimonial Passivo
+        3 -> Demonstração do Resultado
+        4 -> Demonstração de Resultado Abrangente
+        5 -> Demonstração das Mutações do Patrimônio Líquido
+        6 -> Demonstração do Fluxo de Caixa (Método Indireto)
+        7 -> Demonstração de Valor Adicionado
+    """
+    df['fs_type'] = df['CD_CONTA'].str[0].astype(np.int8)
+
+    """ 
+    df['GRUPO_DFP'].unique() result:
+        'DF Consolidado - Balanço Patrimonial Ativo',
+        'DF Consolidado - Balanço Patrimonial Passivo', 
+        'DF Consolidado - Demonstração das Mutações do Patrimônio Líquido',
+        'DF Consolidado - Demonstração de Resultado Abrangente',
+        'DF Consolidado - Demonstração de Valor Adicionado',
+        'DF Consolidado - Demonstração do Fluxo de Caixa (Método Indireto)',
+        'DF Consolidado - Demonstração do Resultado',
+        'DF Individual - Balanço Patrimonial Ativo',
+        'DF Individual - Balanço Patrimonial Passivo',
+        'DF Individual - Demonstração das Mutações do Patrimônio Líquido',
+        'DF Individual - Demonstração de Resultado Abrangente',
+        'DF Individual - Demonstração de Valor Adicionado',
+        'DF Individual - Demonstração do Fluxo de Caixa (Método Indireto)',
+        'DF Individual - Demonstração do Resultado',
+    Hence, with string position 3 we can make:
+    if == 'C' -> consolidated statement is True
+    if == 'I' -> consolidated statement is False (stand alone statement)
+    """
+    df['is_cons'] = df['GRUPO_DFP'].str[3].map({'C': True, 'I': False})
+    df['is_cons'] = df['is_cons'].astype(bool)
+    # information in 'GRUPO_DFP' is already in 'is_cons' or in 
+    df.drop(columns=['GRUPO_DFP'], inplace=True)
+
+    columns_order = [
+        'CD_CVM', 'CNPJ_CIA', 'DENOM_CIA', 'fs_type', 'is_cons', 'DT_REFER',
+        'VERSAO', 'DT_INI_EXERC', 'DT_FIM_EXERC', 'ORDEM_EXERC', 'CD_CONTA',
+        'DS_CONTA', 'ST_CONTA_FIXA', 'COLUNA_DF', 'VL_CONTA'
     ]
-    df = df[column_order]
+    df = df[columns_order]
 
     return df 
 
@@ -163,7 +202,7 @@ def update_processed_dataset():
     df = pd.concat(lista_dfs, ignore_index=True)
 
     sort_by = [
-        'CD_CVM', 'GRUPO_DFP', 'VERSAO', 'ORDEM_EXERC', 'DT_REFER', 'CD_CONTA'
+        'CD_CVM', 'fs_type', 'DT_REFER', 'VERSAO', 'ORDEM_EXERC', 'CD_CONTA'
     ]
     df.sort_values(by=sort_by, ignore_index=True, inplace=True)
     print('Dataset sorted')

@@ -7,9 +7,9 @@ importlib.reload(dataset)
 # for url in urls:
 #     print(url)
 
-urls = dataset.update_raw_dataset()
-for url in urls:
-    print(url)
+# urls = dataset.update_raw_dataset()
+# for url in urls:
+#     print(url)
 
 dataset.update_processed_dataset()
 
