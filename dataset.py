@@ -90,9 +90,14 @@ def update_raw_dataset():
 
 def clean_raw_df(df) -> pd.DataFrame:
     "converts raw dataframe into processed dataframe"
-    df.VERSAO = df.VERSAO.astype(np.int8)  # unique -> ['3', '2', '4', '1', '7', '5', '6', '9', '8']
+    # df.VERSAO.unique() -> ['3', '2', '4', '1', '7', '5', '6', '9', '8']
+    df.VERSAO = df.VERSAO.astype(np.int8) 
     df.CD_CVM = df.CD_CVM.astype(np.int32)  # max < 600_000
     df.VL_CONTA = df.VL_CONTA.astype(float)
+
+    # df.query("VL_CONTA == 0") -> 10.891.139 rows from 17.674.199
+    # Zero values will not be used
+    df.query("VL_CONTA != 0", inplace=True)
 
     # df.MOEDA.value_counts()
     # REAL    43391302
@@ -206,8 +211,13 @@ def update_processed_dataset():
     ]
     df.sort_values(by=sort_by, ignore_index=True, inplace=True)
     print('Dataset sorted')
-    columns_category = df.columns[0:-1]
-    df[columns_category] = df[columns_category].astype('category')
+
+    # for column, c_type in zip(df.columns, df.dtypes):
+    #     if (c_type != 'float64'):  # and (c_type != 'int8') and (c_type != 'bool')
+    #         # print(column, c_type)
+    #         df[f'{column}'] = df[f'{column}'].astype('category')
+    df = df.astype('category')
+    print('Columns of type int32, object and datetime64 changed to category')
 
     file_path = PATH_PROCESSED + 'dataset.pkl'
     df.to_pickle(file_path, compression='zstd')
