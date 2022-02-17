@@ -164,15 +164,16 @@ def clean_raw_df(df) -> pd.DataFrame:
     if == 'C' -> consolidated statement is True
     if == 'I' -> consolidated statement is False (stand alone statement)
     """
-    df['is_cons'] = df['GRUPO_DFP'].str[3].map({'C': True, 'I': False})
-    df['is_cons'] = df['is_cons'].astype(bool)
-    # information in 'GRUPO_DFP' is already in 'is_cons' or in 
+    df['is_consolidated'] = df['GRUPO_DFP'].str[3].map({'C': True, 'I': False})
+    df['is_consolidated'] = df['is_consolidated'].astype(bool)
+    # information in 'GRUPO_DFP' is already in 'is_consolidated' or in 
     df.drop(columns=['GRUPO_DFP'], inplace=True)
 
     columns_order = [
-        'CD_CVM', 'CNPJ_CIA', 'DENOM_CIA', 'fs_type', 'is_cons', 'DT_REFER',
-        'VERSAO', 'DT_INI_EXERC', 'DT_FIM_EXERC', 'ORDEM_EXERC', 'CD_CONTA',
-        'DS_CONTA', 'ST_CONTA_FIXA', 'COLUNA_DF', 'VL_CONTA'
+        'CD_CVM', 'CNPJ_CIA', 'DENOM_CIA', 'is_annual', 'is_consolidated',
+        'fs_type', 'DT_REFER', 'VERSAO', 'DT_INI_EXERC', 'DT_FIM_EXERC', 
+        'ORDEM_EXERC', 'CD_CONTA', 'DS_CONTA', 'ST_CONTA_FIXA', 'COLUNA_DF',
+        'VL_CONTA'
     ]
     df = df[columns_order]
 
@@ -189,6 +190,12 @@ def process_raw_file(parent_filename):
         # print(child_parent_file_name)
         child_file = parent_file.open(child_filename)
         df_child = pd.read_csv(child_file, **READ_OPTIONS)
+        # there are two types of CVM files: DFP(annual) and ITR(quarterly)
+        if parent_filename[0:3] == 'dfp':
+            df_child['is_annual'] = True
+        else:
+            df_child['is_annual'] = False
+
         df_child = clean_raw_df(df_child)        
         df = pd.concat([df, df_child], ignore_index=True)
     print(parent_path)
@@ -220,8 +227,8 @@ def update_processed_dataset():
     df = df.astype('category')
     print('Columns of type int, str and datetime changed to category')
 
-    file_path = PATH_PROCESSED + 'dataset.pkl'
-    df.to_pickle(file_path, compression='zstd')
+    file_path = PATH_PROCESSED + 'dataset.pkl.zst'
+    df.to_pickle(file_path) # , compression='zstd')
     # with open(file_path, 'wb') as f:
     #     joblib.dump(df, f, compress='lz4')
     print('Dataset saved')
