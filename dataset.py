@@ -128,20 +128,6 @@ def clean_raw_df(df) -> pd.DataFrame:
         df['COLUNA_DF'] = np.nan
 
     """
-    The first part of CD_CONTA accounting code is the financial statement type
-    df['CD_CONTA'].str[0].unique() -> [1, 2, 3, 4, 5, 6, 7]
-    Table of correspondences:
-        1 -> Balanço Patrimonial Ativo
-        2 -> Balanço Patrimonial Passivo
-        3 -> Demonstração do Resultado
-        4 -> Demonstração de Resultado Abrangente
-        5 -> Demonstração das Mutações do Patrimônio Líquido
-        6 -> Demonstração do Fluxo de Caixa (Método Indireto)
-        7 -> Demonstração de Valor Adicionado
-    """
-    df['fs_type'] = df['CD_CONTA'].str[0].astype(np.int8)
-
-    """
     df['GRUPO_DFP'].unique() result:
         'DF Consolidado - Balanço Patrimonial Ativo',
         'DF Consolidado - Balanço Patrimonial Passivo',
@@ -168,9 +154,8 @@ def clean_raw_df(df) -> pd.DataFrame:
 
     columns_order = [
         'CD_CVM', 'CNPJ_CIA', 'DENOM_CIA', 'is_annual', 'is_consolidated',
-        'fs_type', 'DT_REFER', 'VERSAO', 'DT_INI_EXERC', 'DT_FIM_EXERC',
-        'ORDEM_EXERC', 'CD_CONTA', 'DS_CONTA', 'ST_CONTA_FIXA', 'COLUNA_DF',
-        'VL_CONTA'
+        'DT_REFER', 'VERSAO', 'DT_INI_EXERC', 'DT_FIM_EXERC', 'ORDEM_EXERC',
+        'CD_CONTA', 'DS_CONTA', 'ST_CONTA_FIXA', 'COLUNA_DF', 'VL_CONTA'
     ]
     df = df[columns_order]
 
@@ -211,8 +196,8 @@ def update_processed_dataset():
     df = pd.concat(lista_dfs, ignore_index=True)
 
     sort_by = [
-        'CD_CVM', 'fs_type', 'DT_REFER', 'VERSAO', 'ORDEM_EXERC', 'CD_CONTA'
-    ]
+        'CD_CVM', 'DT_REFER', 'VERSAO', 'ORDEM_EXERC', 'is_consolidated',
+        'CD_CONTA']
     df.sort_values(by=sort_by, ignore_index=True, inplace=True)
     print('Dataset sorted')
 

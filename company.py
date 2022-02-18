@@ -15,14 +15,15 @@ class Company():
              (is_consolidated == @self.consolidated)"
         ).copy()
         self.remove_category()
+        self._get_ac_levels()
         self._get_assets()
         self._get_liabilities_and_equity()
+        self._get_equity()
 
     def remove_category(self):
         self._df = self._df.astype({
             'CD_CVM': 'object',
             'is_annual': bool,
-            'fs_type': np.int8,
             'is_consolidated': bool,
             'DT_REFER': 'datetime64',
             'DT_INI_EXERC': 'datetime64',
@@ -37,14 +38,19 @@ class Company():
         return
 
     def _get_assets(self):
-        df = self._df.query("fs_type == 1").copy()
+        df = self._df.query("ac_l1 == 1").copy()
         # df.query("CD_CONTA == '1'", inplace=True)
         self.assets = self._make_bs(df)
 
     def _get_liabilities_and_equity(self):
-        df = self._df.query("fs_type == 2").copy()
+        df = self._df.query("ac_l1 == 2").copy()
         # df.query("CD_CONTA == '1'", inplace=True)
         self.liabilities_and_equity = self._make_bs(df)
+
+    def _get_equity(self):
+        df = self._df.query("ac_l1 == 2 and ac_l2 == 3").copy()
+        # df.query("CD_CONTA == '1'", inplace=True)
+        self.equity = self._make_bs(df)
 
     def _make_bs(self, df: pd.DataFrame) -> pd.DataFrame:
 
@@ -70,7 +76,7 @@ class Company():
             'CD_CVM']
         df.drop(columns=columns_drop, inplace=True)
 
-        base_columns = ['DS_CONTA', 'CD_CONTA', 'ST_CONTA_FIXA', 'COLUNA_DF']
+        base_columns = ['DS_CONTA', 'CD_CONTA', 'ST_CONTA_FIXA']
         df_bs = df.loc[:, base_columns]
         df_bs.drop_duplicates(ignore_index=True, inplace=True)
 
@@ -84,5 +90,24 @@ class Company():
                 inplace=True)
             df_bs = pd.merge(df_bs, df_year, how='left')
 
-        # df.reset_index(drop=True, inplace=True)
+        df_bs.sort_values('CD_CONTA', ignore_index=True, inplace=True)
         return df_bs
+
+    def _get_ac_levels(self):
+        """
+        Get accounting code (ac) levels in CD_CONTA column
+        The first part of CD_CONTA is the financial statement type
+        df['CD_CONTA'].str[0].unique() -> [1, 2, 3, 4, 5, 6, 7]
+        Table of correspondences:
+            1 -> Balanço Patrimonial Ativo
+            2 -> Balanço Patrimonial Passivo
+            3 -> Demonstração do Resultado
+            4 -> Demonstração de Resultado Abrangente
+            5 -> Demonstração das Mutações do Patrimônio Líquido
+            6 -> Demonstração do Fluxo de Caixa (Método Indireto)
+            7 -> Demonstração de Valor Adicionado
+        """
+        self._df['ac_l1'] = pd.to_numeric(
+            self._df['CD_CONTA'].str[0], downcast='integer')
+        self._df['ac_l2'] = pd.to_numeric(
+            self._df['CD_CONTA'].str[2:4], downcast='integer')
