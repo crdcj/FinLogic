@@ -15,6 +15,8 @@ class Company():
              (is_consolidated == @self.consolidated)"
         ).copy()
         self.remove_category()
+        self._get_assets()
+        self._get_liabilities_and_equity()
 
     def remove_category(self):
         self._df = self._df.astype({
@@ -34,14 +36,21 @@ class Company():
         })
         return
 
-
-    def assets(self) -> pd.DataFrame:
+    def _get_assets(self):
         df = self._df.query("fs_type == 1").copy()
         # df.query("CD_CONTA == '1'", inplace=True)
+        self.assets = self._make_bs(df)
+
+    def _get_liabilities_and_equity(self):
+        df = self._df.query("fs_type == 2").copy()
+        # df.query("CD_CONTA == '1'", inplace=True)
+        self.liabilities_and_equity = self._make_bs(df)
+
+    def _make_bs(self, df: pd.DataFrame) -> pd.DataFrame:
 
         # quarterly financial statement = qfc
         # keep only last qfc
-        last_qfs_period = df.query("is_annual == False").DT_FIM_EXERC.max()
+        last_qfs_period = df.query("is_annual == False").DT_FIM_EXERC.max()  # noqa
         df.query(
             "(is_annual == True) or (DT_FIM_EXERC == @last_qfs_period)",
             inplace=True)
@@ -61,22 +70,19 @@ class Company():
             'CD_CVM']
         df.drop(columns=columns_drop, inplace=True)
 
-        df_initial_columns = [
-            'DS_CONTA', 'CD_CONTA', 'ST_CONTA_FIXA', 'COLUNA_DF'
-        ]
-        df_assets = df.loc[:, df_initial_columns]
-        df_assets.drop_duplicates(ignore_index=True, inplace=True)
+        base_columns = ['DS_CONTA', 'CD_CONTA', 'ST_CONTA_FIXA', 'COLUNA_DF']
+        df_bs = df.loc[:, base_columns]
+        df_bs.drop_duplicates(ignore_index=True, inplace=True)
 
-        merge_columns = [
-            'CD_CONTA', 'DS_CONTA', 'ST_CONTA_FIXA', 'COLUNA_DF', 'VL_CONTA']
+        merge_columns = base_columns + ['VL_CONTA']
         for period in df.DT_FIM_EXERC.unique():
             # print(date)
             df_year = df.query("DT_FIM_EXERC == @period").copy()
             df_year = df_year[merge_columns]
             df_year.rename(
                 columns={'VL_CONTA': np.datetime_as_string(period, unit='D')},
-                inplace=True)    
-            df_assets = pd.merge(df_assets, df_year, how='left')
+                inplace=True)
+            df_bs = pd.merge(df_bs, df_year, how='left')
 
         # df.reset_index(drop=True, inplace=True)
-        return df_assets
+        return df_bs

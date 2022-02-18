@@ -1,7 +1,6 @@
 import os
 import zipfile as zf
 from concurrent.futures import ProcessPoolExecutor
-import zipfile as zf
 import requests
 import pandas as pd
 import numpy as np
@@ -53,15 +52,13 @@ def list_urls() -> list:
     Por conta disso, soma-se 2 ano ano atual (o segundo limite da função range
     é exlusivo)
     """
-    # DFPs update
-    files_updated = []
     # first year avaible at CVM Portal
     first_year = 2010
     # Next year files will appear during current year
     last_year = pd.Timestamp.now().year + 1
-    years = list(range(first_year, last_year + 1))  # 
+    years = list(range(first_year, last_year + 1))
     first_year_itr = last_year - 3
-    urls = []    
+    urls = []
     for year in years:
         filename = f'dfp_cia_aberta_{year}.zip'
         url = f'{URL_DFP}{filename}'
@@ -91,7 +88,7 @@ def update_raw_dataset():
 def clean_raw_df(df) -> pd.DataFrame:
     "converts raw dataframe into processed dataframe"
     # df.VERSAO.unique() -> ['3', '2', '4', '1', '7', '5', '6', '9', '8']
-    df.VERSAO = df.VERSAO.astype(np.int8) 
+    df.VERSAO = df.VERSAO.astype(np.int8)
     df.CD_CVM = df.CD_CVM.astype(np.int32)  # max < 600_000
     df.VL_CONTA = df.VL_CONTA.astype(float)
 
@@ -102,7 +99,7 @@ def clean_raw_df(df) -> pd.DataFrame:
     # df.MOEDA.value_counts()
     # REAL    43391302
     df.drop(columns=['MOEDA'], inplace=True)
-    
+
     # df.ESCALA_MOEDA.value_counts()
     # MIL        40483230
     # UNIDADE     2908072
@@ -144,10 +141,10 @@ def clean_raw_df(df) -> pd.DataFrame:
     """
     df['fs_type'] = df['CD_CONTA'].str[0].astype(np.int8)
 
-    """ 
+    """
     df['GRUPO_DFP'].unique() result:
         'DF Consolidado - Balanço Patrimonial Ativo',
-        'DF Consolidado - Balanço Patrimonial Passivo', 
+        'DF Consolidado - Balanço Patrimonial Passivo',
         'DF Consolidado - Demonstração das Mutações do Patrimônio Líquido',
         'DF Consolidado - Demonstração de Resultado Abrangente',
         'DF Consolidado - Demonstração de Valor Adicionado',
@@ -166,18 +163,18 @@ def clean_raw_df(df) -> pd.DataFrame:
     """
     df['is_consolidated'] = df['GRUPO_DFP'].str[3].map({'C': True, 'I': False})
     df['is_consolidated'] = df['is_consolidated'].astype(bool)
-    # information in 'GRUPO_DFP' is already in 'is_consolidated' or in 
+    # information in 'GRUPO_DFP' is already in 'is_consolidated' or in fs_type
     df.drop(columns=['GRUPO_DFP'], inplace=True)
 
     columns_order = [
         'CD_CVM', 'CNPJ_CIA', 'DENOM_CIA', 'is_annual', 'is_consolidated',
-        'fs_type', 'DT_REFER', 'VERSAO', 'DT_INI_EXERC', 'DT_FIM_EXERC', 
+        'fs_type', 'DT_REFER', 'VERSAO', 'DT_INI_EXERC', 'DT_FIM_EXERC',
         'ORDEM_EXERC', 'CD_CONTA', 'DS_CONTA', 'ST_CONTA_FIXA', 'COLUNA_DF',
         'VL_CONTA'
     ]
     df = df[columns_order]
 
-    return df 
+    return df
 
 
 def process_raw_file(parent_filename):
@@ -196,7 +193,7 @@ def process_raw_file(parent_filename):
         else:
             df_child['is_annual'] = False
 
-        df_child = clean_raw_df(df_child)        
+        df_child = clean_raw_df(df_child)
         df = pd.concat([df, df_child], ignore_index=True)
     print(parent_path)
     return df
@@ -221,14 +218,12 @@ def update_processed_dataset():
 
     # Convert all columns, except bool and float64, to category
     # for column, c_type in zip(df.columns, df.dtypes):
-    #     if (c_type != 'float64') and (c_type != 'bool'): # (c_type != 'int8'):
+    #     if (c_type != 'float64') and (c_type != 'bool'): #(c_type != 'int8'):
     #         # print(column, c_type)
     #         df[f'{column}'] = df[f'{column}'].astype('category')
     df = df.astype('category')
     print('Columns of type int, str and datetime changed to category')
 
     file_path = PATH_PROCESSED + 'dataset.pkl.zst'
-    df.to_pickle(file_path) # , compression='zstd')
-    # with open(file_path, 'wb') as f:
-    #     joblib.dump(df, f, compress='lz4')
+    df.to_pickle(file_path)
     print('Dataset saved')
