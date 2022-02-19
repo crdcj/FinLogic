@@ -7,8 +7,8 @@ import numpy as np
 
 URL_DFP = 'http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/'
 URL_ITR = 'http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/'
-PATH_RAW = './data/raw/'
-PATH_PROCESSED = './data/processed/'
+PATH_RAW = 'BrFin/data/raw/'
+PATH_PROCESSED = 'BrFin/data/processed/'
 READ_OPTIONS = {
     'sep': ';',
     'encoding': 'iso-8859-1',
@@ -128,6 +128,8 @@ def clean_raw_df(df) -> pd.DataFrame:
         df['COLUNA_DF'] = np.nan
 
     """
+    fs_type -> Financial Statemen Type
+    Consolidated and Separate Financial Statements (IAS 27/2003)
     df['GRUPO_DFP'].unique() result:
         'DF Consolidado - Balanço Patrimonial Ativo',
         'DF Consolidado - Balanço Patrimonial Passivo',
@@ -143,17 +145,19 @@ def clean_raw_df(df) -> pd.DataFrame:
         'DF Individual - Demonstração de Valor Adicionado',
         'DF Individual - Demonstração do Fluxo de Caixa (Método Indireto)',
         'DF Individual - Demonstração do Resultado',
-    Hence, with string position 3 we can make:
-    if == 'C' -> consolidated statement is True
-    if == 'I' -> consolidated statement is False (stand alone statement)
+    Hence, with string position 3:6 we can make:
+    if == 'Con' -> consolidated statement
+    if == 'Ind' -> separate statement
     """
-    df['is_consolidated'] = df['GRUPO_DFP'].str[3].map({'C': True, 'I': False})
-    df['is_consolidated'] = df['is_consolidated'].astype(bool)
-    # information in 'GRUPO_DFP' is already in 'is_consolidated' or in fs_type
+    df['fs_type'] = df['GRUPO_DFP'].str[3:6].map({
+        'Con': 'consolidated',
+        'Ind': 'separate'})
+    df['fs_type'] = df['fs_type'].astype('category')
+    # information in 'GRUPO_DFP' is already in 'fs_type' or in fs_type
     df.drop(columns=['GRUPO_DFP'], inplace=True)
 
     columns_order = [
-        'CD_CVM', 'CNPJ_CIA', 'DENOM_CIA', 'is_annual', 'is_consolidated',
+        'CD_CVM', 'CNPJ_CIA', 'DENOM_CIA', 'is_annual', 'fs_type',
         'DT_REFER', 'VERSAO', 'DT_INI_EXERC', 'DT_FIM_EXERC', 'ORDEM_EXERC',
         'CD_CONTA', 'DS_CONTA', 'ST_CONTA_FIXA', 'COLUNA_DF', 'VL_CONTA'
     ]
@@ -185,30 +189,26 @@ def process_raw_file(parent_filename):
 
 
 def update_processed_dataset():
-    filenames = sorted(os.listdir('./data/raw/'))
+    print(os.path.dirname(os.path.abspath(__file__)))
+    filenames = sorted(os.listdir(PATH_RAW))
     with ProcessPoolExecutor() as executor:
         results = executor.map(process_raw_file, filenames)
 
     lista_dfs = []
     [lista_dfs.append(df) for df in results]
 
-    # print('concatenar dataframes...')
+    print('Concatenate dataframes ...')
     df = pd.concat(lista_dfs, ignore_index=True)
 
+    print('Sort Dataset ...')
     sort_by = [
-        'CD_CVM', 'DT_REFER', 'VERSAO', 'ORDEM_EXERC', 'is_consolidated',
-        'CD_CONTA']
+        'CD_CVM', 'DT_REFER', 'VERSAO', 'ORDEM_EXERC', 'fs_type', 'CD_CONTA']
     df.sort_values(by=sort_by, ignore_index=True, inplace=True)
-    print('Dataset sorted')
 
-    # Convert all columns, except bool and float64, to category
-    # for column, c_type in zip(df.columns, df.dtypes):
-    #     if (c_type != 'float64') and (c_type != 'bool'): #(c_type != 'int8'):
-    #         # print(column, c_type)
-    #         df[f'{column}'] = df[f'{column}'].astype('category')
     df = df.astype('category')
     print('Columns of type int, str and datetime changed to category')
 
+    print('Save Dataset...')
     file_path = PATH_PROCESSED + 'dataset.pkl.zst'
     df.to_pickle(file_path)
     print('Dataset saved')

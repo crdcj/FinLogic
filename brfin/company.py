@@ -1,30 +1,30 @@
 import pandas as pd
 import numpy as np
 
-file_path = './data/processed/dataset.pkl.zst'
+file_path = '/home/crcj/GitHub/BrFin/data/processed/dataset.pkl.zst'
 DATASET = pd.read_pickle(file_path)
 
 
 class Company():
 
-    def __init__(self, cvm_number: int, consolidated=True):
+    def __init__(self, cvm_number: int, fs_type='consolidated'):
         self.cvm_number = int(cvm_number)
-        self.consolidated = consolidated
+        self.fs_type = fs_type
         self._df = DATASET.query(
             "(CD_CVM == @self.cvm_number) and \
-             (is_consolidated == @self.consolidated)"
+             (fs_type == @self.fs_type)"
         ).copy()
-        self.remove_category()
+        self._remove_category()
         self._get_ac_levels()
         self._get_assets()
         self._get_liabilities_and_equity()
         self._get_equity()
 
-    def remove_category(self):
+    def _remove_category(self):
         self._df = self._df.astype({
             'CD_CVM': 'object',
             'is_annual': bool,
-            'is_consolidated': bool,
+            'fs_type': bool,
             'DT_REFER': 'datetime64',
             'DT_INI_EXERC': 'datetime64',
             'DT_FIM_EXERC': 'datetime64',
