@@ -10,18 +10,14 @@ class Company():
     def __init__(self, cvm_number: int, fs_type='consolidated'):
         self.cvm_number = int(cvm_number)
         self.fs_type = fs_type
-        self._df = DATASET.query(
-            "(CD_CVM == @self.cvm_number) and \
-             (fs_type == @self.fs_type)"
+        self._df_main = DATASET.query(
+            "(CD_CVM == @self.cvm_number) and (fs_type == @self.fs_type)"
         ).copy()
         self._remove_category()
         self._get_ac_levels()
-        self._get_assets()
-        self._get_liabilities_and_equity()
-        self._get_equity()
 
     def _remove_category(self):
-        self._df = self._df.astype({
+        self._df_main = self._df_main.astype({
             'CD_CVM': 'object',
             'is_annual': bool,
             'fs_type': bool,
@@ -37,20 +33,32 @@ class Company():
         })
         return
 
+    @property
+    def assets(self):
+        return self._get_assets()
+
     def _get_assets(self):
-        df = self._df.query("ac_l1 == 1").copy()
+        df = self._df_main.query("ac_l1 == 1").copy()
         # df.query("CD_CONTA == '1'", inplace=True)
-        self.assets = self._make_bs(df)
+        return self._make_bs(df)
+
+    @property
+    def liabilities_and_equity(self):
+        return self._get_liabilities_and_equity()
 
     def _get_liabilities_and_equity(self):
-        df = self._df.query("ac_l1 == 2").copy()
+        df = self._df_main.query("ac_l1 == 2").copy()
         # df.query("CD_CONTA == '1'", inplace=True)
-        self.liabilities_and_equity = self._make_bs(df)
+        return self._make_bs(df)
+
+    @property
+    def equity(self):
+        return self._get_equity()
 
     def _get_equity(self):
-        df = self._df.query("ac_l1 == 2 and ac_l2 == 3").copy()
+        df = self._df_main.query("ac_l1 == 2 and ac_l2 == 3").copy()
         # df.query("CD_CONTA == '1'", inplace=True)
-        self.equity = self._make_bs(df)
+        return self._make_bs(df)
 
     def _make_bs(self, df: pd.DataFrame) -> pd.DataFrame:
 
@@ -69,12 +77,13 @@ class Company():
             subset=['financial_year', 'CD_CONTA'],
             keep='last',
             inplace=True,
-            ignore_index=True)
-
-        columns_drop = [
-            'CNPJ_CIA', 'DENOM_CIA', 'VERSAO', 'ORDEM_EXERC', 'financial_year',
-            'CD_CVM']
-        df.drop(columns=columns_drop, inplace=True)
+            ignore_index=True
+        )
+        # columns_drop = [
+        #     'CNPJ_CIA', 'DENOM_CIA', 'VERSAO', 'ORDEM_EXERC',
+        #     'financial_year', 'CD_CVM'
+        # ]
+        # df.drop(columns=columns_drop, inplace=True)
 
         base_columns = ['DS_CONTA', 'CD_CONTA', 'ST_CONTA_FIXA']
         df_bs = df.loc[:, base_columns]
@@ -107,7 +116,7 @@ class Company():
             6 -> Demonstração do Fluxo de Caixa (Método Indireto)
             7 -> Demonstração de Valor Adicionado
         """
-        self._df['ac_l1'] = pd.to_numeric(
-            self._df['CD_CONTA'].str[0], downcast='integer')
-        self._df['ac_l2'] = pd.to_numeric(
-            self._df['CD_CONTA'].str[2:4], downcast='integer')
+        self._df_main['ac_l1'] = pd.to_numeric(
+            self._df_main['CD_CONTA'].str[0], downcast='integer')
+        self._df_main['ac_l2'] = pd.to_numeric(
+            self._df_main['CD_CONTA'].str[2:4], downcast='integer')
