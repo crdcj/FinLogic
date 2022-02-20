@@ -1,22 +1,38 @@
-import pandas as pd
+"""Module containing BrFin Company Class Definition."""
 import numpy as np
+import pandas as pd
 
-file_path = '/home/crcj/GitHub/BrFin/data/processed/dataset.pkl.zst'
-DATASET = pd.read_pickle(file_path)
+DATASET = pd.read_pickle(
+    '/home/crcj/GitHub/BrFin/data/processed/dataset.pkl.zst'
+)
 
 
 class Company():
+    """Financial Statement Class for Brazilian Companies."""
 
-    def __init__(self, cvm_number: int, fs_type='consolidated'):
+    def __init__(
+        self,
+        cvm_number: int,
+        start_period: str = '2009-12-31',
+        fs_type='consolidated',
+    ):
+        """Initialize main variables.
+
+        Args:
+            cvm_number (int): CVM unique number of the company.
+            fs_type (str, optional): Financial Statement agregation type
+                (consolidated or separate).
+        """
         self.cvm_number = int(cvm_number)
         self.fs_type = fs_type
-        self._df_main = DATASET.query(
-            "(CD_CVM == @self.cvm_number) and (fs_type == @self.fs_type)"
-        ).copy()
-        self._remove_category()
+        self.start_period = start_period
+        self._get_df_main()
         self._get_ac_levels()
 
-    def _remove_category(self):
+    def _get_df_main(self) -> pd.DataFrame:
+        self._df_main = DATASET.query(
+            "CD_CVM == @self.cvm_number and fs_type == @self.fs_type"
+        ).copy()
         self._df_main = self._df_main.astype({
             'CD_CVM': 'object',
             'is_annual': bool,
@@ -31,30 +47,34 @@ class Company():
             'COLUNA_DF': 'object',
             'VL_CONTA': float
         })
+        self._df_main.query("DT_FIM_EXERC >= @self.start_period", inplace=True)
 
     @property
-    def assets(self):
+    def assets(self) -> pd.DataFrame:
+        """Return company assets."""
         return self._get_assets()
 
-    def _get_assets(self):
+    def _get_assets(self) -> pd.DataFrame:
         df = self._df_main.query("ac_l1 == 1").copy()
         # df.query("CD_CONTA == '1'", inplace=True)
         return self._make_bs(df)
 
     @property
-    def liabilities_and_equity(self):
+    def liabilities_and_equity(self) -> pd.DataFrame:
+        """Return company liabilities_and_equity."""
         return self._get_liabilities_and_equity()
 
-    def _get_liabilities_and_equity(self):
+    def _get_liabilities_and_equity(self) -> pd.DataFrame:
         df = self._df_main.query("ac_l1 == 2").copy()
         # df.query("CD_CONTA == '1'", inplace=True)
         return self._make_bs(df)
 
     @property
-    def equity(self):
+    def equity(self) -> pd.DataFrame:
+        """Return company equity."""
         return self._get_equity()
 
-    def _get_equity(self):
+    def _get_equity(self) -> pd.DataFrame:
         df = self._df_main.query("ac_l1 == 2 and ac_l2 == 3").copy()
         # df.query("CD_CONTA == '1'", inplace=True)
         return self._make_bs(df)
@@ -97,7 +117,9 @@ class Company():
         return df_bs
 
     def _get_ac_levels(self):
-        """Get accounting code (ac) levels 1 and 2 in CD_CONTA column
+        """
+        Get accounting code (ac) levels 1 and 2 in CD_CONTA column.
+
         The first part of CD_CONTA is the financial statement type
         df['CD_CONTA'].str[0].unique() -> [1, 2, 3, 4, 5, 6, 7]
         Table of correspondences:
