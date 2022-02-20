@@ -1,7 +1,7 @@
 """Tests for the main class (Company)."""
 import pandas as pd
-import setup
-from company import Company
+# import setup
+from .. import brfin
 # importlib.reload(company)
 
 pd.options.display.max_colwidth = 20
