@@ -26,17 +26,15 @@ class Company():
         self.cvm_number = int(cvm_number)
         self.fs_type = fs_type
         self.start_period = start_period
-        self._get_df_main()
-        self._get_ac_levels()
+        self._set_df_main()
+        self._set_ac_levels()
 
-    def _get_df_main(self) -> pd.DataFrame:
-        self._df_main = DATASET.query(
-            "CD_CVM == @self.cvm_number and fs_type == @self.fs_type"
-        ).copy()
+    def _set_df_main(self) -> pd.DataFrame:
+        self._df_main = DATASET.query("CD_CVM == @self.cvm_number").copy()
         self._df_main = self._df_main.astype({
             'CD_CVM': 'object',
             'is_annual': bool,
-            'fs_type': bool,
+            'fs_type': str,
             'DT_REFER': 'datetime64',
             'DT_INI_EXERC': 'datetime64',
             'DT_FIM_EXERC': 'datetime64',
@@ -47,6 +45,7 @@ class Company():
             'COLUNA_DF': 'object',
             'VL_CONTA': float
         })
+        self._df_main.query("fs_type == @self.fs_type", inplace=True)
         self._df_main.query("DT_FIM_EXERC >= @self.start_period", inplace=True)
 
     @property
@@ -86,7 +85,8 @@ class Company():
         last_qfs_period = df.query("is_annual == False").DT_FIM_EXERC.max()  # noqa
         df.query(
             "(is_annual == True) or (DT_FIM_EXERC == @last_qfs_period)",
-            inplace=True)
+            inplace=True
+        )
         # sort for drop operation
         df.sort_values(['DT_FIM_EXERC', 'DT_REFER', 'CD_CONTA'], inplace=True)
 
@@ -116,7 +116,7 @@ class Company():
         df_bs.sort_values('CD_CONTA', ignore_index=True, inplace=True)
         return df_bs
 
-    def _get_ac_levels(self):
+    def _set_ac_levels(self):
         """
         Get accounting code (ac) levels 1 and 2 in CD_CONTA column.
 
