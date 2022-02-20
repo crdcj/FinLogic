@@ -79,11 +79,6 @@ class Company():
             inplace=True,
             ignore_index=True
         )
-        # columns_drop = [
-        #     'CNPJ_CIA', 'DENOM_CIA', 'VERSAO', 'ORDEM_EXERC',
-        #     'financial_year', 'CD_CVM'
-        # ]
-        # df.drop(columns=columns_drop, inplace=True)
 
         base_columns = ['DS_CONTA', 'CD_CONTA', 'ST_CONTA_FIXA']
         df_bs = df.loc[:, base_columns]
