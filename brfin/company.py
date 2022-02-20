@@ -31,7 +31,6 @@ class Company():
             'COLUNA_DF': 'object',
             'VL_CONTA': float
         })
-        return
 
     @property
     def assets(self):
@@ -99,7 +98,7 @@ class Company():
 
     def _get_ac_levels(self):
         """
-        Get accounting code (ac) levels in CD_CONTA column
+        Get accounting code (ac) levels 1 and 2 in CD_CONTA column
         The first part of CD_CONTA is the financial statement type
         df['CD_CONTA'].str[0].unique() -> [1, 2, 3, 4, 5, 6, 7]
         Table of correspondences:
