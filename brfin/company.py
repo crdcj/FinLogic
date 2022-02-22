@@ -25,24 +25,56 @@ class Company():
         """
         self.cvm_number = cvm_number
         self.fs_type = fs_type
-        self.start_period = pd.Timestamp(start_period)
+        self.start_period = start_period
         self._set_df_main()
         self._set_ac_levels()
 
     @property
     def cvm_number(self):
-        """Return cvm if number exists in companies DATASET."""
+        """Return cvm_number if number exists in DATASET."""
         return self._cvm_number
 
     @cvm_number.setter
-    def cvm_number(self, number):
-        # print('setter')
-        self._companies_list = list(DATASET['CD_CVM'].unique())
-        if number in self._companies_list:
-            self._cvm_number = number
+    def cvm_number(self, value):
+        companies_list = list(DATASET['CD_CVM'].unique())
+        if value in companies_list:
+            self._cvm_number = value
         else:
             print('cvm_number not found')
             self._cvm_number = None
+
+    @property
+    def fs_type(self):
+        """Return selected financial statement type (fs_type).
+
+        Options are: 'consolidated' or 'separate'
+        """
+        return self._fs_type
+
+    @fs_type.setter
+    def fs_type(self, value):
+        if value in ('consolidated', 'separate'):
+            self._fs_type = value
+        else:
+            print("""Financial Statement Type (fs_type) not valid -> 'consolidated' selected.
+Valid options are: 'consolidated' or 'separate'""")  # noqa
+            self._fs_type = 'consolidated'
+
+    @property
+    def start_period(self):
+        """Return selected start period for Dataset screening."""
+        return self._start_period
+
+    @start_period.setter
+    def start_period(self, value):
+        date = pd.to_datetime(value, errors='coerce')
+        if date == pd.NaT:
+            print('Start Period not valid. Must be in YYYY-MM-DD format')
+            print('Start Period 2009-12-31 selected')
+            self._start_period = pd.to_datetime('2009-12-31')
+        else:
+            print(f"Selected Start Period = {date}")
+            self._start_period = date
 
     def _set_df_main(self) -> pd.DataFrame:
         self._df_main = DATASET.query("CD_CVM == @self._cvm_number").copy()
