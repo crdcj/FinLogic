@@ -14,7 +14,7 @@ class Company():
         self,
         cvm_number: int,
         start_period: str = '2009-12-31',
-        fs_type='consolidated',
+        fs_type: str = 'consolidated',
     ):
         """Initialize main variables.
 
@@ -23,14 +23,29 @@ class Company():
             fs_type (str, optional): Financial Statement agregation type
                 (consolidated or separate).
         """
-        self.cvm_number = int(cvm_number)
+        self.cvm_number = cvm_number
         self.fs_type = fs_type
-        self.start_period = start_period
+        self.start_period = pd.Timestamp(start_period)
         self._set_df_main()
         self._set_ac_levels()
 
+    @property
+    def cvm_number(self):
+        """Return cvm if number exists in companies DATASET."""
+        return self._cvm_number
+
+    @cvm_number.setter
+    def cvm_number(self, number):
+        # print('setter')
+        self._companies_list = list(DATASET['CD_CVM'].unique())
+        if number in self._companies_list:
+            self._cvm_number = number
+        else:
+            print('cvm_number not found')
+            self._cvm_number = None
+
     def _set_df_main(self) -> pd.DataFrame:
-        self._df_main = DATASET.query("CD_CVM == @self.cvm_number").copy()
+        self._df_main = DATASET.query("CD_CVM == @self._cvm_number").copy()
         self._df_main = self._df_main.astype({
             'CD_CVM': 'object',
             'is_annual': bool,
@@ -51,29 +66,18 @@ class Company():
     @property
     def assets(self) -> pd.DataFrame:
         """Return company assets."""
-        return self._get_assets()
-
-    def _get_assets(self) -> pd.DataFrame:
         df = self._df_main.query("ac_l1 == 1").copy()
-        # df.query("CD_CONTA == '1'", inplace=True)
         return self._make_bs(df)
 
     @property
     def liabilities_and_equity(self) -> pd.DataFrame:
         """Return company liabilities_and_equity."""
-        return self._get_liabilities_and_equity()
-
-    def _get_liabilities_and_equity(self) -> pd.DataFrame:
         df = self._df_main.query("ac_l1 == 2").copy()
-        # df.query("CD_CONTA == '1'", inplace=True)
         return self._make_bs(df)
 
     @property
     def equity(self) -> pd.DataFrame:
         """Return company equity."""
-        return self._get_equity()
-
-    def _get_equity(self) -> pd.DataFrame:
         df = self._df_main.query("ac_l1 == 2 and ac_l2 == 3").copy()
         # df.query("CD_CONTA == '1'", inplace=True)
         return self._make_bs(df)

@@ -1,8 +1,11 @@
 """Tests for the main class (Company)."""
-import pandas as pd
-from context import Company
-pd.options.display.max_colwidth = 20
-pd.options.display.max_rows = 40
+import importlib
+# import pandas as pd
+import context  # noqa
+import brfin.company
+from brfin.company import Company
+importlib.reload(brfin.company)
+
 petro = Company(9512, start_period='2015-12-31')
 df = petro.assets
 print(df)

@@ -1,3 +1,4 @@
+"""Module containing functions for the DATASET generation, save and update."""
 import os
 import zipfile as zf
 from concurrent.futures import ProcessPoolExecutor
@@ -17,7 +18,7 @@ READ_OPTIONS = {
 
 
 def update_raw_file(url: str) -> bool:
-    """Update file from CVM portal. Return True if file is updated"""
+    """Update file from CVM portal. Return True if file is updated."""
     file_name = url[-23:]  # nome do arquivo = final da url
     cam_arq = PATH_RAW + file_name
     with requests.Session() as s:
@@ -39,8 +40,8 @@ def update_raw_file(url: str) -> bool:
 
 
 def list_urls() -> list:
-    """
-    Atualizar a base de arquivos do Portal da CVM
+    """Atualizar a base de arquivos do Portal da CVM.
+
     Urls com os links para as tabelas de dados:
     http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/
     http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/
@@ -72,6 +73,7 @@ def list_urls() -> list:
 
 
 def update_raw_dataset():
+    """Update raw files according by comparing to CVM regulator site."""
     urls = list_urls()
     with ProcessPoolExecutor() as executor:
         results = executor.map(update_raw_file, urls)
@@ -86,7 +88,7 @@ def update_raw_dataset():
 
 
 def clean_raw_df(df) -> pd.DataFrame:
-    "converts raw dataframe into processed dataframe"
+    """Convert raw dataframe into processed dataframe."""
     # df.VERSAO.unique() -> ['3', '2', '4', '1', '7', '5', '6', '9', '8']
     df.VERSAO = df.VERSAO.astype(np.int8)
     df.CD_CVM = df.CD_CVM.astype(np.int32)  # max < 600_000
@@ -167,6 +169,7 @@ def clean_raw_df(df) -> pd.DataFrame:
 
 
 def process_raw_file(parent_filename):
+    """Read yearly raw files, process it and consolidate into one dataframe."""
     df = pd.DataFrame()
     parent_path = PATH_RAW + parent_filename
     # print(parent_path, flush=True)
@@ -189,6 +192,7 @@ def process_raw_file(parent_filename):
 
 
 def update_processed_dataset():
+    """Update the processed dataset."""
     print(os.path.dirname(os.path.abspath(__file__)))
     filenames = sorted(os.listdir(PATH_RAW))
     with ProcessPoolExecutor() as executor:
