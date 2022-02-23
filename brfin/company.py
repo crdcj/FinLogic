@@ -1,31 +1,34 @@
-"""Module containing BrFin Company Class Definition."""
+"""Module containing BrFin Company Class Definition.
+Abbreviation used for Financial Statement = FS
+"""
 import numpy as np
 import pandas as pd
 
-DATASET = pd.read_pickle(
-    '/home/crcj/GitHub/BrFin/data/processed/dataset.pkl.zst'
-)
-
 
 class Company():
-    """Financial Statement Class for Brazilian Companies."""
+    """FS Class for Brazilian Companies."""
+
+    DATASET = pd.read_pickle(
+        '/home/crcj/GitHub/BrFin/data/processed/dataset.pkl.zst'
+    )
 
     def __init__(
         self,
         cvm_number: int,
-        start_period: str = '2009-12-31',
         fs_type: str = 'consolidated',
+        min_end_period: str = '2009-12-31',
+        max_end_period: str = '2200-12-31',
     ):
         """Initialize main variables.
 
         Args:
             cvm_number (int): CVM unique number of the company.
-            fs_type (str, optional): Financial Statement agregation type
-                (consolidated or separate).
+            fs_type (str, optional): 'consolidated' or 'separate'.
         """
         self.cvm_number = cvm_number
         self.fs_type = fs_type
-        self.start_period = start_period
+        self.min_end_period = min_end_period
+        self.max_end_period = max_end_period
         self._set_df_main()
         self._set_ac_levels()
 
@@ -36,7 +39,7 @@ class Company():
 
     @cvm_number.setter
     def cvm_number(self, value):
-        companies_list = list(DATASET['CD_CVM'].unique())
+        companies_list = list(Company.DATASET['CD_CVM'].unique())
         if value in companies_list:
             self._cvm_number = value
         else:
@@ -45,7 +48,7 @@ class Company():
 
     @property
     def fs_type(self):
-        """Return selected financial statement type (fs_type).
+        """Return selected FS type (fs_type).
 
         Options are: 'consolidated' or 'separate'
         """
@@ -56,28 +59,45 @@ class Company():
         if value in ('consolidated', 'separate'):
             self._fs_type = value
         else:
-            print("""Financial Statement Type (fs_type) not valid -> 'consolidated' selected.
-Valid options are: 'consolidated' or 'separate'""")  # noqa
+            print("Iserted value for 'fs_type' not valid. 'consolidated' \
+selected. Valid options are: 'consolidated' or 'separate'")
             self._fs_type = 'consolidated'
 
     @property
-    def start_period(self):
-        """Return selected start period for Dataset screening."""
-        return self._start_period
+    def min_end_period(self):
+        """Return selected start date for filtering FS end period."""
+        return self._min_end_period
 
-    @start_period.setter
-    def start_period(self, value):
+    @min_end_period.setter
+    def min_end_period(self, value):
         date = pd.to_datetime(value, errors='coerce')
         if date == pd.NaT:
-            print('Start Period not valid. Must be in YYYY-MM-DD format')
-            print('Start Period 2009-12-31 selected')
-            self._start_period = pd.to_datetime('2009-12-31')
+            print('Inserted min_end_period period not in YYYY-MM-DD format')
+            print('2009-12-31 selected instead')
+            self._min_end_period = pd.to_datetime('2009-12-31')
         else:
-            print(f"Selected Start Period = {date}")
-            self._start_period = date
+            print(f"Selected min_end_period = {date}")
+            self._min_end_period = date
+
+    @property
+    def max_end_period(self):
+        """Return selected end date for filtering FS end period."""
+        return self._max_end_period
+
+    @max_end_period.setter
+    def max_end_period(self, value):
+        date = pd.to_datetime(value, errors='coerce')
+        if date == pd.NaT:
+            print('Inserted max_end_period not in YYYY-MM-DD format')
+            print('2200-12-31 selected instead')
+            self._max_end_period = pd.to_datetime('2200-12-31')
+        else:
+            print(f"Selected max_end_period = {date}")
+            self._max_end_period = date
 
     def _set_df_main(self) -> pd.DataFrame:
-        self._df_main = DATASET.query("CD_CVM == @self._cvm_number").copy()
+        self._df_main = Company.DATASET.query(
+            "CD_CVM == @self.cvm_number").copy()
         self._df_main = self._df_main.astype({
             'CD_CVM': 'object',
             'is_annual': bool,
@@ -92,8 +112,11 @@ Valid options are: 'consolidated' or 'separate'""")  # noqa
             'COLUNA_DF': 'object',
             'VL_CONTA': float
         })
-        self._df_main.query("fs_type == @self.fs_type", inplace=True)
-        self._df_main.query("DT_FIM_EXERC >= @self.start_period", inplace=True)
+        self._df_main.query("fs_type == @self._fs_type", inplace=True)
+        self._df_main.query(
+            "DT_FIM_EXERC >= @self._min_end_period", inplace=True)
+        self._df_main.query(
+            "DT_FIM_EXERC <= @self._max_end_period", inplace=True)
 
     @property
     def assets(self) -> pd.DataFrame:
@@ -116,7 +139,7 @@ Valid options are: 'consolidated' or 'separate'""")  # noqa
 
     def _make_bs(self, df: pd.DataFrame) -> pd.DataFrame:
 
-        # quarterly financial statement = qfc
+        # quarterly FS = qfc
         # keep only last qfc
         last_qfs_period = df.query("is_annual == False").DT_FIM_EXERC.max()  # noqa
         df.query(
@@ -156,7 +179,7 @@ Valid options are: 'consolidated' or 'separate'""")  # noqa
         """
         Get accounting code (ac) levels 1 and 2 in CD_CONTA column.
 
-        The first part of CD_CONTA is the financial statement type
+        The first part of CD_CONTA is the FS type
         df['CD_CONTA'].str[0].unique() -> [1, 2, 3, 4, 5, 6, 7]
         Table of correspondences:
             1 -> Balanço Patrimonial Ativo
