@@ -8,8 +8,9 @@ import numpy as np
 
 URL_DFP = 'http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/'
 URL_ITR = 'http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/'
-PATH_RAW = 'BrFin/data/raw/'
-PATH_PROCESSED = 'BrFin/data/processed/'
+script_dir = os.path.dirname(__file__)
+RAW_DIR = script_dir + '/data/raw/'
+PROCESSED_DIR = script_dir + '/data/processed/'
 READ_OPTIONS = {
     'sep': ';',
     'encoding': 'iso-8859-1',
@@ -20,7 +21,7 @@ READ_OPTIONS = {
 def update_raw_file(url: str) -> bool:
     """Update file from CVM portal. Return True if file is updated."""
     file_name = url[-23:]  # nome do arquivo = final da url
-    cam_arq = PATH_RAW + file_name
+    cam_arq = RAW_DIR + file_name
     with requests.Session() as s:
         r = s.get(url, stream=True)
         if r.status_code != requests.codes.ok:
@@ -130,7 +131,7 @@ def clean_raw_df(df) -> pd.DataFrame:
         df['COLUNA_DF'] = np.nan
 
     """
-    fs_type -> Financial Statemen Type
+    report_type -> Financial Statemen Type
     Consolidated and Separate Financial Statements (IAS 27/2003)
     df['GRUPO_DFP'].unique() result:
         'DF Consolidado - Balanço Patrimonial Ativo',
@@ -151,15 +152,15 @@ def clean_raw_df(df) -> pd.DataFrame:
     if == 'Con' -> consolidated statement
     if == 'Ind' -> separate statement
     """
-    df['fs_type'] = df['GRUPO_DFP'].str[3:6].map({
+    df['report_type'] = df['GRUPO_DFP'].str[3:6].map({
         'Con': 'consolidated',
         'Ind': 'separate'})
-    df['fs_type'] = df['fs_type'].astype('category')
-    # information in 'GRUPO_DFP' is already in 'fs_type' or in fs_type
+    df['report_type'] = df['report_type'].astype('category')
+    # information in 'GRUPO_DFP' is already in 'report_type' or in report_type
     df.drop(columns=['GRUPO_DFP'], inplace=True)
 
     columns_order = [
-        'CD_CVM', 'CNPJ_CIA', 'DENOM_CIA', 'is_annual', 'fs_type',
+        'CD_CVM', 'CNPJ_CIA', 'DENOM_CIA', 'report_frequency', 'report_type',
         'DT_REFER', 'VERSAO', 'DT_INI_EXERC', 'DT_FIM_EXERC', 'ORDEM_EXERC',
         'CD_CONTA', 'DS_CONTA', 'ST_CONTA_FIXA', 'COLUNA_DF', 'VL_CONTA'
     ]
@@ -171,7 +172,7 @@ def clean_raw_df(df) -> pd.DataFrame:
 def process_raw_file(parent_filename):
     """Read yearly raw files, process it and consolidate into one dataframe."""
     df = pd.DataFrame()
-    parent_path = PATH_RAW + parent_filename
+    parent_path = RAW_DIR + parent_filename
     # print(parent_path, flush=True)
     parent_file = zf.ZipFile(parent_path)
     child_filenames = parent_file.namelist()
@@ -181,9 +182,9 @@ def process_raw_file(parent_filename):
         df_child = pd.read_csv(child_file, **READ_OPTIONS)
         # there are two types of CVM files: DFP(annual) and ITR(quarterly)
         if parent_filename[0:3] == 'dfp':
-            df_child['is_annual'] = True
+            df_child['report_frequency'] = 'annual'
         else:
-            df_child['is_annual'] = False
+            df_child['report_frequency'] = 'quarterly'
 
         df_child = clean_raw_df(df_child)
         df = pd.concat([df, df_child], ignore_index=True)
@@ -194,7 +195,7 @@ def process_raw_file(parent_filename):
 def update_processed_dataset():
     """Update the processed dataset."""
     print(os.path.dirname(os.path.abspath(__file__)))
-    filenames = sorted(os.listdir(PATH_RAW))
+    filenames = sorted(os.listdir(RAW_DIR))
     with ProcessPoolExecutor() as executor:
         results = executor.map(process_raw_file, filenames)
 
@@ -206,13 +207,15 @@ def update_processed_dataset():
 
     print('Sort Dataset ...')
     sort_by = [
-        'CD_CVM', 'DT_REFER', 'VERSAO', 'ORDEM_EXERC', 'fs_type', 'CD_CONTA']
+        'CD_CVM', 'DT_REFER', 'VERSAO', 'ORDEM_EXERC', 'report_type',
+        'CD_CONTA'
+    ]
     df.sort_values(by=sort_by, ignore_index=True, inplace=True)
 
     df = df.astype('category')
     print('Columns of type int, str and datetime changed to category')
 
     print('Save Dataset...')
-    file_path = PATH_PROCESSED + 'dataset.pkl.zst'
+    file_path = PROCESSED_DIR + 'dataset.pkl.zst'
     df.to_pickle(file_path)
     print('Dataset saved')

@@ -1,6 +1,7 @@
-"""Module containing BrFin Company Class Definition.
+"""Module containing BrFin Company Financial Statement Class Definition.
 Abbreviation used for Financial Statement = FS
 """
+import os
 import numpy as np
 import pandas as pd
 
@@ -8,14 +9,13 @@ import pandas as pd
 class Company():
     """FS Class for Brazilian Companies."""
 
-    DATASET = pd.read_pickle(
-        '/home/crcj/GitHub/BrFin/data/processed/dataset.pkl.zst'
-    )
+    script_dir = os.path.dirname(__file__)
+    DATASET = pd.read_pickle(script_dir + '/data/processed/dataset.pkl.zst')
 
     def __init__(
         self,
         cvm_number: int,
-        fs_type: str = 'consolidated',
+        report_type: str = 'consolidated',
         min_end_period: str = '2009-12-31',
         max_end_period: str = '2200-12-31',
     ):
@@ -23,10 +23,10 @@ class Company():
 
         Args:
             cvm_number (int): CVM unique number of the company.
-            fs_type (str, optional): 'consolidated' or 'separate'.
+            report_type (str, optional): 'consolidated' or 'separate'.
         """
         self.cvm_number = cvm_number
-        self.fs_type = fs_type
+        self.report_type = report_type
         self.min_end_period = min_end_period
         self.max_end_period = max_end_period
         self._set_df_main()
@@ -47,21 +47,21 @@ class Company():
             self._cvm_number = None
 
     @property
-    def fs_type(self):
-        """Return selected FS type (fs_type).
+    def report_type(self):
+        """Return selected FS type (report_type).
 
         Options are: 'consolidated' or 'separate'
         """
-        return self._fs_type
+        return self._report_type
 
-    @fs_type.setter
-    def fs_type(self, value):
+    @report_type.setter
+    def report_type(self, value):
         if value in ('consolidated', 'separate'):
-            self._fs_type = value
+            self._report_type = value
         else:
-            print("Iserted value for 'fs_type' not valid. 'consolidated' \
+            print("Iserted value for 'report_type' not valid. 'consolidated' \
 selected. Valid options are: 'consolidated' or 'separate'")
-            self._fs_type = 'consolidated'
+            self._report_type = 'consolidated'
 
     @property
     def min_end_period(self):
@@ -70,14 +70,14 @@ selected. Valid options are: 'consolidated' or 'separate'")
 
     @min_end_period.setter
     def min_end_period(self, value):
-        date = pd.to_datetime(value, errors='coerce')
-        if date == pd.NaT:
+        value = pd.to_datetime(value, errors='coerce')
+        if value == pd.NaT:
             print('Inserted min_end_period period not in YYYY-MM-DD format')
             print('2009-12-31 selected instead')
             self._min_end_period = pd.to_datetime('2009-12-31')
         else:
-            print(f"Selected min_end_period = {date}")
-            self._min_end_period = date
+            print(f"Selected min_end_period = {value.date()}")
+            self._min_end_period = value
 
     @property
     def max_end_period(self):
@@ -86,22 +86,22 @@ selected. Valid options are: 'consolidated' or 'separate'")
 
     @max_end_period.setter
     def max_end_period(self, value):
-        date = pd.to_datetime(value, errors='coerce')
-        if date == pd.NaT:
+        value = pd.to_datetime(value, errors='coerce')
+        if value == pd.NaT:
             print('Inserted max_end_period not in YYYY-MM-DD format')
             print('2200-12-31 selected instead')
             self._max_end_period = pd.to_datetime('2200-12-31')
         else:
-            print(f"Selected max_end_period = {date}")
-            self._max_end_period = date
+            print(f"Selected max_end_period = {value.date()}")
+            self._max_end_period = value
 
     def _set_df_main(self) -> pd.DataFrame:
         self._df_main = Company.DATASET.query(
             "CD_CVM == @self.cvm_number").copy()
         self._df_main = self._df_main.astype({
             'CD_CVM': 'object',
-            'is_annual': bool,
-            'fs_type': str,
+            'report_frequency': str,
+            'report_type': str,
             'DT_REFER': 'datetime64',
             'DT_INI_EXERC': 'datetime64',
             'DT_FIM_EXERC': 'datetime64',
@@ -112,7 +112,7 @@ selected. Valid options are: 'consolidated' or 'separate'")
             'COLUNA_DF': 'object',
             'VL_CONTA': float
         })
-        self._df_main.query("fs_type == @self._fs_type", inplace=True)
+        self._df_main.query("report_type == @self._report_type", inplace=True)
         self._df_main.query(
             "DT_FIM_EXERC >= @self._min_end_period", inplace=True)
         self._df_main.query(
@@ -138,14 +138,11 @@ selected. Valid options are: 'consolidated' or 'separate'")
         return self._make_bs(df)
 
     def _make_bs(self, df: pd.DataFrame) -> pd.DataFrame:
-
-        # quarterly FS = qfc
-        # keep only last qfc
-        last_qfs_period = df.query("is_annual == False").DT_FIM_EXERC.max()  # noqa
-        df.query(
-            "(is_annual == True) or (DT_FIM_EXERC == @last_qfs_period)",
-            inplace=True
-        )
+        # keep only last quarterly fs
+        last_end_period = df.DT_FIM_EXERC.max()  # noqa
+        mask1 = df.report_frequency == 'quarterly'
+        mask2 = df.DT_FIM_EXERC <= last_end_period
+        df = df[~(mask1 & mask2)]
         # sort for drop operation
         df.sort_values(['DT_FIM_EXERC', 'DT_REFER', 'CD_CONTA'], inplace=True)
 
