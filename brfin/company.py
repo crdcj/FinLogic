@@ -30,7 +30,6 @@ class Company():
         self.min_end_period = min_end_period
         self.max_end_period = max_end_period
         self._set_df_main()
-        self._set_ac_levels()
 
     @property
     def cvm_number(self):
@@ -104,7 +103,7 @@ selected. Valid options are: 'consolidated' or 'separate'")
         self._df_main = Company.DATASET.query(query_expression).copy()
         self._df_main = self._df_main.astype({
             'CD_CVM': 'object',
-            'report_frequency': str,
+            'report_period': str,
             'report_type': str,
             'DT_REFER': 'datetime64',
             'DT_INI_EXERC': 'datetime64',
@@ -121,7 +120,27 @@ selected. Valid options are: 'consolidated' or 'separate'")
             DT_FIM_EXERC <= @self._max_end_period
         '''
         self._df_main.query(query_expression, inplace=True)
-        self._df_main.query("CD_CONTA == '1'", inplace=True)
+
+        """
+        Get accounting code (ac) levels 1 and 2 in CD_CONTA column.
+
+        The first part of CD_CONTA is the FS type
+        df['CD_CONTA'].str[0].unique() -> [1, 2, 3, 4, 5, 6, 7]
+        Table of correspondences:
+            1 -> Balanço Patrimonial Ativo
+            2 -> Balanço Patrimonial Passivo
+            3 -> Demonstração do Resultado
+            4 -> Demonstração de Resultado Abrangente
+            5 -> Demonstração das Mutações do Patrimônio Líquido
+            6 -> Demonstração do Fluxo de Caixa (Método Indireto)
+            7 -> Demonstração de Valor Adicionado
+        """
+        self._df_main['ac_l1'] = pd.to_numeric(
+            self._df_main['CD_CONTA'].str[0], downcast='integer')
+        self._df_main['ac_l2'] = pd.to_numeric(
+            self._df_main['CD_CONTA'].str[2:4], downcast='integer')
+
+        self._df_main.query("ac_l1 == 3", inplace=True)
         self._df_main.reset_index(drop=True, inplace=True)
 
     @property
@@ -147,7 +166,7 @@ selected. Valid options are: 'consolidated' or 'separate'")
         # keep only last quarterly fs
         last_end_period = df.DT_FIM_EXERC.max()  # noqa
         query_expression = '''
-            report_frequency == 'annual' or \
+            report_period == 'annual' and \
             DT_FIM_EXERC == @last_end_period
         '''
         df.query(query_expression, inplace=True)
@@ -180,23 +199,3 @@ selected. Valid options are: 'consolidated' or 'separate'")
 
         df_bs.sort_values('CD_CONTA', ignore_index=True, inplace=True)
         return df_bs
-
-    def _set_ac_levels(self):
-        """
-        Get accounting code (ac) levels 1 and 2 in CD_CONTA column.
-
-        The first part of CD_CONTA is the FS type
-        df['CD_CONTA'].str[0].unique() -> [1, 2, 3, 4, 5, 6, 7]
-        Table of correspondences:
-            1 -> Balanço Patrimonial Ativo
-            2 -> Balanço Patrimonial Passivo
-            3 -> Demonstração do Resultado
-            4 -> Demonstração de Resultado Abrangente
-            5 -> Demonstração das Mutações do Patrimônio Líquido
-            6 -> Demonstração do Fluxo de Caixa (Método Indireto)
-            7 -> Demonstração de Valor Adicionado
-        """
-        self._df_main['ac_l1'] = pd.to_numeric(
-            self._df_main['CD_CONTA'].str[0], downcast='integer')
-        self._df_main['ac_l2'] = pd.to_numeric(
-            self._df_main['CD_CONTA'].str[2:4], downcast='integer')

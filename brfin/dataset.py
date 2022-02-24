@@ -160,7 +160,7 @@ def clean_raw_df(df) -> pd.DataFrame:
     df.drop(columns=['GRUPO_DFP'], inplace=True)
 
     columns_order = [
-        'CD_CVM', 'CNPJ_CIA', 'DENOM_CIA', 'report_frequency', 'report_type',
+        'CD_CVM', 'CNPJ_CIA', 'DENOM_CIA', 'report_period', 'report_type',
         'DT_REFER', 'VERSAO', 'DT_INI_EXERC', 'DT_FIM_EXERC', 'ORDEM_EXERC',
         'CD_CONTA', 'DS_CONTA', 'ST_CONTA_FIXA', 'COLUNA_DF', 'VL_CONTA'
     ]
@@ -182,9 +182,9 @@ def process_raw_file(parent_filename):
         df_child = pd.read_csv(child_file, **READ_OPTIONS)
         # there are two types of CVM files: DFP(annual) and ITR(quarterly)
         if parent_filename[0:3] == 'dfp':
-            df_child['report_frequency'] = 'annual'
+            df_child['report_period'] = 'annual'
         else:
-            df_child['report_frequency'] = 'quarterly'
+            df_child['report_period'] = 'quarterly'
 
         df_child = clean_raw_df(df_child)
         df = pd.concat([df, df_child], ignore_index=True)
