@@ -1,4 +1,4 @@
-"""Module containing BrFin Company Financial Statement Class Definition.
+"""Module containing Financial Class definition for company financials.
 Abbreviation used for Financial Statement = FS
 """
 import os
@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 
 
-class Company():
-    """FS Class for Brazilian Companies."""
+class Financial():
+    """Company Financials Class for Brazilian Companies."""
 
     script_dir = os.path.dirname(__file__)
     DATASET = pd.read_pickle(script_dir + '/data/processed/dataset.pkl.zst')
@@ -38,7 +38,7 @@ class Company():
 
     @cvm_number.setter
     def cvm_number(self, value):
-        companies_list = list(Company.DATASET['CD_CVM'].unique())
+        companies_list = list(Financial.DATASET['CD_CVM'].unique())
         if value in companies_list:
             self._cvm_number = value
         else:
@@ -100,7 +100,7 @@ selected. Valid options are: 'consolidated' or 'separate'")
             CD_CVM == @self.cvm_number and \
             report_type == @self._report_type
         '''
-        self._df_main = Company.DATASET.query(query_expression).copy()
+        self._df_main = Financial.DATASET.query(query_expression).copy()
         self._df_main = self._df_main.astype({
             'CD_CVM': 'object',
             'report_period': str,
@@ -140,7 +140,7 @@ selected. Valid options are: 'consolidated' or 'separate'")
         self._df_main['ac_l2'] = pd.to_numeric(
             self._df_main['CD_CONTA'].str[2:4], downcast='integer')
 
-        self._df_main.query("ac_l1 == 3", inplace=True)
+        # self._df_main.query("ac_l1 == 3", inplace=True)
         self._df_main.reset_index(drop=True, inplace=True)
 
     @property
@@ -166,7 +166,7 @@ selected. Valid options are: 'consolidated' or 'separate'")
         # keep only last quarterly fs
         last_end_period = df.DT_FIM_EXERC.max()  # noqa
         query_expression = '''
-            report_period == 'annual' and \
+            report_period == 'annual' or \
             DT_FIM_EXERC == @last_end_period
         '''
         df.query(query_expression, inplace=True)
