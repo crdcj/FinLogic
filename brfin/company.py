@@ -96,8 +96,12 @@ selected. Valid options are: 'consolidated' or 'separate'")
             self._max_end_period = value
 
     def _set_df_main(self) -> pd.DataFrame:
-        self._df_main = Company.DATASET.query(
-            "CD_CVM == @self.cvm_number").copy()
+        # Unordered Categoricals can only compare equality or not
+        query_expression = '''
+            CD_CVM == @self.cvm_number and \
+            report_type == @self._report_type
+        '''
+        self._df_main = Company.DATASET.query(query_expression).copy()
         self._df_main = self._df_main.astype({
             'CD_CVM': 'object',
             'report_frequency': str,
@@ -112,11 +116,13 @@ selected. Valid options are: 'consolidated' or 'separate'")
             'COLUNA_DF': 'object',
             'VL_CONTA': float
         })
-        self._df_main.query("report_type == @self._report_type", inplace=True)
-        self._df_main.query(
-            "DT_FIM_EXERC >= @self._min_end_period", inplace=True)
-        self._df_main.query(
-            "DT_FIM_EXERC <= @self._max_end_period", inplace=True)
+        query_expression = '''
+            DT_FIM_EXERC >= @self._min_end_period and \
+            DT_FIM_EXERC <= @self._max_end_period
+        '''
+        self._df_main.query(query_expression, inplace=True)
+        self._df_main.query("CD_CONTA == '1'", inplace=True)
+        self._df_main.reset_index(drop=True, inplace=True)
 
     @property
     def assets(self) -> pd.DataFrame:
@@ -140,13 +146,16 @@ selected. Valid options are: 'consolidated' or 'separate'")
     def _make_bs(self, df: pd.DataFrame) -> pd.DataFrame:
         # keep only last quarterly fs
         last_end_period = df.DT_FIM_EXERC.max()  # noqa
-        mask1 = df.report_frequency == 'quarterly'
-        mask2 = df.DT_FIM_EXERC <= last_end_period
-        df = df[~(mask1 & mask2)]
+        query_expression = '''
+            report_frequency == 'annual' or \
+            DT_FIM_EXERC == @last_end_period
+        '''
+        df.query(query_expression, inplace=True)
+
         # sort for drop operation
         df.sort_values(['DT_FIM_EXERC', 'DT_REFER', 'CD_CONTA'], inplace=True)
 
-        # only the last published statements will be used
+        # only last published statements will be used
         df['financial_year'] = df.DT_FIM_EXERC.dt.year
         df.drop_duplicates(
             subset=['financial_year', 'CD_CONTA'],
