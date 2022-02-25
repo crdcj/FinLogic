@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 
-class Financial():
+class Finance():
     """Company Financials Class for Brazilian Companies."""
 
     script_dir = os.path.dirname(__file__)
@@ -38,7 +38,7 @@ class Financial():
 
     @cvm_number.setter
     def cvm_number(self, value):
-        companies_list = list(Financial.DATASET['CD_CVM'].unique())
+        companies_list = list(Finance.DATASET['CD_CVM'].unique())
         if value in companies_list:
             self._cvm_number = value
         else:
@@ -100,7 +100,7 @@ selected. Valid options are: 'consolidated' or 'separate'")
             CD_CVM == @self.cvm_number and \
             report_type == @self._report_type
         '''
-        self._df_main = Financial.DATASET.query(query_expression).copy()
+        self._df_main = Finance.DATASET.query(query_expression).copy()
         self._df_main = self._df_main.astype({
             'CD_CVM': 'object',
             'report_period': str,
@@ -122,7 +122,7 @@ selected. Valid options are: 'consolidated' or 'separate'")
         self._df_main.query(query_expression, inplace=True)
 
         """
-        Get accounting code (ac) levels 1 and 2 in CD_CONTA column.
+        Get accounting code (ac) levels 1 and 2 from CD_CONTA column.
 
         The first part of CD_CONTA is the FS type
         df['CD_CONTA'].str[0].unique() -> [1, 2, 3, 4, 5, 6, 7]
@@ -135,30 +135,34 @@ selected. Valid options are: 'consolidated' or 'separate'")
             6 -> Demonstração do Fluxo de Caixa (Método Indireto)
             7 -> Demonstração de Valor Adicionado
         """
-        self._df_main['ac_l1'] = pd.to_numeric(
-            self._df_main['CD_CONTA'].str[0], downcast='integer')
-        self._df_main['ac_l2'] = pd.to_numeric(
-            self._df_main['CD_CONTA'].str[2:4], downcast='integer')
+        self._df_main['account_code_l1'] = pd.to_numeric(
+            self._df_main['CD_CONTA'].str[0])
+        self._df_main['account_code_l2'] = pd.to_numeric(
+            self._df_main['CD_CONTA'].str[2:4])
+        self._df_main['account_code_l2'] = (
+            self._df_main['account_code_l2'].astype('Int64')
+        )
 
-        # self._df_main.query("ac_l1 == 3", inplace=True)
+        self._df_main.query("CD_CONTA == '3.01'", inplace=True)
         self._df_main.reset_index(drop=True, inplace=True)
 
     @property
     def assets(self) -> pd.DataFrame:
         """Return company assets."""
-        df = self._df_main.query("ac_l1 == 1").copy()
+        df = self._df_main.query("account_code_l1 == 1").copy()
         return self._make_bs(df)
 
     @property
     def liabilities_and_equity(self) -> pd.DataFrame:
         """Return company liabilities_and_equity."""
-        df = self._df_main.query("ac_l1 == 2").copy()
+        df = self._df_main.query("account_code_l1 == 2").copy()
         return self._make_bs(df)
 
     @property
     def equity(self) -> pd.DataFrame:
         """Return company equity."""
-        df = self._df_main.query("ac_l1 == 2 and ac_l2 == 3").copy()
+        df = self._df_main.query(
+            "account_code_l1 == 2 and account_code_l2 == 3").copy()
         # df.query("CD_CONTA == '1'", inplace=True)
         return self._make_bs(df)
 

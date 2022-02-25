@@ -2,11 +2,11 @@
 import importlib
 # import pandas as pd
 import context  # noqa
-import brfin.financial
-from brfin.financial import Financial
-importlib.reload(brfin.financial)
+import brfin.finance
+from brfin.finance import Finance
+importlib.reload(brfin.finance)
 
-petro = Financial(9512, min_end_period='2015-12-31')
+petro = Finance(9512, min_end_period='2015-12-31')
 df = petro.assets
 print(df)
 print(df.info())
