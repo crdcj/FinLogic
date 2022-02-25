@@ -150,13 +150,13 @@ selected. Valid options are: 'consolidated' or 'separate'")
     def assets(self) -> pd.DataFrame:
         """Return company assets."""
         df = self._df_main.query("account_code_l1 == 1").copy()
-        return self._make_bs(df)
+        return self._make_report(df)
 
     @property
     def liabilities_and_equity(self) -> pd.DataFrame:
         """Return company liabilities_and_equity."""
         df = self._df_main.query("account_code_l1 == 2").copy()
-        return self._make_bs(df)
+        return self._make_report(df)
 
     @property
     def equity(self) -> pd.DataFrame:
@@ -164,9 +164,42 @@ selected. Valid options are: 'consolidated' or 'separate'")
         df = self._df_main.query(
             "account_code_l1 == 2 and account_code_l2 == 3").copy()
         # df.query("CD_CONTA == '1'", inplace=True)
-        return self._make_bs(df)
+        return self._make_report(df)
 
-    def _make_bs(self, df: pd.DataFrame) -> pd.DataFrame:
+    @property
+    def income_statement(self) -> pd.DataFrame:
+        """Return company income statement."""
+        df_income = self._df_main.query("account_code_l1 == 3").copy()
+        last_afs = df_income.query(
+            'report_period == "annual"')['DT_FIM_EXERC'].max()
+        last_qfs = df_income.query(
+            'report_period == "quarterly"')['DT_FIM_EXERC'].max()
+        if last_afs > last_qfs:
+            df_income.query('report_period == "annual"', inplace=True)
+            return df_income
+
+        df1 = df_income.query('DT_FIM_EXERC == @last_qfs').copy()
+        df1.query('DT_INI_EXERC == DT_INI_EXERC.min()', inplace=True)
+
+        df2 = df_income.query('DT_REFER == @last_qfs').copy()
+        df2.query('DT_INI_EXERC == DT_INI_EXERC.min()', inplace=True)
+        df2['VL_CONTA'] = -df2['VL_CONTA']
+
+        df3 = df_income.query('DT_FIM_EXERC == @last_afs').copy()
+
+        df_ltm = pd.concat([df1, df2, df3], ignore_index=True)
+        df_ltm = df_ltm[['CD_CONTA', 'VL_CONTA']]
+        df_ltm = df_ltm.groupby(by='CD_CONTA').sum().reset_index()
+        df1.drop(columns='VL_CONTA', inplace=True)
+        df_ltm = pd.merge(df1, df_ltm)
+        df_ltm['report_period'] = 'ltm'
+        df_ltm['DT_INI_EXERC'] = last_qfs - pd.DateOffset(years=1)
+
+        df_income.query('report_period == "annual"', inplace=True)
+        df_income = pd.concat([df_income, df_ltm], ignore_index=True)
+        return self._make_report(df_income)
+
+    def _make_report(self, df: pd.DataFrame) -> pd.DataFrame:
         # keep only last quarterly fs
         last_end_period = df.DT_FIM_EXERC.max()  # noqa
         query_expression = '''
@@ -188,8 +221,8 @@ selected. Valid options are: 'consolidated' or 'separate'")
         )
 
         base_columns = ['DS_CONTA', 'CD_CONTA', 'ST_CONTA_FIXA']
-        df_bs = df.loc[:, base_columns]
-        df_bs.drop_duplicates(ignore_index=True, inplace=True)
+        df_report = df.loc[:, base_columns]
+        df_report.drop_duplicates(ignore_index=True, inplace=True)
 
         merge_columns = base_columns + ['VL_CONTA']
         for period in df.DT_FIM_EXERC.unique():
@@ -199,36 +232,7 @@ selected. Valid options are: 'consolidated' or 'separate'")
             df_year.rename(
                 columns={'VL_CONTA': np.datetime_as_string(period, unit='D')},
                 inplace=True)
-            df_bs = pd.merge(df_bs, df_year, how='left')
+            df_report = pd.merge(df_report, df_year, how='left')
 
-        df_bs.sort_values('CD_CONTA', ignore_index=True, inplace=True)
-        return df_bs
-
-    def make_is(self) -> pd.DataFrame:
-        df = self._df_main.query("account_code_l1 == 3").copy()
-        last_afs = df.query(
-            'report_period == "annual"')['DT_FIM_EXERC'].max()
-        last_qfs = df.query(
-            'report_period == "quarterly"')['DT_FIM_EXERC'].max()
-        if last_afs > last_qfs:
-            df.query('report_period == "annual"', inplace=True)
-            return df
-
-        df1 = df.query('DT_FIM_EXERC == @last_qfs').copy()
-        df1.query('DT_INI_EXERC == DT_INI_EXERC.min()', inplace=True)
-
-        df2 = df.query('DT_REFER == @last_qfs').copy()
-        df2.query('DT_INI_EXERC == DT_INI_EXERC.min()', inplace=True)
-        df2['VL_CONTA'] = -df2['VL_CONTA']
-
-        df3 = df.query('DT_FIM_EXERC == @last_afs').copy()
-
-        df_ltm = pd.concat([df1, df2, df3], ignore_index=True)
-        df_ltm = df_ltm[['CD_CONTA', 'VL_CONTA']]
-        df_ltm = df_ltm.groupby(by='CD_CONTA').sum().reset_index()
-        df1.drop(columns='VL_CONTA', inplace=True)
-        df_ltm = pd.merge(df1, df_ltm)
-        df_ltm['report_period'] = 'ltm'
-        df_ltm['DT_INI_EXERC'] = last_qfs - pd.DateOffset(years=1)
-
-        return df_ltm
+        df_report.sort_values('CD_CONTA', ignore_index=True, inplace=True)
+        return df_report
