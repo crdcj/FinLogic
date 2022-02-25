@@ -143,7 +143,7 @@ selected. Valid options are: 'consolidated' or 'separate'")
             self._df_main['account_code_l2'].astype('Int64')
         )
 
-        self._df_main.query("CD_CONTA == '3.01'", inplace=True)
+        # self._df_main.query("CD_CONTA == '3.01'", inplace=True)
         self._df_main.reset_index(drop=True, inplace=True)
 
     @property
@@ -203,3 +203,32 @@ selected. Valid options are: 'consolidated' or 'separate'")
 
         df_bs.sort_values('CD_CONTA', ignore_index=True, inplace=True)
         return df_bs
+
+    def make_is(self) -> pd.DataFrame:
+        df = self._df_main.query("account_code_l1 == 3").copy()
+        last_afs = df.query(
+            'report_period == "annual"')['DT_FIM_EXERC'].max()
+        last_qfs = df.query(
+            'report_period == "quarterly"')['DT_FIM_EXERC'].max()
+        if last_afs > last_qfs:
+            df.query('report_period == "annual"', inplace=True)
+            return df
+
+        df1 = df.query('DT_FIM_EXERC == @last_qfs').copy()
+        df1.query('DT_INI_EXERC == DT_INI_EXERC.min()', inplace=True)
+
+        df2 = df.query('DT_REFER == @last_qfs').copy()
+        df2.query('DT_INI_EXERC == DT_INI_EXERC.min()', inplace=True)
+        df2['VL_CONTA'] = -df2['VL_CONTA']
+
+        df3 = df.query('DT_FIM_EXERC == @last_afs').copy()
+
+        df_ltm = pd.concat([df1, df2, df3], ignore_index=True)
+        df_ltm = df_ltm[['CD_CONTA', 'VL_CONTA']]
+        df_ltm = df_ltm.groupby(by='CD_CONTA').sum().reset_index()
+        df1.drop(columns='VL_CONTA', inplace=True)
+        df_ltm = pd.merge(df1, df_ltm)
+        df_ltm['report_period'] = 'ltm'
+        df_ltm['DT_INI_EXERC'] = last_qfs - pd.DateOffset(years=1)
+
+        return df_ltm
