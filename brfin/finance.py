@@ -154,8 +154,15 @@ selected. Valid options are: 'consolidated' or 'separate'")
 
     @property
     def liabilities_and_equity(self) -> pd.DataFrame:
-        """Return company liabilities_and_equity."""
+        """Return company liabilities and equity."""
         df = self._df_main.query("account_code_l1 == 2").copy()
+        return self._make_report(df)
+
+    @property
+    def liabilities(self) -> pd.DataFrame:
+        """Return company liabilities."""
+        df = self._df_main.query(
+            "account_code_l1 == 2 and ").copy()
         return self._make_report(df)
 
     @property
@@ -198,6 +205,25 @@ selected. Valid options are: 'consolidated' or 'separate'")
         df_income.query('report_period == "annual"', inplace=True)
         df_income = pd.concat([df_income, df_ltm], ignore_index=True)
         return self._make_report(df_income)
+
+    @property
+    def valuation(self) -> pd.DataFrame:
+        accounts = [  # noqa
+            '3.01', '3.02', '3.03', '3.04', '3.04.01', '3.04.02', '3.04.03',
+            '3.04.04', '3.04.05', '3.04.06', '3.05', '3.06', '3.07', '3.08',
+            '3.09', '3.10', '3.10.01', '3.11', '1.01', '1.01.01', '1.01.02',
+            '1.01.03', '1.01.04', '1.01.05', '1.01.06', '1.01.07', '1.01.08',
+            '1.02.01', '1.02.02', '1.02.03', '1.02.04', '2.01', '2.01.01',
+            '2.01.02', '2.01.03', '2.01.04', '2.01.05', '2.01.06', '2.02',
+            '2.02.01', '2.02.02', '2.02.03', '2.02.04', '2.03', '2.03.09',
+            '6.01', '6.01.01', '6.01.02'
+        ]
+        df_a = self.assets
+        df_le = self.liabilities_and_equity
+        df_is = self.income_statement
+        df = pd.concat([df_a, df_le, df_is], ignore_index=True)
+        df.query('CD_CONTA == @accounts', inplace=True)
+        return df
 
     def _make_report(self, df: pd.DataFrame) -> pd.DataFrame:
         # keep only last quarterly fs
