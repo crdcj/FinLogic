@@ -215,7 +215,7 @@ def update_processed_dataset():
     df = df.astype('category')
     print('Columns of type int, str and datetime changed to category')
 
-    print('Save Dataset...')
+    print('Save dataset in compressed format ...')
     file_path = PROCESSED_DIR + 'dataset.pkl.zst'
     df.to_pickle(file_path)
     print('Dataset saved')

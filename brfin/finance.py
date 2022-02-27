@@ -183,7 +183,7 @@ selected. Valid options are: 'consolidated' or 'separate'")
             'report_period == "quarterly"')['DT_FIM_EXERC'].max()
         if last_afs > last_qfs:
             df_income.query('report_period == "annual"', inplace=True)
-            return df_income
+            return self._make_report(df_income)
 
         df1 = df_income.query('DT_FIM_EXERC == @last_qfs').copy()
         df1.query('DT_INI_EXERC == DT_INI_EXERC.min()', inplace=True)
