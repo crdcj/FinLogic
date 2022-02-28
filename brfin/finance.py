@@ -29,7 +29,7 @@ class Finance():
         self.report_type = report_type
         self.min_end_period = min_end_period
         self.max_end_period = max_end_period
-        self._set_df_main()
+        self._get_df_main()
 
     @property
     def cvm_number(self):
@@ -58,9 +58,9 @@ class Finance():
         if value in ('consolidated', 'separate'):
             self._report_type = value
         else:
-            print("Iserted value for 'report_type' not valid. 'consolidated' \
-selected. Valid options are: 'consolidated' or 'separate'")
-            self._report_type = 'consolidated'
+            msg = """"Inserted value for 'report_type' not valid.
+            Valid options are 'consolidated' or 'separate.'"""
+            raise ValueError(msg)
 
     @property
     def min_end_period(self):
@@ -94,7 +94,7 @@ selected. Valid options are: 'consolidated' or 'separate'")
             print(f"Selected max_end_period = {value.date()}")
             self._max_end_period = value
 
-    def _set_df_main(self) -> pd.DataFrame:
+    def _get_df_main(self) -> pd.DataFrame:
         # Unordered Categoricals can only compare equality or not
         query_expression = '''
             CD_CVM == @self.cvm_number and \
@@ -145,6 +145,19 @@ selected. Valid options are: 'consolidated' or 'separate'")
 
         # self._df_main.query("CD_CONTA == '3.01'", inplace=True)
         self._df_main.reset_index(drop=True, inplace=True)
+
+    @property
+    def info(self) -> dict:
+        """Return company info."""
+        name_and_column = {
+            'CVM number': 'CD_CVM',
+            'Fiscal Code': 'CNPJ_CIA',
+            'Name': 'DENOM_CIA'
+        }
+        company_info = {}
+        for name, column in name_and_column.items():
+            company_info[name] = self._df_main.loc[0, column]
+        return company_info
 
     @property
     def assets(self) -> pd.DataFrame:
