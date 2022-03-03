@@ -149,14 +149,20 @@ class Finance():
     @property
     def info(self) -> dict:
         """Return company info."""
-        name_and_column = {
-            'CVM number': 'CD_CVM',
-            'Fiscal Code': 'CNPJ_CIA',
-            'Name': 'DENOM_CIA'
+        annual_reports = self._df_main.query("report_period == 'annual'")
+        annual_reports = annual_reports.DT_REFER.dt.strftime('%Y-%m-%d')
+        annual_reports = list(annual_reports.unique())
+        last_quarterly_report = self._df_main.query(
+            "report_period == 'quarterly'").DT_REFER.max()
+        last_quarterly_report = last_quarterly_report.strftime('%Y-%m-%d')
+
+        company_info = {
+            'CVM number': self._df_main.loc[0, 'CD_CVM'],
+            'Fiscal Code': self._df_main.loc[0, 'CNPJ_CIA'],
+            'Name': self._df_main.loc[0, 'DENOM_CIA'],
+            'Annual Reports': annual_reports,
+            'Last Quarterly Report': last_quarterly_report,
         }
-        company_info = {}
-        for name, column in name_and_column.items():
-            company_info[name] = self._df_main.loc[0, column]
         return company_info
 
     @property
@@ -183,6 +189,14 @@ class Finance():
         """Return company equity."""
         df = self._df_main.query(
             "account_code_l1 == 2 and account_code_l2 == 3").copy()
+        # df.query("CD_CONTA == '1'", inplace=True)
+        return self._make_report(df)
+
+    @property
+    def earnings_per_share(self) -> pd.DataFrame:
+        """Return company equity."""
+        df = self._df_main.query(
+            "account_code_l1 == 3 and account_code_l2 == 99").copy()
         # df.query("CD_CONTA == '1'", inplace=True)
         return self._make_report(df)
 
@@ -231,10 +245,10 @@ class Finance():
             '2.02.01', '2.02.02', '2.02.03', '2.02.04', '2.03', '2.03.09',
             '6.01', '6.01.01', '6.01.02'
         ]
-        df_a = self.assets
+        df_as = self.assets
         df_le = self.liabilities_and_equity
         df_is = self.income_statement
-        df = pd.concat([df_a, df_le, df_is], ignore_index=True)
+        df = pd.concat([df_as, df_le, df_is], ignore_index=True)
         df.query('CD_CONTA == @accounts', inplace=True)
         return df
 

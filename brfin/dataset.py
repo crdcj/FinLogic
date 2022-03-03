@@ -109,8 +109,13 @@ def clean_raw_df(df) -> pd.DataFrame:
     df.ESCALA_MOEDA = df.ESCALA_MOEDA.map({'MIL': 1000, 'UNIDADE': 1})
 
     # unit base currency
-    df.VL_CONTA = df.VL_CONTA * df.ESCALA_MOEDA
-    df.drop(columns=['ESCALA_MOEDA'], inplace=True)
+    df['account_codes_level'] = df['CD_CONTA'].str[0:4]
+    # do not adjust earnings per share rows (account codes 3.99...)
+    df.VL_CONTA = np.where(
+        df.account_codes_level == '3.99',
+        df.VL_CONTA,
+        df.VL_CONTA * df.ESCALA_MOEDA)
+    df.drop(columns=['ESCALA_MOEDA', 'account_codes_level'], inplace=True)
 
     # df.ST_CONTA_FIXA.unique() -> ['S', 'N']
     df.ST_CONTA_FIXA = df.ST_CONTA_FIXA.map({'S': True, 'N': False})
