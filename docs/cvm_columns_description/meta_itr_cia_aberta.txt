@@ -1,0 +1,74 @@
+-----------------------
+Campo: CATEG_DOC
+-----------------------
+   Descrição : Categoria do documento
+   Domínio   : Alfanumérico
+   Tipo Dados: varchar
+   Tamanho   : 20
+
+-----------------------
+Campo: CD_CVM
+-----------------------
+   Descrição : Código CVM
+   Domínio   : Numérico
+   Tipo Dados: char
+   Tamanho   : 6
+
+-----------------------
+Campo: CNPJ_CIA
+-----------------------
+   Descrição : CNPJ da companhia
+   Domínio   : Alfanumérico
+   Tipo Dados: varchar
+   Tamanho   : 20
+
+-----------------------
+Campo: DENOM_CIA
+-----------------------
+   Descrição : Nome empresarial da companhia
+   Domínio   : Alfanumérico
+   Tipo Dados: varchar
+   Tamanho   : 100
+
+-----------------------
+Campo: DT_RECEB
+-----------------------
+   Descrição : Data da recebimento do documento
+   Domínio   : AAAA-MM-DD
+   Tipo Dados: date
+   Tamanho   : 10
+
+-----------------------
+Campo: DT_REFER
+-----------------------
+   Descrição : Data de referência do documento
+   Domínio   : AAAA-MM-DD
+   Tipo Dados: date
+   Tamanho   : 10
+
+-----------------------
+Campo: ID_DOC
+-----------------------
+   Descrição : Identificador do documento
+   Domínio   : Numérico
+   Tipo Dados: int
+   Precisão  : 10
+   Scale     : 0
+
+-----------------------
+Campo: LINK_DOC
+-----------------------
+   Descrição : Endereço para download do documento
+   Domínio   : Alfanumérico
+   Tipo Dados: varchar
+   Tamanho   : 121
+
+-----------------------
+Campo: VERSAO
+-----------------------
+   Descrição : Versão do documento
+   Domínio   : Numérico
+   Tipo Dados: smallint
+   Precisão  : 5
+   Scale     : 0
+

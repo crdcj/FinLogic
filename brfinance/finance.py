@@ -11,6 +11,7 @@ class Finance():
 
     script_dir = os.path.dirname(__file__)
     DATASET = pd.read_pickle(script_dir + '/data/processed/dataset.pkl.zst')
+    companies_list = list(DATASET['CD_CVM'].unique())
 
     def __init__(
         self,
@@ -18,6 +19,7 @@ class Finance():
         report_type: str = 'consolidated',
         min_end_period: str = '2009-12-31',
         max_end_period: str = '2200-12-31',
+        unit: float = 1
     ):
         """Initialize main variables.
 
@@ -29,7 +31,8 @@ class Finance():
         self.report_type = report_type
         self.min_end_period = min_end_period
         self.max_end_period = max_end_period
-        self._get_df_main()
+        self.unit = unit
+        self._set_main_df()
 
     @property
     def cvm_number(self):
@@ -38,8 +41,7 @@ class Finance():
 
     @cvm_number.setter
     def cvm_number(self, value):
-        companies_list = list(Finance.DATASET['CD_CVM'].unique())
-        if value in companies_list:
+        if value in Finance.companies_list:
             self._cvm_number = value
         else:
             print('cvm_number not found')
@@ -58,9 +60,7 @@ class Finance():
         if value in ('consolidated', 'separate'):
             self._report_type = value
         else:
-            msg = """"Inserted value for 'report_type' not valid.
-            Valid options are 'consolidated' or 'separate.'"""
-            raise ValueError(msg)
+            raise ValueError("Select 'consolidated' or 'separate' report type")
 
     @property
     def min_end_period(self):
@@ -94,14 +94,22 @@ class Finance():
             print(f"Selected max_end_period = {value.date()}")
             self._max_end_period = value
 
-    def _get_df_main(self) -> pd.DataFrame:
-        # Unordered Categoricals can only compare equality or not
-        query_expression = '''
-            CD_CVM == @self.cvm_number and \
-            report_type == @self._report_type
-        '''
-        self._df_main = Finance.DATASET.query(query_expression).copy()
-        self._df_main = self._df_main.astype({
+    @property
+    def unit(self):
+        """Return the number by which account values are being divided."""
+        return self._unit
+
+    @unit.setter
+    def unit(self, value):
+        if value > 0:
+            self._unit = value
+        else:
+            raise ValueError("Unit value must be greater than 0")
+
+    def _set_main_df(self) -> pd.DataFrame:
+        self._MAIN_DF = Finance.DATASET.query(
+            'CD_CVM == @self.cvm_number').copy()
+        self._MAIN_DF = self._MAIN_DF.astype({
             'CD_CVM': 'object',
             'report_period': str,
             'report_type': str,
@@ -115,15 +123,8 @@ class Finance():
             'COLUNA_DF': 'object',
             'VL_CONTA': float
         })
-        query_expression = '''
-            DT_FIM_EXERC >= @self._min_end_period and \
-            DT_FIM_EXERC <= @self._max_end_period
-        '''
-        self._df_main.query(query_expression, inplace=True)
-
         """
         Get accounting code (ac) levels 1 and 2 from CD_CONTA column.
-
         The first part of CD_CONTA is the FS type
         df['CD_CONTA'].str[0].unique() -> [1, 2, 3, 4, 5, 6, 7]
         Table of correspondences:
@@ -135,31 +136,40 @@ class Finance():
             6 -> Demonstração do Fluxo de Caixa (Método Indireto)
             7 -> Demonstração de Valor Adicionado
         """
-        self._df_main['account_code_l1'] = pd.to_numeric(
-            self._df_main['CD_CONTA'].str[0])
-        self._df_main['account_code_l2'] = pd.to_numeric(
-            self._df_main['CD_CONTA'].str[2:4])
-        self._df_main['account_code_l2'] = (
-            self._df_main['account_code_l2'].astype('Int64')
-        )
+        self._MAIN_DF['account_level1'] = self._MAIN_DF['CD_CONTA'].str[0]
+        self._MAIN_DF['account_level_12'] = self._MAIN_DF['CD_CONTA'].str[0:4]
+        self._MAIN_DF.reset_index(drop=True, inplace=True)
 
-        # self._df_main.query("CD_CONTA == '3.01'", inplace=True)
-        self._df_main.reset_index(drop=True, inplace=True)
+    def _get_company_df(self) -> pd.DataFrame:
+        query_expression = '''
+            report_type == @self._report_type and \
+            DT_FIM_EXERC >= @self._min_end_period and \
+            DT_FIM_EXERC <= @self._max_end_period
+        '''
+        df = self._MAIN_DF.query(query_expression).copy()
+        # change unit only for accounts different from 3.99
+        df['VL_CONTA'] = np.where(
+            df['account_level_12'] == '3.99',
+            df['VL_CONTA'],
+            df['VL_CONTA'] / self._unit
+        )
+        df.reset_index(drop=True, inplace=True)
+        return df
 
     @property
     def info(self) -> dict:
         """Return company info."""
-        annual_reports = self._df_main.query("report_period == 'annual'")
+        annual_reports = self._MAIN_DF.query("report_period == 'annual'")
         annual_reports = annual_reports.DT_REFER.dt.strftime('%Y-%m-%d')
         annual_reports = list(annual_reports.unique())
-        last_quarterly_report = self._df_main.query(
+        last_quarterly_report = self._MAIN_DF.query(
             "report_period == 'quarterly'").DT_REFER.max()
         last_quarterly_report = last_quarterly_report.strftime('%Y-%m-%d')
 
         company_info = {
-            'CVM number': self._df_main.loc[0, 'CD_CVM'],
-            'Fiscal Code': self._df_main.loc[0, 'CNPJ_CIA'],
-            'Name': self._df_main.loc[0, 'DENOM_CIA'],
+            'CVM number': self._MAIN_DF.loc[0, 'CD_CVM'],
+            'Fiscal Code': self._MAIN_DF.loc[0, 'CNPJ_CIA'],
+            'Name': self._MAIN_DF.loc[0, 'DENOM_CIA'],
             'Annual Reports': annual_reports,
             'Last Quarterly Report': last_quarterly_report,
         }
@@ -168,58 +178,63 @@ class Finance():
     @property
     def assets(self) -> pd.DataFrame:
         """Return company assets."""
-        df = self._df_main.query("account_code_l1 == 1").copy()
+        df = self._get_company_df()
+        df.query("account_level1 == '1'", inplace=True)
         return self._make_report(df)
 
     @property
     def liabilities_and_equity(self) -> pd.DataFrame:
         """Return company liabilities and equity."""
-        df = self._df_main.query("account_code_l1 == 2").copy()
+        df = self._get_company_df()
+        df.query("account_level1 == '2'", inplace=True)
         return self._make_report(df)
 
     @property
     def liabilities(self) -> pd.DataFrame:
         """Return company liabilities."""
-        df = self._df_main.query(
-            "account_code_l1 == 2 and ").copy()
+        df = self._get_company_df()
+        df.query(
+            "account_level_12 == '2.01' or account_level_12 == '2.02'",
+            inplace=True
+        )
         return self._make_report(df)
 
     @property
     def equity(self) -> pd.DataFrame:
         """Return company equity."""
-        df = self._df_main.query(
-            "account_code_l1 == 2 and account_code_l2 == 3").copy()
+        df = self._get_company_df()
+        df.query("account_level_12 == '2.03'", inplace=True)
         # df.query("CD_CONTA == '1'", inplace=True)
         return self._make_report(df)
 
     @property
     def earnings_per_share(self) -> pd.DataFrame:
         """Return company equity."""
-        df = self._df_main.query(
-            "account_code_l1 == 3 and account_code_l2 == 99").copy()
+        df = self._get_company_df()
+        df.query("account_level_12 == '3.99'", inplace=True)
         # df.query("CD_CONTA == '1'", inplace=True)
         return self._make_report(df)
 
-    @property
-    def income_statement(self) -> pd.DataFrame:
-        """Return company income statement."""
-        df_income = self._df_main.query("account_code_l1 == 3").copy()
-        last_afs = df_income.query(
+    @staticmethod
+    def calculate_ltm(df_flow: pd.DataFrame) -> pd.DataFrame:
+        last_annual_statement = df_flow.query(
             'report_period == "annual"')['DT_FIM_EXERC'].max()
-        last_qfs = df_income.query(
+        last_quarterly_statement = df_flow.query(
             'report_period == "quarterly"')['DT_FIM_EXERC'].max()
-        if last_afs > last_qfs:
-            df_income.query('report_period == "annual"', inplace=True)
-            return self._make_report(df_income)
+        if last_annual_statement > last_quarterly_statement:
+            df_flow.query('report_period == "annual"', inplace=True)
+            return df_flow
 
-        df1 = df_income.query('DT_FIM_EXERC == @last_qfs').copy()
+        df1 = df_flow.query(
+            'DT_FIM_EXERC == @last_quarterly_statement'
+            ).copy()
         df1.query('DT_INI_EXERC == DT_INI_EXERC.min()', inplace=True)
 
-        df2 = df_income.query('DT_REFER == @last_qfs').copy()
+        df2 = df_flow.query('DT_REFER == @last_quarterly_statement').copy()
         df2.query('DT_INI_EXERC == DT_INI_EXERC.min()', inplace=True)
         df2['VL_CONTA'] = -df2['VL_CONTA']
 
-        df3 = df_income.query('DT_FIM_EXERC == @last_afs').copy()
+        df3 = df_flow.query('DT_FIM_EXERC == @last_annual_statement').copy()
 
         df_ltm = pd.concat([df1, df2, df3], ignore_index=True)
         df_ltm = df_ltm[['CD_CONTA', 'VL_CONTA']]
@@ -227,11 +242,29 @@ class Finance():
         df1.drop(columns='VL_CONTA', inplace=True)
         df_ltm = pd.merge(df1, df_ltm)
         df_ltm['report_period'] = 'ltm'
-        df_ltm['DT_INI_EXERC'] = last_qfs - pd.DateOffset(years=1)
+        df_ltm['DT_INI_EXERC'] = (
+            last_quarterly_statement - pd.DateOffset(years=1)
+        )
 
-        df_income.query('report_period == "annual"', inplace=True)
-        df_income = pd.concat([df_income, df_ltm], ignore_index=True)
-        return self._make_report(df_income)
+        df_flow.query('report_period == "annual"', inplace=True)
+        df_flow_ltm = pd.concat([df_flow, df_ltm], ignore_index=True)
+        return df_flow_ltm
+
+    @property
+    def income(self) -> pd.DataFrame:
+        """Return company income statement."""
+        df = self._get_company_df()
+        df.query("account_level1 == '3'", inplace=True)
+        df = Finance.calculate_ltm(df)
+        return self._make_report(df)
+
+    @property
+    def cash_flow(self) -> pd.DataFrame:
+        """Return company income statement."""
+        df = self._get_company_df()
+        df.query("account_level1 == '6'", inplace=True)
+        df = Finance.calculate_ltm(df)
+        return self._make_report(df)
 
     @property
     def valuation(self) -> pd.DataFrame:

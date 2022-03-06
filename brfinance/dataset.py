@@ -193,24 +193,24 @@ def process_raw_file(parent_filename):
 
         df_child = clean_raw_df(df_child)
         df = pd.concat([df, df_child], ignore_index=True)
-    print(parent_path)
+    print(parent_filename, 'processed')
     return df
 
 
 def update_processed_dataset():
     """Update the processed dataset."""
-    print(os.path.dirname(os.path.abspath(__file__)))
+    # print(os.path.dirname(os.path.abspath(__file__)))
     filenames = sorted(os.listdir(RAW_DIR))
     with ProcessPoolExecutor() as executor:
         results = executor.map(process_raw_file, filenames)
 
     lista_dfs = []
     [lista_dfs.append(df) for df in results]
-
-    print('Concatenate dataframes ...')
+    print('')
+    print('Concatenating dataframes ...')
     df = pd.concat(lista_dfs, ignore_index=True)
 
-    print('Sort Dataset ...')
+    print('Dataset sorted')
     sort_by = [
         'CD_CVM', 'DT_REFER', 'VERSAO', 'ORDEM_EXERC', 'report_type',
         'CD_CONTA'
@@ -218,9 +218,8 @@ def update_processed_dataset():
     df.sort_values(by=sort_by, ignore_index=True, inplace=True)
 
     df = df.astype('category')
-    print('Columns of type int, str and datetime changed to category')
+    print('Columns data type changed to category')
 
-    print('Save dataset in compressed format ...')
     file_path = PROCESSED_DIR + 'dataset.pkl.zst'
     df.to_pickle(file_path)
     print('Dataset saved')
