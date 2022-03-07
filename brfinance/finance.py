@@ -19,8 +19,8 @@ class Finance():
         report_type: str = 'consolidated',
         min_end_period: str = '2009-12-31',
         max_end_period: str = '2200-12-31',
-        account_mode: str = 'condensed',
-        unit: float = 1_000_000
+        show_accounts: int = 0,
+        unit: float = 1
     ):
         """Initialize main variables.
 
@@ -33,7 +33,7 @@ class Finance():
         self.min_end_period = min_end_period
         self.max_end_period = max_end_period
         self.unit = unit
-        self.account_mode = account_mode
+        self.show_accounts = show_accounts
         self._set_main_df()
 
     @property
@@ -97,17 +97,17 @@ class Finance():
             self._max_end_period = value
 
     @property
-    def account_mode(self):
-        """Return accounting presentation mode: 'condensed' or 'complete'."""
+    def show_accounts(self):
+        """Return account levels to show: 0 (show all accounts), 1, 2, 3."""
         return self._account_mode
 
-    @account_mode.setter
-    def account_mode(self, value):
-        if value in ['condensed', 'complete']:
+    @show_accounts.setter
+    def show_accounts(self, value):
+        if value in [0, 1, 2, 3]:
             self._account_mode = value
         else:
             raise ValueError(
-                "Accounting presentation modes are 'condensed' or 'complete'")
+                "Show account levels are: 0 (show all accounts), 1, 2, 3.")
 
     @property
     def unit(self):
@@ -169,9 +169,9 @@ class Finance():
             df['VL_CONTA'] / self._unit
         )
         df['account_code_len'] = df['CD_CONTA'].str.len()
-        if self.account_mode == 'condensed':
-            pass
-            df.query('account_code_len <= 7', inplace=True)
+        if self.show_accounts > 0:
+            account_code_limit = self.show_accounts * 3 + 1  # noqa
+            df.query('account_code_len <= @account_code_limit', inplace=True)
         df.reset_index(drop=True, inplace=True)
         return df
 
