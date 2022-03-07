@@ -19,7 +19,8 @@ class Finance():
         report_type: str = 'consolidated',
         min_end_period: str = '2009-12-31',
         max_end_period: str = '2200-12-31',
-        unit: float = 1
+        account_mode: str = 'condensed',
+        unit: float = 1_000_000
     ):
         """Initialize main variables.
 
@@ -32,6 +33,7 @@ class Finance():
         self.min_end_period = min_end_period
         self.max_end_period = max_end_period
         self.unit = unit
+        self.account_mode = account_mode
         self._set_main_df()
 
     @property
@@ -95,6 +97,19 @@ class Finance():
             self._max_end_period = value
 
     @property
+    def account_mode(self):
+        """Return accounting presentation mode: 'condensed' or 'complete'."""
+        return self._account_mode
+
+    @account_mode.setter
+    def account_mode(self, value):
+        if value in ['condensed', 'complete']:
+            self._account_mode = value
+        else:
+            raise ValueError(
+                "Accounting presentation modes are 'condensed' or 'complete'")
+
+    @property
     def unit(self):
         """Return the number by which account values are being divided."""
         return self._unit
@@ -142,9 +157,9 @@ class Finance():
 
     def _get_company_df(self) -> pd.DataFrame:
         query_expression = '''
-            report_type == @self._report_type and \
-            DT_FIM_EXERC >= @self._min_end_period and \
-            DT_FIM_EXERC <= @self._max_end_period
+            report_type == @self.report_type and \
+            DT_FIM_EXERC >= @self.min_end_period and \
+            DT_FIM_EXERC <= @self.max_end_period
         '''
         df = self._MAIN_DF.query(query_expression).copy()
         # change unit only for accounts different from 3.99
@@ -153,6 +168,10 @@ class Finance():
             df['VL_CONTA'],
             df['VL_CONTA'] / self._unit
         )
+        df['account_code_len'] = df['CD_CONTA'].str.len()
+        if self.account_mode == 'condensed':
+            pass
+            df.query('account_code_len <= 7', inplace=True)
         df.reset_index(drop=True, inplace=True)
         return df
 
@@ -217,24 +236,22 @@ class Finance():
 
     @staticmethod
     def calculate_ltm(df_flow: pd.DataFrame) -> pd.DataFrame:
-        last_annual_statement = df_flow.query(
+        last_annual = df_flow.query(
             'report_period == "annual"')['DT_FIM_EXERC'].max()
-        last_quarterly_statement = df_flow.query(
+        last_quarterly = df_flow.query(
             'report_period == "quarterly"')['DT_FIM_EXERC'].max()
-        if last_annual_statement > last_quarterly_statement:
+        if last_annual > last_quarterly:
             df_flow.query('report_period == "annual"', inplace=True)
             return df_flow
 
-        df1 = df_flow.query(
-            'DT_FIM_EXERC == @last_quarterly_statement'
-            ).copy()
+        df1 = df_flow.query('DT_FIM_EXERC == @last_quarterly').copy()
         df1.query('DT_INI_EXERC == DT_INI_EXERC.min()', inplace=True)
 
-        df2 = df_flow.query('DT_REFER == @last_quarterly_statement').copy()
+        df2 = df_flow.query('DT_REFER == @last_quarterly').copy()
         df2.query('DT_INI_EXERC == DT_INI_EXERC.min()', inplace=True)
         df2['VL_CONTA'] = -df2['VL_CONTA']
 
-        df3 = df_flow.query('DT_FIM_EXERC == @last_annual_statement').copy()
+        df3 = df_flow.query('DT_FIM_EXERC == @last_annual').copy()
 
         df_ltm = pd.concat([df1, df2, df3], ignore_index=True)
         df_ltm = df_ltm[['CD_CONTA', 'VL_CONTA']]
@@ -242,9 +259,7 @@ class Finance():
         df1.drop(columns='VL_CONTA', inplace=True)
         df_ltm = pd.merge(df1, df_ltm)
         df_ltm['report_period'] = 'ltm'
-        df_ltm['DT_INI_EXERC'] = (
-            last_quarterly_statement - pd.DateOffset(years=1)
-        )
+        df_ltm['DT_INI_EXERC'] = last_quarterly - pd.DateOffset(years=1)
 
         df_flow.query('report_period == "annual"', inplace=True)
         df_flow_ltm = pd.concat([df_flow, df_ltm], ignore_index=True)
