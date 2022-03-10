@@ -99,13 +99,12 @@ def clean_raw_df(df) -> pd.DataFrame:
     # Zero values will not be used
     df.query("VL_CONTA != 0", inplace=True)
 
-    # df.MOEDA.value_counts()
-    # REAL    43391302
+    # df.MOEDA.value_counts() -> REAL    43391302
     df.drop(columns=['MOEDA'], inplace=True)
 
     # df.ESCALA_MOEDA.value_counts()
-    # MIL        40483230
-    # UNIDADE     2908072
+    #   MIL        40483230
+    #   UNIDADE     2908072
     df.ESCALA_MOEDA = df.ESCALA_MOEDA.map({'MIL': 1000, 'UNIDADE': 1})
 
     # unit base currency
@@ -210,7 +209,9 @@ def update_processed_dataset():
     print('Concatenating dataframes ...')
     df = pd.concat(lista_dfs, ignore_index=True)
 
-    print('Dataset sorted')
+    # correct/harmonize some account texts
+    df.replace(to_replace=['\xa0ON\xa0', 'On'], value='ON', inplace=True)
+
     sort_by = [
         'CD_CVM', 'DT_REFER', 'VERSAO', 'ORDEM_EXERC', 'report_type',
         'CD_CONTA'

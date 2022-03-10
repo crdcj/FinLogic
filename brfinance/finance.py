@@ -161,8 +161,8 @@ class Finance():
             6 -> Demonstração do Fluxo de Caixa (Método Indireto)
             7 -> Demonstração de Valor Adicionado
         """
-        self._MAIN_DF['account_level_1'] = self._MAIN_DF['CD_CONTA'].str[0]
-        self._MAIN_DF['account_level_1and2'] = (
+        self._MAIN_DF['account_code_p1'] = self._MAIN_DF['CD_CONTA'].str[0]
+        self._MAIN_DF['account_code_p12'] = (
             self._MAIN_DF['CD_CONTA'].str[0:4]
         )
         self._MAIN_DF.sort_values(
@@ -177,7 +177,7 @@ class Finance():
         df = self._MAIN_DF.query(query_expression).copy()
         # change unit only for accounts different from 3.99
         df['VL_CONTA'] = np.where(
-            df['account_level_1and2'] == '3.99',
+            df['account_code_p12'] == '3.99',
             df['VL_CONTA'],
             df['VL_CONTA'] / self._unit
         )
@@ -213,14 +213,14 @@ class Finance():
     def assets(self) -> pd.DataFrame:
         """Return company assets."""
         df = self._get_company_df()
-        df.query('account_level_1 == "1"', inplace=True)
+        df.query('account_code_p1 == "1"', inplace=True)
         return self._make_report(df)
 
     @property
     def liabilities_and_equity(self) -> pd.DataFrame:
         """Return company liabilities and equity."""
         df = self._get_company_df()
-        df.query('account_level_1 == "2"', inplace=True)
+        df.query('account_code_p1 == "2"', inplace=True)
         return self._make_report(df)
 
     @property
@@ -228,7 +228,7 @@ class Finance():
         """Return company liabilities."""
         df = self._get_company_df()
         df.query(
-            'account_level_1and2 == "2.01" or account_level_1and2 == "2.02"',
+            'account_code_p12 == "2.01" or account_code_p12 == "2.02"',
             inplace=True
         )
         return self._make_report(df)
@@ -237,24 +237,24 @@ class Finance():
     def equity(self) -> pd.DataFrame:
         """Return company equity."""
         df = self._get_company_df()
-        df.query('account_level_1and2 == "2.03"', inplace=True)
+        df.query('account_code_p12 == "2.03"', inplace=True)
         return self._make_report(df)
 
     @property
     def earnings_per_share(self) -> pd.DataFrame:
         """Return company equity.
-        3.99        -> Earnings per Share (BRL / Share)
-        3.99.01     -> Earnings per Share
-        3.99.01.01  -> ON (ordinary)
-        3.99.02     -> Diluted Earnings per Share
-        3.99.02.01  -> ON (ordinary)
+        3.99                -> Earnings per Share (BRL / Share)
+            3.99.01         -> Earnings per Share
+                3.99.01.01  -> ON (ordinary)
+            3.99.02         -> Diluted Earnings per Share
+                3.99.02.01  -> ON (ordinary)
         """
         df = self._get_company_df()
         df.query(
             'CD_CONTA == "3.99.01.01" or CD_CONTA == "3.99.02.01"',
             inplace=True
         )
-        # df.replace("ON", )
+
         return self._make_report(df)
 
     @staticmethod
@@ -292,7 +292,7 @@ class Finance():
     def income(self) -> pd.DataFrame:
         """Return company income statement."""
         df = self._get_company_df()
-        df.query('account_level_1 == "3"', inplace=True)
+        df.query('account_code_p1 == "3"', inplace=True)
         df = Finance.calculate_ltm(df)
         return self._make_report(df)
 
@@ -300,7 +300,7 @@ class Finance():
     def cash_flow(self) -> pd.DataFrame:
         """Return company income statement."""
         df = self._get_company_df()
-        df.query('account_level_1 == "6"', inplace=True)
+        df.query('account_code_p1 == "6"', inplace=True)
         df = Finance.calculate_ltm(df)
         return self._make_report(df)
 
@@ -325,6 +325,12 @@ class Finance():
         df.drop(columns=['ST_CONTA_FIXA', 'DS_CONTA'], inplace=True)
         df.loc['return_on_assets'] = df.loc['3.11'] / df.loc['1']
         df.loc['return_on_equity'] = df.loc['3.11'] / df.loc['2.03']
+        df.loc['gross_margin'] = df.loc['3.03'] / df.loc['3.01']
+        df.loc['ebit_margin'] = df.loc['3.05'] / df.loc['3.01']
+        df.loc['operating_margin'] = (
+            (df.loc['3.03'] + df.loc['3.04.01'] + df.loc['3.04.02'])
+            / df.loc['3.01']
+        )
         df.loc['net_margin'] = df.loc['3.11'] / df.loc['3.01']
 
         # 3.03 3.04.01 3.04.02
