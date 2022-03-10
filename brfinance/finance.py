@@ -11,6 +11,7 @@ class Finance():
 
     script_dir = os.path.dirname(__file__)
     DATASET = pd.read_pickle(script_dir + '/data/processed/dataset.pkl.zst')
+    TAX_RATE = 0.34
     companies_list = list(DATASET['CD_CVM'].unique())
 
     def __init__(
@@ -310,30 +311,55 @@ class Finance():
         df.query('CD_CONTA == @account_code', inplace=True)
         return df.iloc[0]['VL_CONTA']
 
-    @property
-    def operating_performance(self):
+    @staticmethod
+    def shift_right(s: pd.Series, is_shifted: bool) -> pd.Series:
+        """Shift row to the right in order to obtain series previous values"""
+        if is_shifted:
+            arr = s.iloc[:-1].values
+            return np.append(np.nan, arr)
+        else:
+            return s
+
+    def operating_performance(self, is_shifted: bool = True):
         """Return company main operating indicators."""
         df = self._get_company_df()
         df_as = self.assets
-        df_as.query('CD_CONTA == "1"', inplace=True)
+        # df_as.query('CD_CONTA == "1"', inplace=True)
         df_le = self.liabilities_and_equity
-        df_le.query('CD_CONTA == "2.03"', inplace=True)
+        # df_le.query('CD_CONTA == "2.03"', inplace=True)
         df_in = self.income
         # df_in.query('CD_CONTA == "3.11"', inplace=True)
         df = pd.concat([df_as, df_le, df_in], ignore_index=True)
         df.set_index(keys='CD_CONTA', drop=True, inplace=True)
         df.drop(columns=['ST_CONTA_FIXA', 'DS_CONTA'], inplace=True)
-        df.loc['return_on_assets'] = df.loc['3.11'] / df.loc['1']
-        df.loc['return_on_equity'] = df.loc['3.11'] / df.loc['2.03']
-        df.loc['gross_margin'] = df.loc['3.03'] / df.loc['3.01']
-        df.loc['ebit_margin'] = df.loc['3.05'] / df.loc['3.01']
-        df.loc['operating_margin'] = (
-            (df.loc['3.03'] + df.loc['3.04.01'] + df.loc['3.04.02'])
-            / df.loc['3.01']
-        )
-        df.loc['net_margin'] = df.loc['3.11'] / df.loc['3.01']
 
-        # 3.03 3.04.01 3.04.02
+        # series definition
+        revenues = df.loc['3.01']
+        gross_profit = df.loc['3.03']
+        ebit = df.loc['3.05']
+        net_income = df.loc['3.11']
+        total_assets = self.shift_right(df.loc['1'], is_shifted)
+        equity = self.shift_right(df.loc['2.03'], is_shifted)
+        invested_capital = (
+            df.loc['2.03']
+            + df.loc['2.01.04']
+            + df.loc['2.02.01']
+            - df.loc['1.01.01']
+            - df.loc['1.01.02']
+        )
+        invested_capital = self.shift_right(invested_capital, is_shifted)
+
+        # indicators calculation
+        df.loc['return_on_assets'] = (
+            ebit * (1 - Finance.TAX_RATE) / total_assets
+        )
+        df.loc['return_on_capital'] = (
+            ebit * (1 - Finance.TAX_RATE) / invested_capital
+        )
+        df.loc['return_on_equity'] = net_income / equity
+        df.loc['gross_margin'] = gross_profit / revenues
+        df.loc['operating_margin'] = ebit * (1 - Finance.TAX_RATE) / revenues
+        df.loc['net_margin'] = net_income / revenues
 
         # df.reset_index(drop=True, inplace=True)
         return df
