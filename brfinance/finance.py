@@ -195,6 +195,7 @@ class Finance():
         annual_reports = self._MAIN_DF.query('report_period == "annual"')
         annual_reports = annual_reports.DT_REFER.dt.strftime('%Y-%m-%d')
         annual_reports = list(annual_reports.unique())
+        annual_reports.sort()
         last_quarterly_report = self._MAIN_DF.query(
             'report_period == "quarterly"').DT_REFER.max()
         last_quarterly_report = last_quarterly_report.strftime('%Y-%m-%d')
@@ -241,9 +242,19 @@ class Finance():
 
     @property
     def earnings_per_share(self) -> pd.DataFrame:
-        """Return company equity."""
+        """Return company equity.
+        3.99        -> Earnings per Share (BRL / Share)
+        3.99.01     -> Earnings per Share
+        3.99.01.01  -> ON (ordinary)
+        3.99.02     -> Diluted Earnings per Share
+        3.99.02.01  -> ON (ordinary)
+        """
         df = self._get_company_df()
-        df.query('account_level_1and2 == "3.99"', inplace=True)
+        df.query(
+            'CD_CONTA == "3.99.01.01" or CD_CONTA == "3.99.02.01"',
+            inplace=True
+        )
+        # df.replace("ON", )
         return self._make_report(df)
 
     @staticmethod
@@ -308,12 +319,16 @@ class Finance():
         df_le = self.liabilities_and_equity
         df_le.query('CD_CONTA == "2.03"', inplace=True)
         df_in = self.income
-        df_in.query('CD_CONTA == "3.11"', inplace=True)
+        # df_in.query('CD_CONTA == "3.11"', inplace=True)
         df = pd.concat([df_as, df_le, df_in], ignore_index=True)
         df.set_index(keys='CD_CONTA', drop=True, inplace=True)
         df.drop(columns=['ST_CONTA_FIXA', 'DS_CONTA'], inplace=True)
         df.loc['return_on_assets'] = df.loc['3.11'] / df.loc['1']
         df.loc['return_on_equity'] = df.loc['3.11'] / df.loc['2.03']
+        df.loc['net_margin'] = df.loc['3.11'] / df.loc['3.01']
+
+        # 3.03 3.04.01 3.04.02
+
         # df.reset_index(drop=True, inplace=True)
         return df
 
