@@ -193,19 +193,18 @@ class Finance():
     @property
     def info(self) -> dict:
         """Return company info."""
-        annual_reports = self._MAIN_DF.query('report_period == "annual"')
-        annual_reports = annual_reports.DT_REFER.dt.strftime('%Y-%m-%d')
-        annual_reports = list(annual_reports.unique())
-        annual_reports.sort()
-        last_quarterly_report = self._MAIN_DF.query(
-            'report_period == "quarterly"').DT_REFER.max()
-        last_quarterly_report = last_quarterly_report.strftime('%Y-%m-%d')
+        dfa = self._MAIN_DF.query('report_period == "annual"')
+        dfq = self._MAIN_DF.query('report_period == "quarterly"')
+        first_annual_report = dfa.DT_REFER.min().strftime('%Y-%m-%d')
+        last_annual_report = dfa.DT_REFER.max().strftime('%Y-%m-%d')
+        last_quarterly_report = dfq.DT_REFER.max().strftime('%Y-%m-%d')
 
         company_info = {
             'CVM number': self._MAIN_DF.loc[0, 'CD_CVM'],
             'Fiscal Code': self._MAIN_DF.loc[0, 'CNPJ_CIA'],
             'Name': self._MAIN_DF.loc[0, 'DENOM_CIA'],
-            'Annual Reports': annual_reports,
+            'First Annual Report': first_annual_report,
+            'Last Annual Report': last_annual_report,
             'Last Quarterly Report': last_quarterly_report,
         }
         return company_info
@@ -312,15 +311,15 @@ class Finance():
         return df.iloc[0]['VL_CONTA']
 
     @staticmethod
-    def shift_right(s: pd.Series, is_shifted: bool) -> pd.Series:
+    def shift_right(s: pd.Series, is_on: bool) -> pd.Series:
         """Shift row to the right in order to obtain series previous values"""
-        if is_shifted:
+        if is_on:
             arr = s.iloc[:-1].values
             return np.append(np.nan, arr)
         else:
             return s
 
-    def operating_performance(self, is_shifted: bool = True):
+    def operating_performance(self, is_on: bool = True):
         """Return company main operating indicators."""
         df = self._get_company_df()
         df_as = self.assets
@@ -338,8 +337,8 @@ class Finance():
         gross_profit = df.loc['3.03']
         ebit = df.loc['3.05']
         net_income = df.loc['3.11']
-        total_assets = self.shift_right(df.loc['1'], is_shifted)
-        equity = self.shift_right(df.loc['2.03'], is_shifted)
+        total_assets = self.shift_right(df.loc['1'], is_on)
+        equity = self.shift_right(df.loc['2.03'], is_on)
         invested_capital = (
             df.loc['2.03']
             + df.loc['2.01.04']
@@ -347,7 +346,7 @@ class Finance():
             - df.loc['1.01.01']
             - df.loc['1.01.02']
         )
-        invested_capital = self.shift_right(invested_capital, is_shifted)
+        invested_capital = self.shift_right(invested_capital, is_on)
 
         # indicators calculation
         df.loc['return_on_assets'] = (
@@ -361,6 +360,10 @@ class Finance():
         df.loc['operating_margin'] = ebit * (1 - Finance.TAX_RATE) / revenues
         df.loc['net_margin'] = net_income / revenues
 
+        # discard rows used for calculation
+        df = df.iloc[-6:]
+        # discard index name 'CD_CONTA'
+        df.index.name = None
         # df.reset_index(drop=True, inplace=True)
         return df
 
