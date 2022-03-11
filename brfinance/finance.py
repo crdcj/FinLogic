@@ -15,8 +15,8 @@ class Finance():
     companies_list = list(DATASET['CD_CVM'].unique())
 
     @classmethod
-    def search_company(cls, expression) -> pd.DataFrame:
-        expression = 'petro'
+    def search_company(cls, expression: str) -> pd.DataFrame:
+        """Return dataframe with companies that matches the 'expression'"""
         expression = expression.upper()
         mask = cls.DATASET.DENOM_CIA.str.contains(expression)
         df = cls.DATASET[mask].copy()
