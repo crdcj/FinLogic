@@ -1,4 +1,7 @@
 # BrFin
+1 implementar seleção por CNPJ
+2 como fica a estrutura da classe e os limites de tempo/metódos/atributos?
+
 Financial indicators for brazilian companies 
 
 ├── LICENSE

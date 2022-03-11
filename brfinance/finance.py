@@ -14,6 +14,17 @@ class Finance():
     TAX_RATE = 0.34
     companies_list = list(DATASET['CD_CVM'].unique())
 
+    @classmethod
+    def search_company(cls, expression) -> pd.DataFrame:
+        expression = 'petro'
+        expression = expression.upper()
+        mask = cls.DATASET.DENOM_CIA.str.contains(expression)
+        df = cls.DATASET[mask].copy()
+        df.sort_values(by='DENOM_CIA', inplace=True)
+        df.drop_duplicates(subset='CD_CVM', inplace=True, ignore_index=True)
+        columns = ['DENOM_CIA', 'CD_CVM', 'CNPJ_CIA']
+        return df[columns]
+
     def __init__(
         self,
         cvm_number: int,
