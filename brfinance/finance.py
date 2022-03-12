@@ -176,32 +176,32 @@ class Finance():
             6 -> Demonstração do Fluxo de Caixa (Método Indireto)
             7 -> Demonstração de Valor Adicionado
         """
-        self._MAIN_DF['account_code_p1'] = self._MAIN_DF['account_code'].str[0]
-        self._MAIN_DF['account_code_p12'] = (
-            self._MAIN_DF['account_code'].str[0:4]
-        )
         self._MAIN_DF.sort_values(
-            by='account_code', ignore_index=True, inplace=True)
+            by='account_code',
+            ignore_index=True,
+            inplace=True
+        )
 
     def _get_company_df(self) -> pd.DataFrame:
-        query_expression = '''
+        expression = '''
             account_basis == @self.account_basis and \
             period_end >= @self.first_period and \
             period_end <= @self.last_period
         '''
-        df = self._MAIN_DF.query(query_expression).copy()
+        df = self._MAIN_DF.query(expression).copy()
         # change unit only for accounts different from 3.99
         df['account_value'] = np.where(
-            df['account_code_p12'] == '3.99',
+            df['account_code'].str.startswith('3.99'),
             df['account_value'],
             df['account_value'] / self._unit
         )
-        df['account_code_len'] = df['account_code'].str.len()
         # show only selected accounting levels
+        df['account_code_len'] = df['account_code'].str.len()
         if self.show_accounts > 0:
             account_code_limit = self.show_accounts * 3 + 1  # noqa
             df.query('account_code_len <= @account_code_limit', inplace=True)
         df.reset_index(drop=True, inplace=True)
+
         return df
 
     @property
@@ -228,31 +228,32 @@ class Finance():
     def assets(self) -> pd.DataFrame:
         """Return company assets."""
         df = self._get_company_df()
-        df.query('account_code_p1 == "1"', inplace=True)
+        df.query('account_code.str.startswith("1")', inplace=True)
         return self._make_report(df)
 
     @property
     def liabilities_and_equity(self) -> pd.DataFrame:
         """Return company liabilities and equity."""
         df = self._get_company_df()
-        df.query('account_code_p1 == "2"', inplace=True)
+        df.query('account_code.str.startswith("2")', inplace=True)
         return self._make_report(df)
 
     @property
     def liabilities(self) -> pd.DataFrame:
         """Return company liabilities."""
         df = self._get_company_df()
-        df.query(
-            'account_code_p12 == "2.01" or account_code_p12 == "2.02"',
-            inplace=True
-        )
+        expression = '''
+            account_code.str.startswith("2.01") or \
+            account_code.str.startswith("2.02")',
+        '''
+        df.query(expression, inplace=True)
         return self._make_report(df)
 
     @property
     def equity(self) -> pd.DataFrame:
         """Return company equity."""
         df = self._get_company_df()
-        df.query('account_code_p12 == "2.03"', inplace=True)
+        df.query('account_code.str.startswith("2.03")', inplace=True)
         return self._make_report(df)
 
     @property
@@ -307,7 +308,7 @@ class Finance():
     def income(self) -> pd.DataFrame:
         """Return company income statement."""
         df = self._get_company_df()
-        df.query('account_code_p1 == "3"', inplace=True)
+        df.query('account_code.str.startswith("3")', inplace=True)
         df = Finance.calculate_ltm(df)
         return self._make_report(df)
 
@@ -315,7 +316,7 @@ class Finance():
     def cash_flow(self) -> pd.DataFrame:
         """Return company income statement."""
         df = self._get_company_df()
-        df.query('account_code_p1 == "6"', inplace=True)
+        df.query('account_code.str.startswith("6")', inplace=True)
         df = Finance.calculate_ltm(df)
         return self._make_report(df)
 
@@ -404,11 +405,11 @@ class Finance():
     def _make_report(self, df: pd.DataFrame) -> pd.DataFrame:
         # keep only last quarterly fs
         last_end_period = df.period_end.max()  # noqa
-        query_expression = '''
+        expression = '''
             report_type == 'annual' or \
             period_end == @last_end_period
         '''
-        df.query(query_expression, inplace=True)
+        df.query(expression, inplace=True)
         # sort for drop operation
         df.sort_values(
             ['period_end', 'period_reference', 'account_code'],
