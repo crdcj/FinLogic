@@ -94,16 +94,16 @@ def clean_raw_df(df) -> pd.DataFrame:
         'CD_CVM': 'cvm_id',
         'CNPJ_CIA': 'fiscal_id',
         'DENOM_CIA': 'company_name',
-        'DT_REFER': 'reference_date',
         'VERSAO': 'report_version',
-        'DT_INI_EXERC': 'start_date',
-        'DT_FIM_EXERC': 'end_date',
-        'ORDEM_EXERC': 'year_order',
+        'DT_INI_EXERC': 'period_begin',
+        'DT_FIM_EXERC': 'period_end',
+        'DT_REFER': 'period_reference',
+        'ORDEM_EXERC': 'period_order',
         'CD_CONTA': 'account_code',
         'DS_CONTA': 'account_name',
-        'ST_CONTA_FIXA': 'fixed_account',
-        'COLUNA_DF': 'report_column',
+        'ST_CONTA_FIXA': 'account_fixed',
         'VL_CONTA': 'account_value',
+        'COLUNA_DF': 'equity_statement_column',
         'MOEDA': 'currency',
         'ESCALA_MOEDA': 'currency_unit',
     }
@@ -135,26 +135,26 @@ def clean_raw_df(df) -> pd.DataFrame:
         df['account_value'] * df['currency_unit'])
     df.drop(columns=['currency_unit', 'account_codes_level'], inplace=True)
 
-    # df['fixed_account'].unique() -> ['S', 'N']
-    df['fixed_account'] = df['fixed_account'].map({'S': True, 'N': False})
+    # df['account_fixed'].unique() -> ['S', 'N']
+    df['account_fixed'] = df['account_fixed'].map({'S': True, 'N': False})
 
-    # df['year_order'].unique() -> ['PENÚLTIMO', 'ÚLTIMO']
-    df['year_order'] = df['year_order'].map({'ÚLTIMO': 0, 'PENÚLTIMO': -1})
-    df['year_order'] = df['year_order'].astype(np.int8)
+    # df['period_order'].unique() -> ['PENÚLTIMO', 'ÚLTIMO']
+    df['period_order'] = df['period_order'].map({'ÚLTIMO': 0, 'PENÚLTIMO': -1})
+    df['period_order'] = df['period_order'].astype(np.int8)
 
-    df['reference_date'] = pd.to_datetime(df['reference_date'])
-    df['end_date'] = pd.to_datetime(df['end_date'])
-    # BPA, BPP and DFC files have no start_date column.
-    if 'start_date' in df.columns:
-        df['start_date'] = pd.to_datetime(df['start_date'])
+    df['period_reference'] = pd.to_datetime(df['period_reference'])
+    df['period_end'] = pd.to_datetime(df['period_end'])
+    # BPA, BPP and DFC files have no period_begin column.
+    if 'period_begin' in df.columns:
+        df['period_begin'] = pd.to_datetime(df['period_begin'])
     else:
-        # column_order.remove('start_date')
-        df['start_date'] = pd.NaT
-    if 'report_column' not in df.columns:
-        df['report_column'] = np.nan
+        # column_order.remove('period_begin')
+        df['period_begin'] = pd.NaT
+    if 'equity_statement_column' not in df.columns:
+        df['equity_statement_column'] = np.nan
 
     """
-    report_type -> Financial Statemen Type
+    account_basis -> Financial Statemen Type
     Consolidated and Separate Financial Statements (IAS 27/2003)
     df['GRUPO_DFP'].unique() result:
         'DF Consolidado - Balanço Patrimonial Ativo',
@@ -175,29 +175,29 @@ def clean_raw_df(df) -> pd.DataFrame:
     if == 'Con' -> consolidated statement
     if == 'Ind' -> separate statement
     """
-    df['report_type'] = df['GRUPO_DFP'].str[3:6].map({
+    df['account_basis'] = df['GRUPO_DFP'].str[3:6].map({
         'Con': 'consolidated',
         'Ind': 'separate'})
-    df['report_type'] = df['report_type'].astype('category')
-    # Information in 'GRUPO_DFP' is already in 'report_type' or in report_type.
+    df['account_basis'] = df['account_basis'].astype('category')
+    # 'GRUPO_DFP' data can be inferred from 'account_basis' and report_type
     df.drop(columns=['GRUPO_DFP'], inplace=True)
 
     columns_order = [
         'cvm_id',
         'fiscal_id',
         'company_name',
-        'report_period',
-        'report_version',
         'report_type',
-        'reference_date',
-        'start_date',
-        'end_date',
-        'year_order',
+        'report_version',
+        'period_reference',
+        'period_begin',
+        'period_end',
+        'period_order',
         'account_code',
         'account_name',
-        'fixed_account',
-        'report_column',
+        'account_basis',
+        'account_fixed',
         'account_value',
+        'equity_statement_column',
     ]
     df = df[columns_order]
 
@@ -217,9 +217,9 @@ def process_raw_file(parent_filename):
         df_child = pd.read_csv(child_file, **READ_OPTIONS)
         # There are two types of CVM files: DFP(annual) and ITR(quarterly).
         if parent_filename[0:3] == 'dfp':
-            df_child['report_period'] = 'annual'
+            df_child['report_type'] = 'annual'
         else:
-            df_child['report_period'] = 'quarterly'
+            df_child['report_type'] = 'quarterly'
 
         df_child = clean_raw_df(df_child)
         df = pd.concat([df, df_child], ignore_index=True)
@@ -245,10 +245,10 @@ def update_processed_dataset():
 
     sort_by = [
         'cvm_id',
-        'reference_date',
+        'period_reference',
         'report_version',
-        'year_order',
-        'report_type',
+        'period_order',
+        'account_basis',
         'account_code',
     ]
     df.sort_values(by=sort_by, ignore_index=True, inplace=True)
