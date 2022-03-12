@@ -54,9 +54,8 @@ def list_urls() -> list:
     Por conta disso, soma-se 2 ano ano atual (o segundo limite da função range
     é exlusivo)
     """
-    # first year avaible at CVM Portal
-    first_year = 2010
-    # Next year files will appear during current year
+    first_year = 2010  # First year avaible at CVM Portal.
+    # Next year files will appear during current year.
     last_year = pd.Timestamp.now().year + 1
     years = list(range(first_year, last_year + 1))
     first_year_itr = last_year - 3
@@ -90,49 +89,69 @@ def update_raw_dataset():
 
 def clean_raw_df(df) -> pd.DataFrame:
     """Convert raw dataframe into processed dataframe."""
-    # df.VERSAO.unique() -> ['3', '2', '4', '1', '7', '5', '6', '9', '8']
-    df.VERSAO = df.VERSAO.astype(np.int8)
-    df.CD_CVM = df.CD_CVM.astype(np.int32)  # max < 600_000
-    df.VL_CONTA = df.VL_CONTA.astype(float)
 
-    # df.query("VL_CONTA == 0") -> 10.891.139 rows from 17.674.199
-    # Zero values will not be used
-    df.query("VL_CONTA != 0", inplace=True)
+    columns_translation = {
+        'CD_CVM': 'cvm_id',
+        'CNPJ_CIA': 'fiscal_id',
+        'DENOM_CIA': 'company_name',
+        'DT_REFER': 'reference_date',
+        'VERSAO': 'report_version',
+        'DT_INI_EXERC': 'start_date',
+        'DT_FIM_EXERC': 'end_date',
+        'ORDEM_EXERC': 'year_order',
+        'CD_CONTA': 'account_code',
+        'DS_CONTA': 'account_name',
+        'ST_CONTA_FIXA': 'fixed_account',
+        'COLUNA_DF': 'report_column',
+        'VL_CONTA': 'account_value',
+        'MOEDA': 'currency',
+        'ESCALA_MOEDA': 'currency_unit',
+    }
+    df.rename(columns=columns_translation, inplace=True)
+    # df['report_version'].unique()
+    # ['3', '2', '4', '1', '7', '5', '6', '9', '8']
+    df['report_version'] = df['report_version'].astype(np.int8)
+    df['cvm_id'] = df['cvm_id'].astype(np.int32)  # max < 600_000
+    df['account_value'] = df['account_value'].astype(float)
 
-    # df.MOEDA.value_counts() -> REAL    43391302
-    df.drop(columns=['MOEDA'], inplace=True)
+    # df.query("account_value == 0") -> 10.891.139 rows from 17.674.199
+    # Zero values will not be used.
+    df.query("account_value != 0", inplace=True)
 
-    # df.ESCALA_MOEDA.value_counts()
+    # df['currency'].value_counts() -> REAL    43391302
+    df.drop(columns=['currency'], inplace=True)
+
+    # df['currency_unit'].value_counts()
     #   MIL        40483230
     #   UNIDADE     2908072
-    df.ESCALA_MOEDA = df.ESCALA_MOEDA.map({'MIL': 1000, 'UNIDADE': 1})
+    df['currency_unit'] = df['currency_unit'].map({'MIL': 1000, 'UNIDADE': 1})
 
-    # unit base currency
-    df['account_codes_level'] = df['CD_CONTA'].str[0:4]
-    # do not adjust earnings per share rows (account codes 3.99...)
-    df.VL_CONTA = np.where(
+    # Unit base currency.
+    df['account_codes_level'] = df['account_code'].str[0:4]
+    # Do not adjust earnings per share rows (account codes 3.99...)
+    df['account_value'] = np.where(
         df.account_codes_level == '3.99',
-        df.VL_CONTA,
-        df.VL_CONTA * df.ESCALA_MOEDA)
-    df.drop(columns=['ESCALA_MOEDA', 'account_codes_level'], inplace=True)
+        df['account_value'],
+        df['account_value'] * df['currency_unit'])
+    df.drop(columns=['currency_unit', 'account_codes_level'], inplace=True)
 
-    # df.ST_CONTA_FIXA.unique() -> ['S', 'N']
-    df.ST_CONTA_FIXA = df.ST_CONTA_FIXA.map({'S': True, 'N': False})
+    # df['fixed_account'].unique() -> ['S', 'N']
+    df['fixed_account'] = df['fixed_account'].map({'S': True, 'N': False})
 
-    # df.ORDEM_EXERC.unique() -> ['PENÚLTIMO', 'ÚLTIMO']
-    df.ORDEM_EXERC = df.ORDEM_EXERC.map({'ÚLTIMO': 0, 'PENÚLTIMO': -1})
-    df.ORDEM_EXERC = df.ORDEM_EXERC.astype(np.int8)
+    # df['year_order'].unique() -> ['PENÚLTIMO', 'ÚLTIMO']
+    df['year_order'] = df['year_order'].map({'ÚLTIMO': 0, 'PENÚLTIMO': -1})
+    df['year_order'] = df['year_order'].astype(np.int8)
 
-    df.DT_REFER = pd.to_datetime(df.DT_REFER)
-    df.DT_FIM_EXERC = pd.to_datetime(df.DT_FIM_EXERC)
-    # BPA, BPP and DFC files have no DT_INI_EXERC column
-    if 'DT_INI_EXERC' in df.columns:
-        df.DT_INI_EXERC = pd.to_datetime(df.DT_INI_EXERC)
+    df['reference_date'] = pd.to_datetime(df['reference_date'])
+    df['end_date'] = pd.to_datetime(df['end_date'])
+    # BPA, BPP and DFC files have no start_date column.
+    if 'start_date' in df.columns:
+        df['start_date'] = pd.to_datetime(df['start_date'])
     else:
-        # column_order.remove('DT_INI_EXERC')
-        df['DT_INI_EXERC'] = pd.NaT
-    if 'COLUNA_DF' not in df.columns:
-        df['COLUNA_DF'] = np.nan
+        # column_order.remove('start_date')
+        df['start_date'] = pd.NaT
+    if 'report_column' not in df.columns:
+        df['report_column'] = np.nan
 
     """
     report_type -> Financial Statemen Type
@@ -160,13 +179,25 @@ def clean_raw_df(df) -> pd.DataFrame:
         'Con': 'consolidated',
         'Ind': 'separate'})
     df['report_type'] = df['report_type'].astype('category')
-    # information in 'GRUPO_DFP' is already in 'report_type' or in report_type
+    # Information in 'GRUPO_DFP' is already in 'report_type' or in report_type.
     df.drop(columns=['GRUPO_DFP'], inplace=True)
 
     columns_order = [
-        'CD_CVM', 'CNPJ_CIA', 'DENOM_CIA', 'report_period', 'report_type',
-        'DT_REFER', 'VERSAO', 'DT_INI_EXERC', 'DT_FIM_EXERC', 'ORDEM_EXERC',
-        'CD_CONTA', 'DS_CONTA', 'ST_CONTA_FIXA', 'COLUNA_DF', 'VL_CONTA'
+        'cvm_id',
+        'fiscal_id',
+        'company_name',
+        'report_period',
+        'report_version',
+        'report_type',
+        'reference_date',
+        'start_date',
+        'end_date',
+        'year_order',
+        'account_code',
+        'account_name',
+        'fixed_account',
+        'report_column',
+        'account_value',
     ]
     df = df[columns_order]
 
@@ -184,7 +215,7 @@ def process_raw_file(parent_filename):
         # print(child_parent_file_name)
         child_file = parent_file.open(child_filename)
         df_child = pd.read_csv(child_file, **READ_OPTIONS)
-        # there are two types of CVM files: DFP(annual) and ITR(quarterly)
+        # There are two types of CVM files: DFP(annual) and ITR(quarterly).
         if parent_filename[0:3] == 'dfp':
             df_child['report_period'] = 'annual'
         else:
@@ -209,12 +240,16 @@ def update_processed_dataset():
     print('Concatenating dataframes ...')
     df = pd.concat(lista_dfs, ignore_index=True)
 
-    # correct/harmonize some account texts
+    # Correct/harmonize some account texts.
     df.replace(to_replace=['\xa0ON\xa0', 'On'], value='ON', inplace=True)
 
     sort_by = [
-        'CD_CVM', 'DT_REFER', 'VERSAO', 'ORDEM_EXERC', 'report_type',
-        'CD_CONTA'
+        'cvm_id',
+        'reference_date',
+        'report_version',
+        'year_order',
+        'report_type',
+        'account_code',
     ]
     df.sort_values(by=sort_by, ignore_index=True, inplace=True)
 

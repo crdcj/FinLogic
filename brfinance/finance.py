@@ -12,18 +12,7 @@ class Finance():
     script_dir = os.path.dirname(__file__)
     DATASET = pd.read_pickle(script_dir + '/data/processed/dataset.pkl.zst')
     TAX_RATE = 0.34
-    companies_list = list(DATASET['CD_CVM'].unique())
-
-    @classmethod
-    def search_company(cls, expression: str) -> pd.DataFrame:
-        """Return dataframe with companies that matches the 'expression'"""
-        expression = expression.upper()
-        mask = cls.DATASET.DENOM_CIA.str.contains(expression)
-        df = cls.DATASET[mask].copy()
-        df.sort_values(by='DENOM_CIA', inplace=True)
-        df.drop_duplicates(subset='CD_CVM', inplace=True, ignore_index=True)
-        columns = ['DENOM_CIA', 'CD_CVM', 'CNPJ_CIA']
-        return df[columns]
+    companies_list = list(DATASET['cvm_id'].unique())
 
     def __init__(
         self,
@@ -51,6 +40,17 @@ class Finance():
         self.unit = unit
         self.show_accounts = show_accounts
         self._set_main_df()
+
+    @classmethod
+    def search_company(cls, expression: str) -> pd.DataFrame:
+        """Return dataframe with companies that matches the 'expression'"""
+        expression = expression.upper()
+        mask = cls.DATASET.company_name.str.contains(expression)
+        df = cls.DATASET[mask].copy()
+        df.sort_values(by='company_name', inplace=True)
+        df.drop_duplicates(subset='cvm_id', inplace=True, ignore_index=True)
+        columns = ['company_name', 'cvm_id', 'fiscal_id']
+        return df[columns]
 
     @property
     def cvm_number(self):
@@ -145,25 +145,28 @@ class Finance():
 
     def _set_main_df(self) -> pd.DataFrame:
         self._MAIN_DF = Finance.DATASET.query(
-            'CD_CVM == @self.cvm_number').copy()
+            'cvm_id == @self.cvm_number').copy()
         self._MAIN_DF = self._MAIN_DF.astype({
-            'CD_CVM': 'object',
+            'cvm_id': np.uint32,
+            'fiscal_id': str,
+            'company_name': str,
             'report_period': str,
+            'report_version': str,
             'report_type': str,
-            'DT_REFER': 'datetime64',
-            'DT_INI_EXERC': 'datetime64',
-            'DT_FIM_EXERC': 'datetime64',
-            'ORDEM_EXERC': np.int8,
-            'CD_CONTA': 'object',
-            'DS_CONTA': 'object',
-            'ST_CONTA_FIXA': bool,
-            'COLUNA_DF': 'object',
-            'VL_CONTA': float
+            'reference_date': 'datetime64',
+            'start_date': 'datetime64',
+            'end_date': 'datetime64',
+            'year_order': np.int8,
+            'account_code': str,
+            'account_name': str,
+            'fixed_account': bool,
+            'report_column': str,
+            'account_value': float,
         })
         """
-        Get accounting code (ac) levels 1 and 2 from CD_CONTA column.
-        The first part of CD_CONTA is the FS type
-        df['CD_CONTA'].str[0].unique() -> [1, 2, 3, 4, 5, 6, 7]
+        Get accounting code (ac) levels 1 and 2 from 'account_code' column.
+        The first part of 'account_code' is the FS type
+        df['account_code'].str[0].unique() -> [1, 2, 3, 4, 5, 6, 7]
         Table of correspondences:
             1 -> Balanço Patrimonial Ativo
             2 -> Balanço Patrimonial Passivo
@@ -173,27 +176,27 @@ class Finance():
             6 -> Demonstração do Fluxo de Caixa (Método Indireto)
             7 -> Demonstração de Valor Adicionado
         """
-        self._MAIN_DF['account_code_p1'] = self._MAIN_DF['CD_CONTA'].str[0]
+        self._MAIN_DF['account_code_p1'] = self._MAIN_DF['account_code'].str[0]
         self._MAIN_DF['account_code_p12'] = (
-            self._MAIN_DF['CD_CONTA'].str[0:4]
+            self._MAIN_DF['account_code'].str[0:4]
         )
         self._MAIN_DF.sort_values(
-            by='CD_CONTA', ignore_index=True, inplace=True)
+            by='account_code', ignore_index=True, inplace=True)
 
     def _get_company_df(self) -> pd.DataFrame:
         query_expression = '''
             report_type == @self.report_type and \
-            DT_FIM_EXERC >= @self.first_period and \
-            DT_FIM_EXERC <= @self.last_period
+            end_date >= @self.first_period and \
+            end_date <= @self.last_period
         '''
         df = self._MAIN_DF.query(query_expression).copy()
         # change unit only for accounts different from 3.99
-        df['VL_CONTA'] = np.where(
+        df['account_value'] = np.where(
             df['account_code_p12'] == '3.99',
-            df['VL_CONTA'],
-            df['VL_CONTA'] / self._unit
+            df['account_value'],
+            df['account_value'] / self._unit
         )
-        df['account_code_len'] = df['CD_CONTA'].str.len()
+        df['account_code_len'] = df['account_code'].str.len()
         # show only selected accounting levels
         if self.show_accounts > 0:
             account_code_limit = self.show_accounts * 3 + 1  # noqa
@@ -206,14 +209,16 @@ class Finance():
         """Return company info."""
         dfa = self._MAIN_DF.query('report_period == "annual"')
         dfq = self._MAIN_DF.query('report_period == "quarterly"')
-        first_annual_report = dfa.DT_REFER.min().strftime('%Y-%m-%d')
-        last_annual_report = dfa.DT_REFER.max().strftime('%Y-%m-%d')
-        last_quarterly_report = dfq.DT_REFER.max().strftime('%Y-%m-%d')
+        first_annual_report = dfa['reference_date'].min().strftime('%Y-%m-%d')
+        last_annual_report = dfa['reference_date'].max().strftime('%Y-%m-%d')
+        last_quarterly_report = (
+            dfq['reference_date'].max().strftime('%Y-%m-%d')
+        )
 
         company_info = {
-            'CVM number': self._MAIN_DF.loc[0, 'CD_CVM'],
-            'Fiscal Code': self._MAIN_DF.loc[0, 'CNPJ_CIA'],
-            'Name': self._MAIN_DF.loc[0, 'DENOM_CIA'],
+            'CVM Number': self._MAIN_DF.loc[0, 'cvm_id'],
+            'Fiscal Number': self._MAIN_DF.loc[0, 'fiscal_id'],
+            'Company Name': self._MAIN_DF.loc[0, 'company_name'],
             'First Annual Report': first_annual_report,
             'Last Annual Report': last_annual_report,
             'Last Quarterly Report': last_quarterly_report,
@@ -262,7 +267,7 @@ class Finance():
         """
         df = self._get_company_df()
         df.query(
-            'CD_CONTA == "3.99.01.01" or CD_CONTA == "3.99.02.01"',
+            'account_code == "3.99.01.01" or account_code == "3.99.02.01"',
             inplace=True
         )
 
@@ -271,29 +276,29 @@ class Finance():
     @staticmethod
     def calculate_ltm(df_flow: pd.DataFrame) -> pd.DataFrame:
         last_annual = df_flow.query(
-            'report_period == "annual"')['DT_FIM_EXERC'].max()
+            'report_period == "annual"')['end_date'].max()
         last_quarterly = df_flow.query(
-            'report_period == "quarterly"')['DT_FIM_EXERC'].max()
+            'report_period == "quarterly"')['end_date'].max()
         if last_annual > last_quarterly:
             df_flow.query('report_period == "annual"', inplace=True)
             return df_flow
 
-        df1 = df_flow.query('DT_FIM_EXERC == @last_quarterly').copy()
-        df1.query('DT_INI_EXERC == DT_INI_EXERC.min()', inplace=True)
+        df1 = df_flow.query('end_date == @last_quarterly').copy()
+        df1.query('start_date == start_date.min()', inplace=True)
 
-        df2 = df_flow.query('DT_REFER == @last_quarterly').copy()
-        df2.query('DT_INI_EXERC == DT_INI_EXERC.min()', inplace=True)
-        df2['VL_CONTA'] = -df2['VL_CONTA']
+        df2 = df_flow.query('reference_date == @last_quarterly').copy()
+        df2.query('start_date == start_date.min()', inplace=True)
+        df2['account_value'] = -df2['account_value']
 
-        df3 = df_flow.query('DT_FIM_EXERC == @last_annual').copy()
+        df3 = df_flow.query('end_date == @last_annual').copy()
 
         df_ltm = pd.concat([df1, df2, df3], ignore_index=True)
-        df_ltm = df_ltm[['CD_CONTA', 'VL_CONTA']]
-        df_ltm = df_ltm.groupby(by='CD_CONTA').sum().reset_index()
-        df1.drop(columns='VL_CONTA', inplace=True)
+        df_ltm = df_ltm[['account_code', 'account_value']]
+        df_ltm = df_ltm.groupby(by='account_code').sum().reset_index()
+        df1.drop(columns='account_value', inplace=True)
         df_ltm = pd.merge(df1, df_ltm)
         df_ltm['report_period'] = 'ltm'
-        df_ltm['DT_INI_EXERC'] = last_quarterly - pd.DateOffset(years=1)
+        df_ltm['start_date'] = last_quarterly - pd.DateOffset(years=1)
 
         df_flow.query('report_period == "annual"', inplace=True)
         df_flow_ltm = pd.concat([df_flow, df_ltm], ignore_index=True)
@@ -318,8 +323,8 @@ class Finance():
     @staticmethod
     def account_value(account_code: str, df: pd.DataFrame) -> float:
         """Return value for an account in dataframe."""
-        df.query('CD_CONTA == @account_code', inplace=True)
-        return df.iloc[0]['VL_CONTA']
+        df.query('account_code == @account_code', inplace=True)
+        return df.iloc[0]['account_value']
 
     @staticmethod
     def shift_right(s: pd.Series, is_on: bool) -> pd.Series:
@@ -334,14 +339,14 @@ class Finance():
         """Return company main operating indicators."""
         df = self._get_company_df()
         df_as = self.assets
-        # df_as.query('CD_CONTA == "1"', inplace=True)
+        # df_as.query('account_code == "1"', inplace=True)
         df_le = self.liabilities_and_equity
-        # df_le.query('CD_CONTA == "2.03"', inplace=True)
+        # df_le.query('account_code == "2.03"', inplace=True)
         df_in = self.income
-        # df_in.query('CD_CONTA == "3.11"', inplace=True)
+        # df_in.query('account_code == "3.11"', inplace=True)
         df = pd.concat([df_as, df_le, df_in], ignore_index=True)
-        df.set_index(keys='CD_CONTA', drop=True, inplace=True)
-        df.drop(columns=['ST_CONTA_FIXA', 'DS_CONTA'], inplace=True)
+        df.set_index(keys='account_code', drop=True, inplace=True)
+        df.drop(columns=['fixed_account', 'account_name'], inplace=True)
 
         # series definition
         revenues = df.loc['3.01']
@@ -373,7 +378,7 @@ class Finance():
 
         # discard rows used for calculation
         df = df.iloc[-6:]
-        # discard index name 'CD_CONTA'
+        # discard index name 'account_code'
         df.index.name = None
         # df.reset_index(drop=True, inplace=True)
         return df
@@ -394,40 +399,42 @@ class Finance():
         df_le = self.liabilities_and_equity
         df_is = self.income
         df = pd.concat([df_as, df_le, df_is], ignore_index=True)
-        df.query('CD_CONTA == @accounts', inplace=True)
+        df.query('account_code == @accounts', inplace=True)
         return df
 
     def _make_report(self, df: pd.DataFrame) -> pd.DataFrame:
         # keep only last quarterly fs
-        last_end_period = df.DT_FIM_EXERC.max()  # noqa
+        last_end_period = df.end_date.max()  # noqa
         query_expression = '''
             report_period == 'annual' or \
-            DT_FIM_EXERC == @last_end_period
+            end_date == @last_end_period
         '''
         df.query(query_expression, inplace=True)
         # sort for drop operation
-        df.sort_values(['DT_FIM_EXERC', 'DT_REFER', 'CD_CONTA'], inplace=True)
+        df.sort_values(
+            ['end_date', 'reference_date', 'account_code'],
+            inplace=True
+        )
         # only last published statements will be used
-        df['financial_year'] = df.DT_FIM_EXERC.dt.year
+        df['financial_year'] = df.end_date.dt.year
         df.drop_duplicates(
-            subset=['financial_year', 'CD_CONTA'],
+            subset=['financial_year', 'account_code'],
             keep='last',
             inplace=True,
             ignore_index=True
         )
-        base_columns = ['DS_CONTA', 'CD_CONTA', 'ST_CONTA_FIXA']
+        base_columns = ['account_name', 'account_code', 'fixed_account']
         df_report = df.loc[:, base_columns]
         df_report.drop_duplicates(ignore_index=True, inplace=True)
 
-        merge_columns = base_columns + ['VL_CONTA']
-        for period in df.DT_FIM_EXERC.unique():
+        merge_columns = base_columns + ['account_value']
+        for period in df.end_date.unique():
             # print(date)
-            df_year = df.query('DT_FIM_EXERC == @period').copy()
+            df_year = df.query('end_date == @period').copy()
             df_year = df_year[merge_columns]
-            df_year.rename(
-                columns={'VL_CONTA': np.datetime_as_string(period, unit='D')},
-                inplace=True)
+            period_str = np.datetime_as_string(period, unit='D')
+            df_year.rename(columns={'account_value': period_str}, inplace=True)
             df_report = pd.merge(df_report, df_year, how='left')
 
-        df_report.sort_values('CD_CONTA', ignore_index=True, inplace=True)
+        df_report.sort_values('account_code', ignore_index=True, inplace=True)
         return df_report

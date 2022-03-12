@@ -1,5 +1,6 @@
 # BrFin
 1 implementar seleção por CNPJ
+2 implementar o atributo cuja entrada é uma lista de códigos
 2 como fica a estrutura da classe e os limites de tempo/metódos/atributos?
 
 Financial indicators for brazilian companies 
