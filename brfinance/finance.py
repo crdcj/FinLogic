@@ -12,11 +12,13 @@ class Finance():
     script_dir = os.path.dirname(__file__)
     DATASET = pd.read_pickle(script_dir + '/data/processed/dataset.pkl.zst')
     TAX_RATE = 0.34
-    companies_list = list(DATASET['cvm_id'].unique())
+    CVM_IDS = list(DATASET['cvm_id'].unique())
+    FISCAL_IDS = list(DATASET['fiscal_id'].unique())
 
     def __init__(
         self,
-        cvm_number: int,
+        company_id,
+        fiscal_id: str = '',
         account_basis: str = 'consolidated',
         first_period: str = '2009-12-31',
         last_period: str = '2200-12-31',
@@ -26,14 +28,17 @@ class Finance():
         """Initialize main variables.
 
         Args:
-            cvm_number (int): CVM unique number of the company.
+            company_id: can be used the CVM ID or Fiscal ID for the company.
+                CVM ID must be an integer
+                Fiscal ID must be a string in the format: 'XX.XXX.XXX/XXXX-XX'
             account_basis (str, optional): 'consolidated' or 'separate'.
             first_period: first accounting period in YYYY-MM-DD format
             last_period: last accounting period in YYYY-MM-DD format
             unit (float, optional): number to divide account values
             show_accounts: account levels to show (default = show all accounts)
         """
-        self.cvm_number = cvm_number
+        self.company_id = company_id
+        self.fiscal_id = fiscal_id
         self.account_basis = account_basis
         self.first_period = first_period
         self.last_period = last_period
@@ -53,17 +58,25 @@ class Finance():
         return df[columns]
 
     @property
-    def cvm_number(self):
-        """Return cvm_number if number exists in DATASET."""
-        return self._cvm_number
+    def company_id(self):
+        """Return company selected identifier if it exists in DATASET."""
+        return self._company_id
 
-    @cvm_number.setter
-    def cvm_number(self, value):
-        if value in Finance.companies_list:
-            self._cvm_number = value
+    @company_id.setter
+    def company_id(self, value):
+        self._company_id = value
+        if value in Finance.CVM_IDS:
+            self._cvm_id = value
+            df = Finance.DATASET.query('cvm_id == @self._cvm_id').copy()
+            df.reset_index(drop=True, inplace=True)
+            self._fiscal_id = df.loc[0, 'fiscal_id']
+        elif value in Finance.FISCAL_IDS:
+            self._fiscal_id = value
+            df = Finance.DATASET.query('fiscal_id == @self._fiscal_id').copy()
+            df.reset_index(drop=True, inplace=True)
+            self._cvm_id = df.loc[0, 'cvm_id']
         else:
-            print('cvm_number not found')
-            self._cvm_number = None
+            raise ValueError("Company CVM Id or Fiscal Id not found")
 
     @property
     def account_basis(self):
@@ -144,8 +157,7 @@ class Finance():
             raise ValueError("Unit value must be greater than 0")
 
     def _set_main_df(self) -> pd.DataFrame:
-        self._MAIN_DF = Finance.DATASET.query(
-            'cvm_id == @self.cvm_number').copy()
+        self._MAIN_DF = Finance.DATASET.query('cvm_id == @self._cvm_id').copy()
         self._MAIN_DF = self._MAIN_DF.astype({
             'cvm_id': np.uint32,
             'fiscal_id': str,
