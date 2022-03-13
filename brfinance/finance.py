@@ -17,8 +17,7 @@ class Finance():
 
     def __init__(
         self,
-        company_id,
-        fiscal_id: str = '',
+        corporation_id,
         account_basis: str = 'consolidated',
         first_period: str = '2009-12-31',
         last_period: str = '2200-12-31',
@@ -28,7 +27,7 @@ class Finance():
         """Initialize main variables.
 
         Args:
-            company_id: can be used the CVM ID or Fiscal ID for the company.
+            corporation_id: can be used both CVM (regulator) ID  or Fiscal ID.
                 CVM ID must be an integer
                 Fiscal ID must be a string in the format: 'XX.XXX.XXX/XXXX-XX'
             account_basis (str, optional): 'consolidated' or 'separate'.
@@ -37,8 +36,7 @@ class Finance():
             unit (float, optional): number to divide account values
             show_accounts: account levels to show (default = show all accounts)
         """
-        self.company_id = company_id
-        self.fiscal_id = fiscal_id
+        self.corporation_id = corporation_id
         self.account_basis = account_basis
         self.first_period = first_period
         self.last_period = last_period
@@ -58,13 +56,13 @@ class Finance():
         return df[columns]
 
     @property
-    def company_id(self):
+    def corporation_id(self):
         """Return company selected identifier if it exists in DATASET."""
-        return self._company_id
+        return self._corporation_id
 
-    @company_id.setter
-    def company_id(self, value):
-        self._company_id = value
+    @corporation_id.setter
+    def corporation_id(self, value):
+        self._corporation_id = value
         if value in Finance.CVM_IDS:
             self._cvm_id = value
             df = Finance.DATASET.query('cvm_id == @self._cvm_id').copy()
@@ -107,7 +105,6 @@ class Finance():
             print('2009-12-31 selected instead')
             self._min_end_period = pd.to_datetime('2009-12-31')
         else:
-            print(f"Selected first_period = {value.date()}")
             self._min_end_period = value
 
     @property
@@ -123,7 +120,6 @@ class Finance():
             print('2200-12-31 selected instead')
             self._max_end_period = pd.to_datetime('2200-12-31')
         else:
-            print(f"Selected last_period = {value.date()}")
             self._max_end_period = value
 
     @property
@@ -395,22 +391,12 @@ class Finance():
         # df.reset_index(drop=True, inplace=True)
         return df
 
-    @property
-    def valuation(self) -> pd.DataFrame:
-        accounts = [  # noqa
-            '3.01', '3.02', '3.03', '3.04', '3.04.01', '3.04.02', '3.04.03',
-            '3.04.04', '3.04.05', '3.04.06', '3.05', '3.06', '3.07', '3.08',
-            '3.09', '3.10', '3.10.01', '3.11', '1.01', '1.01.01', '1.01.02',
-            '1.01.03', '1.01.04', '1.01.05', '1.01.06', '1.01.07', '1.01.08',
-            '1.02.01', '1.02.02', '1.02.03', '1.02.04', '2.01', '2.01.01',
-            '2.01.02', '2.01.03', '2.01.04', '2.01.05', '2.01.06', '2.02',
-            '2.02.01', '2.02.02', '2.02.03', '2.02.04', '2.03', '2.03.09',
-            '6.01', '6.01.01', '6.01.02'
-        ]
+    def get_accounts(self, accounts: list) -> pd.DataFrame:
         df_as = self.assets
         df_le = self.liabilities_and_equity
         df_is = self.income
-        df = pd.concat([df_as, df_le, df_is], ignore_index=True)
+        df_cf = self.cash_flow
+        df = pd.concat([df_as, df_le, df_is, df_cf], ignore_index=True)
         df.query('account_code == @accounts', inplace=True)
         return df
 
