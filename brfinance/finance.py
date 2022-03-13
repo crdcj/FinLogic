@@ -19,8 +19,6 @@ class Finance():
         self,
         corporation_id,
         account_basis: str = 'consolidated',
-        first_period: str = '2009-12-31',
-        last_period: str = '2200-12-31',
         show_accounts: int = 0,
         unit: float = 1
     ):
@@ -38,11 +36,9 @@ class Finance():
         """
         self.corporation_id = corporation_id
         self.account_basis = account_basis
-        self.first_period = first_period
-        self.last_period = last_period
         self.unit = unit
         self.show_accounts = show_accounts
-        self._set_main_df()
+        self._set_data()
 
     @classmethod
     def search_company(cls, expression: str) -> pd.DataFrame:
@@ -93,36 +89,6 @@ class Finance():
             raise ValueError("Select 'consolidated' or 'separate' report type")
 
     @property
-    def first_period(self):
-        """Return selected start date for filtering FS end period."""
-        return self._min_end_period
-
-    @first_period.setter
-    def first_period(self, value):
-        value = pd.to_datetime(value, errors='coerce')
-        if value == pd.NaT:
-            print('Inserted first_period period not in YYYY-MM-DD format')
-            print('2009-12-31 selected instead')
-            self._min_end_period = pd.to_datetime('2009-12-31')
-        else:
-            self._min_end_period = value
-
-    @property
-    def last_period(self):
-        """Return selected end date for filtering FS end period."""
-        return self._max_end_period
-
-    @last_period.setter
-    def last_period(self, value):
-        value = pd.to_datetime(value, errors='coerce')
-        if value == pd.NaT:
-            print('Inserted last_period not in YYYY-MM-DD format')
-            print('2200-12-31 selected instead')
-            self._max_end_period = pd.to_datetime('2200-12-31')
-        else:
-            self._max_end_period = value
-
-    @property
     def show_accounts(self):
         """Return account levels to show: default = 0 (show all accounts).
         X.YY.ZZ.WW...   level 0
@@ -153,9 +119,9 @@ class Finance():
         else:
             raise ValueError("Unit value must be greater than 0")
 
-    def _set_main_df(self) -> pd.DataFrame:
-        self._MAIN_DF = Finance.DATASET.query('cvm_id == @self._cvm_id').copy()
-        self._MAIN_DF = self._MAIN_DF.astype({
+    def _set_data(self) -> pd.DataFrame:
+        self._DF = Finance.DATASET.query('cvm_id == @self._cvm_id').copy()
+        self._DF = self._DF.astype({
             'cvm_id': np.uint32,
             'fiscal_id': str,
             'company_name': str,
@@ -184,19 +150,24 @@ class Finance():
             6 -> Cash Flow (Indirect Method)
             7 -> Added Value
         """
-        self._MAIN_DF.sort_values(
+        self._DF.sort_values(
             by='account_code',
             ignore_index=True,
             inplace=True
         )
+        self._CORPORATION_NAME = self._DF['company_name'].unique()[0]
+        self._FIRST_ANNUAL = self._DF.query(
+            'report_type == "annual"')['period_end'].min()
+        self._LAST_ANNUAL = self._DF.query(
+            'report_type == "annual"')['period_end'].max()
+        self._LAST_QUARTERLY = self._DF.query(
+            'report_type == "quarterly"')['period_end'].max()
 
     def _get_company_df(self) -> pd.DataFrame:
         expression = '''
-            account_basis == @self.account_basis and \
-            period_end >= @self.first_period and \
-            period_end <= @self.last_period
+            account_basis == @self.account_basis
         '''
-        df = self._MAIN_DF.query(expression).copy()
+        df = self._DF.query(expression).copy()
         # change unit only for accounts different from 3.99
         df['account_value'] = np.where(
             df['account_code'].str.startswith('3.99'),
@@ -215,20 +186,13 @@ class Finance():
     @property
     def info(self) -> dict:
         """Return company info."""
-        dfa = self._MAIN_DF.query('report_type == "annual"')
-        dfq = self._MAIN_DF.query('report_type == "quarterly"')
-        fmt = '%Y-%m-%d'
-        first_annual_report = dfa['period_reference'].min().strftime(fmt)
-        last_annual_report = dfa['period_reference'].max().strftime(fmt)
-        last_quarterly_report = dfq['period_reference'].max().strftime(fmt)
-
         company_info = {
-            'CVM Number': self._MAIN_DF.loc[0, 'cvm_id'],
-            'Fiscal Number': self._MAIN_DF.loc[0, 'fiscal_id'],
-            'Company Name': self._MAIN_DF.loc[0, 'company_name'],
-            'First Annual Report': first_annual_report,
-            'Last Annual Report': last_annual_report,
-            'Last Quarterly Report': last_quarterly_report,
+            'Company Name': self._CORPORATION_NAME,
+            'CVM Number': self._cvm_id,
+            'Fiscal Number': self._fiscal_id,
+            'First Annual Report': self._FIRST_ANNUAL.strftime('%Y-%m-%d'),
+            'Last Annual Report': self._LAST_ANNUAL.strftime('%Y-%m-%d'),
+            'Last Quarterly Report': self._LAST_QUARTERLY.strftime('%Y-%m-%d'),
         }
         return company_info
 
@@ -305,7 +269,7 @@ class Finance():
         df_ltm = df_ltm.groupby(by='account_code').sum().reset_index()
         df1.drop(columns='account_value', inplace=True)
         df_ltm = pd.merge(df1, df_ltm)
-        df_ltm['report_type'] = 'ltm'
+        df_ltm['report_type'] = 'quarterly'
         df_ltm['period_begin'] = last_quarterly - pd.DateOffset(years=1)
 
         df_flow.query('report_type == "annual"', inplace=True)
@@ -398,41 +362,57 @@ class Finance():
         df_cf = self.cash_flow
         df = pd.concat([df_as, df_le, df_is, df_cf], ignore_index=True)
         df.query('account_code == @accounts', inplace=True)
+        df.reset_index(drop=True, inplace=True)
         return df
 
     def _make_report(self, df: pd.DataFrame) -> pd.DataFrame:
         # keep only last quarterly fs
-        last_end_period = df.period_end.max()  # noqa
-        expression = '''
-            report_type == 'annual' or \
-            period_end == @last_end_period
-        '''
-        df.query(expression, inplace=True)
-        # sort for drop operation
-        df.sort_values(
-            ['period_end', 'period_reference', 'account_code'],
-            inplace=True
-        )
-        # only last published statements will be used
-        df['financial_year'] = df.period_end.dt.year
-        df.drop_duplicates(
-            subset=['financial_year', 'account_code'],
-            keep='last',
-            inplace=True,
-            ignore_index=True
-        )
+        if self._LAST_ANNUAL > self._LAST_QUARTERLY:
+            df.query('report_type == "annual"', inplace=True)
+            expression = '''
+                period_order == -1 or \
+                period_end == @self._LAST_ANNUAL
+            '''
+            df.query(expression, inplace=True)
+        else:
+            expression = '''
+                report_type == 'annual' or \
+                period_end == @self._LAST_QUARTERLY
+            '''
+            df.query(expression, inplace=True)
+            expression = '''
+                period_order == -1 or \
+                period_end == @self._LAST_QUARTERLY or \
+                period_end == @self._LAST_ANNUAL
+            '''
+            df.query(expression, inplace=True)
+
+        # Create Index
+        df.sort_values(by='period_end', inplace=True, ascending=True)
         base_columns = ['account_name', 'account_code', 'account_fixed']
         df_report = df.loc[:, base_columns]
-        df_report.drop_duplicates(ignore_index=True, inplace=True)
+        df_report.drop_duplicates(
+            subset='account_code',
+            ignore_index=True,
+            inplace=True,
+            keep='last'
+        )
 
-        merge_columns = base_columns + ['account_value']
-        for period in df.period_end.unique():
+        # merge_columns = base_columns + ['account_value']
+        periods = list(df.period_end.unique())
+        periods.sort()
+        for period in periods:
             # print(date)
             df_year = df.query('period_end == @period').copy()
-            df_year = df_year[merge_columns]
+            df_year = df_year[['account_value', 'account_code']]
             period_str = np.datetime_as_string(period, unit='D')
             df_year.rename(columns={'account_value': period_str}, inplace=True)
-            df_report = pd.merge(df_report, df_year, how='left')
+            df_report = pd.merge(
+                df_report,
+                df_year,
+                how='left',
+                on=['account_code']
+            )
 
         df_report.sort_values('account_code', ignore_index=True, inplace=True)
         return df_report
