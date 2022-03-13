@@ -76,7 +76,8 @@ class Finance():
             df.reset_index(drop=True, inplace=True)
             self._cvm_id = df.loc[0, 'cvm_id']
         else:
-            raise ValueError("Company CVM Id or Fiscal Id not found")
+            raise ValueError(
+                "Selected CVM ID or Fiscal ID for the Company  not found")
 
     @property
     def account_basis(self):
@@ -176,17 +177,16 @@ class Finance():
             'equity_statement_column': str,
         })
         """
-        Get accounting code (ac) levels 1 and 2 from 'account_code' column.
-        The first part of 'account_code' is the FS type
         df['account_code'].str[0].unique() -> [1, 2, 3, 4, 5, 6, 7]
-        Table of correspondences:
-            1 -> Balanço Patrimonial Ativo
-            2 -> Balanço Patrimonial Passivo
-            3 -> Demonstração do Resultado
-            4 -> Demonstração de Resultado Abrangente
-            5 -> Demonstração das Mutações do Patrimônio Líquido
-            6 -> Demonstração do Fluxo de Caixa (Método Indireto)
-            7 -> Demonstração de Valor Adicionado
+        The first part of 'account_code' is the FS type
+        Table of statements correspondence:
+            1 -> Balance Sheet - Assets
+            2 -> Balance Sheet - Liabilities and Shareholders’ Equity
+            3 -> Income
+            4 -> Comprehensive Income
+            5 -> Changes in Equity
+            6 -> Cash Flow (Indirect Method)
+            7 -> Added Value
         """
         self._MAIN_DF.sort_values(
             by='account_code',
