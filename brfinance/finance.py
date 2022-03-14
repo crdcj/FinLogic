@@ -245,24 +245,19 @@ class Finance():
 
         return self._make_report(df)
 
-    @staticmethod
-    def calculate_ltm(df_flow: pd.DataFrame) -> pd.DataFrame:
-        last_annual = df_flow.query(
-            'report_type == "annual"')['period_end'].max()
-        last_quarterly = df_flow.query(
-            'report_type == "quarterly"')['period_end'].max()
-        if last_annual > last_quarterly:
+    def _calculate_ltm(self, df_flow: pd.DataFrame) -> pd.DataFrame:
+        if self._LAST_ANNUAL > self._LAST_QUARTERLY:
             df_flow.query('report_type == "annual"', inplace=True)
             return df_flow
 
-        df1 = df_flow.query('period_end == @last_quarterly').copy()
+        df1 = df_flow.query('period_end == @self._LAST_QUARTERLY').copy()
         df1.query('period_begin == period_begin.min()', inplace=True)
 
-        df2 = df_flow.query('period_reference == @last_quarterly').copy()
+        df2 = df_flow.query('period_reference == @self._LAST_QUARTERLY').copy()
         df2.query('period_begin == period_begin.min()', inplace=True)
         df2['account_value'] = -df2['account_value']
 
-        df3 = df_flow.query('period_end == @last_annual').copy()
+        df3 = df_flow.query('period_end == @self._LAST_ANNUAL').copy()
 
         df_ltm = pd.concat([df1, df2, df3], ignore_index=True)
         df_ltm = df_ltm[['account_code', 'account_value']]
@@ -270,7 +265,7 @@ class Finance():
         df1.drop(columns='account_value', inplace=True)
         df_ltm = pd.merge(df1, df_ltm)
         df_ltm['report_type'] = 'quarterly'
-        df_ltm['period_begin'] = last_quarterly - pd.DateOffset(years=1)
+        df_ltm['period_begin'] = self._LAST_QUARTERLY - pd.DateOffset(years=1)
 
         df_flow.query('report_type == "annual"', inplace=True)
         df_flow_ltm = pd.concat([df_flow, df_ltm], ignore_index=True)
@@ -281,7 +276,7 @@ class Finance():
         """Return company income statement."""
         df = self._get_company_df()
         df.query('account_code.str.startswith("3")', inplace=True)
-        df = Finance.calculate_ltm(df)
+        df = self._calculate_ltm(df)
         return self._make_report(df)
 
     @property
@@ -289,14 +284,8 @@ class Finance():
         """Return company income statement."""
         df = self._get_company_df()
         df.query('account_code.str.startswith("6")', inplace=True)
-        df = Finance.calculate_ltm(df)
+        df = self._calculate_ltm(df)
         return self._make_report(df)
-
-    @staticmethod
-    def account_value(account_code: str, df: pd.DataFrame) -> float:
-        """Return value for an account in dataframe."""
-        df.query('account_code == @account_code', inplace=True)
-        return df.iloc[0]['account_value']
 
     @staticmethod
     def shift_right(s: pd.Series, is_on: bool) -> pd.Series:
