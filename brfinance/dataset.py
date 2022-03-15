@@ -154,7 +154,7 @@ def clean_raw_df(df) -> pd.DataFrame:
         df['equity_statement_column'] = np.nan
 
     """
-    account_basis -> Financial Statemen Type
+    accounting_method -> Financial Statemen Type
     Consolidated and Separate Financial Statements (IAS 27/2003)
     df['GRUPO_DFP'].unique() result:
         'DF Consolidado - Balanço Patrimonial Ativo',
@@ -175,11 +175,11 @@ def clean_raw_df(df) -> pd.DataFrame:
     if == 'Con' -> consolidated statement
     if == 'Ind' -> separate statement
     """
-    df['account_basis'] = df['GRUPO_DFP'].str[3:6].map({
+    df['accounting_method'] = df['GRUPO_DFP'].str[3:6].map({
         'Con': 'consolidated',
         'Ind': 'separate'})
-    df['account_basis'] = df['account_basis'].astype('category')
-    # 'GRUPO_DFP' data can be inferred from 'account_basis' and report_type
+    df['accounting_method'] = df['accounting_method'].astype('category')
+    # 'GRUPO_DFP' data can be inferred from 'accounting_method' and report_type
     df.drop(columns=['GRUPO_DFP'], inplace=True)
 
     columns_order = [
@@ -194,7 +194,7 @@ def clean_raw_df(df) -> pd.DataFrame:
         'period_order',
         'account_code',
         'account_name',
-        'account_basis',
+        'accounting_method',
         'account_fixed',
         'account_value',
         'equity_statement_column',
@@ -248,7 +248,7 @@ def update_processed_dataset():
         'period_reference',
         'report_version',
         'period_order',
-        'account_basis',
+        'accounting_method',
         'account_code',
     ]
     df.sort_values(by=sort_by, ignore_index=True, inplace=True)
