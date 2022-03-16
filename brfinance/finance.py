@@ -17,23 +17,23 @@ import pandas as pd
 
 
 class Finance():
-    """Company Financials Class for Brazilian Companies."""
+    """corporation Financials Class for Brazilian Companies."""
 
     script_dir = os.path.dirname(__file__)
     DATASET = pd.read_pickle(script_dir + '/data/processed/dataset.pkl.zst')
     TAX_RATE = 0.34
-    CVM_IDS = list(DATASET['cvm_id'].unique())
-    FISCAL_IDS = list(DATASET['fiscal_id'].unique())
+    CORP_IDS = list(DATASET['corp_id'].unique())
+    FISCAL_IDS = list(DATASET['corp_fiscal_id'].unique())
 
     def __init__(
             self,
-            corporation_id,
+            identifier,
             accounting_method: str = 'consolidated',
             unit: float = 1):
         """Initialize main variables.
 
         Args:
-            corporation_id: can be used both CVM (regulator) ID or Fiscal ID.
+            identifier: can be used both CVM (regulator) ID or Fiscal ID.
                 CVM ID must be an integer
                 Fiscal ID must be a string in the format: 'XX.XXX.XXX/XXXX-XX'
             accounting_method (str, optional): 'consolidated' or 'separate'.
@@ -41,51 +41,53 @@ class Finance():
         """
         # Control atributes validation during object initalization
         self._is_object_initialized = False  
-        self.corporation_id = corporation_id
+        self.identifier = identifier
         self.accounting_method = accounting_method
         self.unit = unit
         self._set_main_data()
         self._is_object_initialized = True
 
     @classmethod
-    def search_company(cls, expression: str) -> pd.DataFrame:
-        """Return dataframe with companies that matches the 'expression'"""
+    def search_corp_name(cls, expression: str) -> pd.DataFrame:
+        """Return dataframe with corp. names that contains the 'expression'"""
         expression = expression.upper()
-        mask = cls.DATASET.company_name.str.contains(expression)
+        mask = cls.DATASET['corp_name'].str.contains(expression)
         df = cls.DATASET[mask].copy()
-        df.sort_values(by='company_name', inplace=True)
-        df.drop_duplicates(subset='cvm_id', inplace=True, ignore_index=True)
-        columns = ['company_name', 'cvm_id', 'fiscal_id']
+        df.sort_values(by='corp_name', inplace=True)
+        df.drop_duplicates(subset='corp_id', inplace=True, ignore_index=True)
+        columns = ['corp_name', 'corp_id', 'corp_fiscal_id']
         return df[columns]
 
     @property
-    def corporation_id(self):
-        """Return corporation identifier if it exists in the DATASET."""
-        return self._corporation_id
+    def identifier(self):
+        """Change corporation identifier."""
+        return self._identifier
 
-    @corporation_id.setter
-    def corporation_id(self, value):
-        self._corporation_id = value
-        if value in Finance.CVM_IDS:
-            self._cvm_id = value
-            df = Finance.DATASET.query('cvm_id == @self._cvm_id').copy()
+    @identifier.setter
+    def identifier(self, value):
+        self._identifier = value
+        # Checks for value existance in DATASET
+        if value in Finance.CORP_IDS:
+            self._corp_id = value
+            df = Finance.DATASET.query('corp_id == @self._corp_id').copy()
             df.reset_index(drop=True, inplace=True)
-            self._fiscal_id = df.loc[0, 'fiscal_id']
+            self._corp_fiscal_id = df.loc[0, 'corp_fiscal_id']
         elif value in Finance.FISCAL_IDS:
-            self._fiscal_id = value
-            df = Finance.DATASET.query('fiscal_id == @self._fiscal_id').copy()
+            self._corp_fiscal_id = value
+            expression = 'corp_fiscal_id == @self._corp_fiscal_id'
+            df = Finance.DATASET.query(expression).copy()
             df.reset_index(drop=True, inplace=True)
-            self._cvm_id = df.loc[0, 'cvm_id']
+            self._corp_id = df.loc[0, 'corp_id']
         else:
             raise ValueError(
-                "Selected CVM ID or Fiscal ID for the Company  not found")
+                "Selected CVM ID or Fiscal ID for the corporation  not found")
         # Only modify _DF after first object atributes validation in __init__
         if self._is_object_initialized:
             self._set_main_data()
 
     @property
     def accounting_method(self):
-        """Return selected FS type (accounting_method).
+        """Change accounting method for subsidiaries registration.
 
         Options are: 'consolidated' or 'separate'
         """
@@ -103,7 +105,7 @@ class Finance():
 
     @property
     def unit(self):
-        """Return the number by which account values are being divided."""
+        """Divide account values by 'unit' number."""
         return self._unit
 
     @unit.setter
@@ -118,14 +120,14 @@ class Finance():
 
     def _set_main_data(self) -> pd.DataFrame:
         expression = '''
-            cvm_id == @self._cvm_id and \
+            corp_id == @self._corp_id and \
             accounting_method == @self._accounting_method
         '''
-        self._DF = Finance.DATASET.query(expression).copy()
-        self._DF = self._DF.astype({
-            'cvm_id': np.uint32,
-            'fiscal_id': str,
-            'company_name': str,
+        self._MAIN_DF = Finance.DATASET.query(expression).copy()
+        self._MAIN_DF = self._MAIN_DF.astype({
+            'corp_name': str,
+            'corp_id': np.uint32,
+            'corp_fiscal_id': str,            
             'report_type': str,
             'report_version': str,
             'period_reference': 'datetime64',
@@ -140,109 +142,178 @@ class Finance():
             'equity_statement_column': str,
         })
         # Change unit only for accounts different from 3.99
-        self._DF['account_value'] = np.where(
-            self._DF['account_code'].str.startswith('3.99'),
-            self._DF['account_value'],
-            self._DF['account_value'] / self._unit
+        self._MAIN_DF['account_value'] = np.where(
+            self._MAIN_DF['account_code'].str.startswith('3.99'),
+            self._MAIN_DF['account_value'],
+            self._MAIN_DF['account_value'] / self._unit
         )
-        self._DF.sort_values(
+        self._MAIN_DF.sort_values(
             by='account_code', ignore_index=True, inplace=True)
-        self._CORPORATION_NAME = self._DF['company_name'].unique()[0]
-        self._FIRST_ANNUAL = self._DF.query(
+        self._CORP_NAME = self._MAIN_DF['corp_name'].unique()[0]
+        self._FIRST_ANNUAL = self._MAIN_DF.query(
             'report_type == "annual"')['period_end'].min()
-        self._LAST_ANNUAL = self._DF.query(
+        self._LAST_ANNUAL = self._MAIN_DF.query(
             'report_type == "annual"')['period_end'].max()
-        self._LAST_QUARTERLY = self._DF.query(
+        self._LAST_QUARTERLY = self._MAIN_DF.query(
             'report_type == "quarterly"')['period_end'].max()
 
     def info(self) -> dict:
         """Return dictionary with corporation info."""
+        f = '%Y-%m-%d'
         corporation_info = {
-            'Company Name': self._CORPORATION_NAME,
-            'CVM Number': self._cvm_id,
-            'Fiscal Number': self._fiscal_id,
-            'First Annual Report': self._FIRST_ANNUAL.strftime('%Y-%m-%d'),
-            'Last Annual Report': self._LAST_ANNUAL.strftime('%Y-%m-%d'),
-            'Last Quarterly Report': self._LAST_QUARTERLY.strftime('%Y-%m-%d'),
+            'Corp. Name': self._CORP_NAME,
+            'Corp. ID (CVM number)': self._corp_id,
+            'Corp. Fiscal ID': self._corp_fiscal_id,
+            'First Annual Report': self._FIRST_ANNUAL.strftime(f),
+            'Last Annual Report': self._LAST_ANNUAL.strftime(f),
+            'Last Quarterly Report': self._LAST_QUARTERLY.strftime(f),
         }
         return corporation_info
 
-    def _filter_df(self, account_levels, first_period) -> pd.DataFrame:
-        """
-        account_levels (int, optional): account codes detail level to show
-            X...        -> account_levels 0 (default = show all account_levels)
-            X.YY        -> account_levels 1
-            X.YY.ZZ     -> account_levels 2
-            X.YY.ZZ.YY  -> account_levels 3    
-        first_period: first accounting period in YYYY-MM-DD format
-        last_period: last accounting period in YYYY-MM-DD format
-        """
+    def _filter_main_df(self, account_level, first_period) -> pd.DataFrame:
         first_period = pd.to_datetime(first_period, errors='coerce')
         if first_period == pd.NaT:
             raise ValueError(
                 'Inserted first_period period not in YYYY-MM-DD format'
             )
-        df = self._DF.query("period_end >= @first_period").copy()
+        df = self._MAIN_DF.query("period_end >= @first_period").copy()
 
-        # Show only selected accounting account_levels
-        if account_levels not in [0, 1, 2, 3]:
+        # Show only selected accounting account_level
+        if account_level not in [2, 3, 4, 5]:
             raise ValueError(
-                "Account account_levels are: 0 (show all accounts), 1, 2, 3.")
-        df['account_code_len'] = df['account_code'].str.len()
-        # Filter dataframe only for account_levels 1, 2 and 3
-        if account_levels > 0:
-            account_code_limit = account_levels * 3 + 1  # noqa
-            df.query('account_code_len <= @account_code_limit', inplace=True)
-        df.drop(columns='account_code_len', inplace=True)
+                "account_level not equal to 2, 3, 4 or 5 (show all accounts)")
+
+        # Filter dataframe only with selected account_level
+        if account_level < 5:
+            account_code_limit = account_level * 3 - 2 # noqa
+            df.query(
+                'account_code.str.len() <= @account_code_limit',
+                inplace=True)
 
         df.reset_index(drop=True, inplace=True)
         return df
 
     def assets(
             self,
-            account_levels: int = 0,
+            account_level: int = 5,
             first_period: str = '2009-01-01'
         ) -> pd.DataFrame:
-        """Return corporation assets."""
-        df = self._filter_df(account_levels, first_period)
+        """
+        Return corporation assets.
+
+        account_level (int, optional): account codes level of detail to show
+            X.YY        -> account_level 2
+            X.YY.ZZ     -> account_level 3
+            X.YY.ZZ.YY  -> account_level 4    
+            X...        -> account_level 5 (default -> show all accounts)
+        first_period: first accounting period in YYYY-MM-DD format to show
+        """
+        df = self._filter_main_df(
+            account_level=account_level,
+            first_period=first_period
+        )
         df.query('account_code.str.startswith("1")', inplace=True)
         return self._make_report(df)
 
-    def liabilities_and_equity(self) -> pd.DataFrame:
-        """Return company liabilities and equity."""
-        df = self._filter_df()
+    def liabilities_and_equity(
+            self,
+            account_level: int = 0,
+            first_period: str = '2009-01-01'
+        ) -> pd.DataFrame:
+        """
+        Return corporation liabilities and equity.
+
+        account_level (int, optional): account codes level of detail to show
+            X...        -> account_level 0 (default = show all account_level)
+            X.YY        -> account_level 1
+            X.YY.ZZ     -> account_level 2
+            X.YY.ZZ.YY  -> account_level 3    
+        first_period: first accounting period in YYYY-MM-DD format to show
+        """
+        df = self._filter_main_df(
+            account_level=account_level,
+            first_period=first_period
+        )
         df.query('account_code.str.startswith("2")', inplace=True)
         return self._make_report(df)
 
-    def liabilities(self) -> pd.DataFrame:
-        """Return company liabilities."""
-        df = self._filter_df()
+    def liabilities(
+            self,
+            account_level: int = 0,
+            first_period: str = '2009-01-01'
+        ) -> pd.DataFrame:
+        """
+        Return corporation liabilities.
+
+        account_level (int, optional): account codes level of detail to show
+            X...        -> account_level 0 (default = show all account_level)
+            X.YY        -> account_level 1
+            X.YY.ZZ     -> account_level 2
+            X.YY.ZZ.YY  -> account_level 3    
+        first_period: first accounting period in YYYY-MM-DD format to show
+        """
+        df = self._filter_main_df(
+            account_level=account_level,
+            first_period=first_period
+        )
         expression = '''
             account_code.str.startswith("2.01") or \
-            account_code.str.startswith("2.02")',
+            account_code.str.startswith("2.02")
         '''
         df.query(expression, inplace=True)
         return self._make_report(df)
 
-    def equity(self) -> pd.DataFrame:
-        """Return company equity."""
-        df = self._filter_df()
+    def equity(
+            self,
+            account_level: int = 0,
+            first_period: str = '2009-01-01'
+        ) -> pd.DataFrame:
+        """
+        Return corporation equity.
+
+        account_level (int, optional): account codes level of detail to show
+            X...        -> account_level 0 (default = show all account_level)
+            X.YY        -> account_level 1
+            X.YY.ZZ     -> account_level 2
+            X.YY.ZZ.YY  -> account_level 3    
+        first_period: first accounting period in YYYY-MM-DD format to show
+        """
+        df = self._filter_main_df(
+            account_level=account_level,
+            first_period=first_period
+        )
         df.query('account_code.str.startswith("2.03")', inplace=True)
         return self._make_report(df)
 
-    def earnings_per_share(self) -> pd.DataFrame:
-        """Return company equity.
-        3.99                -> Earnings per Share (BRL / Share)
-            3.99.01         -> Earnings per Share
-                3.99.01.01  -> ON (ordinary)
-            3.99.02         -> Diluted Earnings per Share
-                3.99.02.01  -> ON (ordinary)
+    def earnings_per_share(
+            self,
+            account_level: int = 0,
+            first_period: str = '2009-01-01'
+        ) -> pd.DataFrame:
         """
-        df = self._filter_df()
-        df.query(
-            'account_code == "3.99.01.01" or account_code == "3.99.02.01"',
-            inplace=True
+        Return corporation Earnings per Share (EPS).
+        3.99                -> EPS (BRL / Share)
+            3.99.01         -> EPS
+                3.99.01.01  -> Stock Type
+            3.99.02         -> Diluted EPS
+                3.99.02.01  -> Stock Type
+
+        account_level (int, optional): account codes level of detail to show
+            X...        -> account_level 0 (default = show all account_level)
+            X.YY        -> account_level 1
+            X.YY.ZZ     -> account_level 2
+            X.YY.ZZ.YY  -> account_level 3    
+        first_period: first accounting period in YYYY-MM-DD format to show
+        """
+        df = self._filter_main_df(
+            account_level=account_level,
+            first_period=first_period
         )
+        expression = '''
+            account_code == "3.99.01.01" or \
+            account_code == "3.99.02.01"
+        '''
+        df.query(expression, inplace=True)
 
         return self._make_report(df)
 
@@ -274,16 +345,16 @@ class Finance():
 
     @property
     def income(self) -> pd.DataFrame:
-        """Return company income statement."""
-        df = self._filter_df()
+        """Return corporation income statement."""
+        df = self._filter_main_df()
         df.query('account_code.str.startswith("3")', inplace=True)
         df = self._calculate_ltm(df)
         return self._make_report(df)
 
     @property
     def cash_flow(self) -> pd.DataFrame:
-        """Return company income statement."""
-        df = self._filter_df()
+        """Return corporation income statement."""
+        df = self._filter_main_df()
         df.query('account_code.str.startswith("6")', inplace=True)
         df = self._calculate_ltm(df)
         return self._make_report(df)
@@ -298,8 +369,8 @@ class Finance():
             return s
 
     def operating_performance(self, is_on: bool = True):
-        """Return company main operating indicators."""
-        df = self._filter_df()
+        """Return corporation main operating indicators."""
+        df = self._filter_main_df()
         df_as = self.assets
         # df_as.query('account_code == "1"', inplace=True)
         df_le = self.liabilities_and_equity
@@ -346,10 +417,10 @@ class Finance():
         return df
 
     def get_accounts(self, accounts: list) -> pd.DataFrame:
-        df_as = self.assets
-        df_le = self.liabilities_and_equity
-        df_is = self.income
-        df_cf = self.cash_flow
+        df_as = self.assets()
+        df_le = self.liabilities_and_equity()
+        df_is = self.income()
+        df_cf = self.cash_flow()
         df = pd.concat([df_as, df_le, df_is, df_cf], ignore_index=True)
         df.query('account_code == @accounts', inplace=True)
         df.reset_index(drop=True, inplace=True)
