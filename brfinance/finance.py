@@ -174,17 +174,16 @@ class Finance():
         first_period = pd.to_datetime(first_period, errors='coerce')
         if first_period == pd.NaT:
             raise ValueError(
-                'Inserted first_period period not in YYYY-MM-DD format'
-            )
+                'Inserted first_period period not in YYYY-MM-DD format')
         df = self._MAIN_DF.query("period_end >= @first_period").copy()
 
         # Show only selected accounting account_level
-        if account_level not in [2, 3, 4, 5]:
+        if account_level not in [0, 2, 3, 4]:
             raise ValueError(
-                "account_level not equal to 2, 3, 4 or 5 (show all accounts)")
+                "account_level not equal to 0 (all accounts) 2, 3 or 4 ")
 
         # Filter dataframe only with selected account_level
-        if account_level < 5:
+        if account_level:
             account_code_limit = account_level * 3 - 2 # noqa
             df.query(
                 'account_code.str.len() <= @account_code_limit',
@@ -195,17 +194,17 @@ class Finance():
 
     def assets(
             self,
-            account_level: int = 5,
+            account_level=0,
             first_period: str = '2009-01-01'
         ) -> pd.DataFrame:
         """
         Return corporation assets.
 
-        account_level (int, optional): account codes level of detail to show
-            X.YY        -> account_level 2
-            X.YY.ZZ     -> account_level 3
-            X.YY.ZZ.YY  -> account_level 4    
-            X...        -> account_level 5 (default -> show all accounts)
+        account_level (int, optional): detail level to show for account codes
+            account_level = 0 -> X...       (default: show all accounts)
+            account_level = 2 -> X.YY       (show 2 levels)
+            account_level = 3 -> X.YY.ZZ    (show 3 levels)
+            account_level = 4 -> X.YY.ZZ.WW (show 4 levels)
         first_period: first accounting period in YYYY-MM-DD format to show
         """
         df = self._filter_main_df(
@@ -223,11 +222,11 @@ class Finance():
         """
         Return corporation liabilities and equity.
 
-        account_level (int, optional): account codes level of detail to show
-            X...        -> account_level 0 (default = show all account_level)
-            X.YY        -> account_level 1
-            X.YY.ZZ     -> account_level 2
-            X.YY.ZZ.YY  -> account_level 3    
+        account_level (int, optional): detail level to show for account codes
+            account_level = 0 -> X...       (default: show all accounts)
+            account_level = 2 -> X.YY       (show 2 levels)
+            account_level = 3 -> X.YY.ZZ    (show 3 levels)
+            account_level = 4 -> X.YY.ZZ.WW (show 4 levels)
         first_period: first accounting period in YYYY-MM-DD format to show
         """
         df = self._filter_main_df(
@@ -245,11 +244,11 @@ class Finance():
         """
         Return corporation liabilities.
 
-        account_level (int, optional): account codes level of detail to show
-            X...        -> account_level 0 (default = show all account_level)
-            X.YY        -> account_level 1
-            X.YY.ZZ     -> account_level 2
-            X.YY.ZZ.YY  -> account_level 3    
+        account_level (int, optional): detail level to show for account codes
+            account_level = 0 -> X...       (default: show all levels)
+            account_level = 2 -> X.YY       (show 2 levels)
+            account_level = 3 -> X.YY.ZZ    (show 3 levels)
+            account_level = 4 -> X.YY.ZZ.WW (show 4 levels)
         first_period: first accounting period in YYYY-MM-DD format to show
         """
         df = self._filter_main_df(
@@ -271,11 +270,11 @@ class Finance():
         """
         Return corporation equity.
 
-        account_level (int, optional): account codes level of detail to show
-            X...        -> account_level 0 (default = show all account_level)
-            X.YY        -> account_level 1
-            X.YY.ZZ     -> account_level 2
-            X.YY.ZZ.YY  -> account_level 3    
+        account_level (int, optional): detail level to show for account codes
+            account_level = 0 -> X...       (default: show all levels)
+            account_level = 2 -> X.YY       (show 2 levels)
+            account_level = 3 -> X.YY.ZZ    (show 3 levels)
+            account_level = 4 -> X.YY.ZZ.WW (show 4 levels)
         first_period: first accounting period in YYYY-MM-DD format to show
         """
         df = self._filter_main_df(
@@ -298,11 +297,11 @@ class Finance():
             3.99.02         -> Diluted EPS
                 3.99.02.01  -> Stock Type
 
-        account_level (int, optional): account codes level of detail to show
-            X...        -> account_level 0 (default = show all account_level)
-            X.YY        -> account_level 1
-            X.YY.ZZ     -> account_level 2
-            X.YY.ZZ.YY  -> account_level 3    
+        account_level (int, optional): detail level to show for account codes
+            account_level = 0 -> X...       (default: show all levels)
+            account_level = 2 -> X.YY       (show 2 levels)
+            account_level = 3 -> X.YY.ZZ    (show 3 levels)
+            account_level = 4 -> X.YY.ZZ.WW (show 4 levels)
         first_period: first accounting period in YYYY-MM-DD format to show
         """
         df = self._filter_main_df(
@@ -343,18 +342,48 @@ class Finance():
         df_flow_ltm = pd.concat([df_flow, df_ltm], ignore_index=True)
         return df_flow_ltm
 
-    @property
-    def income(self) -> pd.DataFrame:
-        """Return corporation income statement."""
-        df = self._filter_main_df()
+    def income(
+            self,
+            account_level: int = 0,
+            first_period: str = '2009-01-01'
+        ) -> pd.DataFrame:
+        """
+        Return corporation income statement.
+
+        account_level (int, optional): detail level to show for account codes
+            account_level = 0 -> X...       (default: show all levels)
+            account_level = 2 -> X.YY       (show 2 levels)
+            account_level = 3 -> X.YY.ZZ    (show 3 levels)
+            account_level = 4 -> X.YY.ZZ.WW (show 4 levels)
+        first_period: first accounting period in YYYY-MM-DD format to show
+        """
+        df = self._filter_main_df(
+            account_level=account_level,
+            first_period=first_period
+        )
         df.query('account_code.str.startswith("3")', inplace=True)
         df = self._calculate_ltm(df)
         return self._make_report(df)
 
-    @property
-    def cash_flow(self) -> pd.DataFrame:
-        """Return corporation income statement."""
-        df = self._filter_main_df()
+    def cash_flow(
+            self,
+            account_level: int = 0,
+            first_period: str = '2009-01-01'
+        ) -> pd.DataFrame:
+        """
+        Return corporation cash flow statement.
+
+        account_level (int, optional): detail level to show for account codes
+            account_level = 0 -> X...       (default: show all levels)
+            account_level = 2 -> X.YY       (show 2 levels)
+            account_level = 3 -> X.YY.ZZ    (show 3 levels)
+            account_level = 4 -> X.YY.ZZ.WW (show 4 levels)
+        first_period: first accounting period in YYYY-MM-DD format to show
+        """
+        df = self._filter_main_df(
+            account_level=account_level,
+            first_period=first_period
+        )
         df.query('account_code.str.startswith("6")', inplace=True)
         df = self._calculate_ltm(df)
         return self._make_report(df)
