@@ -25,8 +25,7 @@ class Finance():
     CORP_IDS = list(DATASET['corp_id'].unique())
     FISCAL_IDS = list(DATASET['corp_fiscal_id'].unique())
 
-    def __init__(self,
-                 identifier):
+    def __init__(self, identifier):
         """Initialize main variables.
 
         Args:
@@ -120,12 +119,14 @@ class Finance():
         }
         return corporation_info
 
-    def report(self,
-               rtype: str,
-               accounting_method: str='consolidated',
-               unit: float=1,
-               account_level: int=0,
-               first_period: str='2009-01-01') -> pd.DataFrame:
+    def report(
+        self,
+        rtype: str,
+        accounting_method: str='consolidated',
+        unit: float=1,
+        account_level: int=0,
+        first_period: str='2009-01-01'
+    ) -> pd.DataFrame:
         """
         Return Corporation Financial Statements.
 
@@ -171,12 +172,13 @@ class Finance():
             df['account_value'] / unit
         )
 
-        # Filter dataframe only with selected account_level
+        # Filter dataframe for selected account_level
         if account_level:
             account_code_limit = account_level * 3 - 2 # noqa
             expression = 'account_code.str.len() <= @account_code_limit'
             df.query(expression, inplace=True)
 
+        # Filter dataframe for selected rtype (report type)
         report_types = {
             "assets": ["1"],
             "liabilities_and_equity": ["2"],
@@ -191,7 +193,7 @@ class Finance():
         for count, account_code in enumerate(account_codes):
             if count > 0:
                 expression += " or "
-            expression = f'account_code.str.startswith("{account_code}")'
+            expression += f'account_code.str.startswith("{account_code}")'
         df.query(expression, inplace=True)
 
         if rtype in ['income', 'cash_flow']:
@@ -234,6 +236,23 @@ class Finance():
             return np.append(np.nan, arr)
         else:
             return s
+
+    def get_accounts(
+        self,
+        accounts: list,
+        unit: float=1,
+        first_period: str='2009-01-01'
+    ) -> pd.DataFrame:
+        """Return a report for a list of account codes"""
+        df_as = self.report('assets', unit=unit, first_period=first_period)
+        df_le = self.report(
+            'liabilities_and_equity', unit=unit, first_period=first_period)
+        df_is = self.report('income', unit=unit, first_period=first_period)
+        df_cf = self.report('cash_flow', unit=unit, first_period=first_period)
+        df = pd.concat([df_as, df_le, df_is, df_cf], ignore_index=True)
+        df.query('account_code == @accounts', inplace=True)
+        df.reset_index(drop=True, inplace=True)
+        return df
 
     def operating_performance(self, is_on: bool = True):
         """Return corporation main operating indicators."""
@@ -281,16 +300,6 @@ class Finance():
         # discard index name 'account_code'
         df.index.name = None
         # df.reset_index(drop=True, inplace=True)
-        return df
-
-    def get_accounts(self, accounts: list) -> pd.DataFrame:
-        df_as = self.assets()
-        df_le = self.liabilities_and_equity()
-        df_is = self.income()
-        df_cf = self.cash_flow()
-        df = pd.concat([df_as, df_le, df_is, df_cf], ignore_index=True)
-        df.query('account_code == @accounts', inplace=True)
-        df.reset_index(drop=True, inplace=True)
         return df
 
     def _make_report(self, df: pd.DataFrame) -> pd.DataFrame:
