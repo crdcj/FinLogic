@@ -141,23 +141,23 @@ class Finance():
             account_level = 2 -> X.YY       (show 2 levels)
             account_level = 3 -> X.YY.ZZ    (show 3 levels)
             account_level = 4 -> X.YY.ZZ.WW (show 4 levels)
-        first_period: first accounting period in YYYY-MM-DD format to show
+        first_period: first accounting period, in YYYY-MM-DD format, to show
         """
         first_period = pd.to_datetime(first_period, errors='coerce')
         if first_period == pd.NaT:
-            raise AttributeError(
-                'first_period period must be a string in YYYY-MM-DD format')
+            raise ValueError(
+                'first_period expects a string in YYYY-MM-DD format')
 
         if accounting_method not in ['consolidated', 'separate']:
-            raise AttributeError(
-                "accounting_method must be 'consolidated' or 'separate'")
+            raise ValueError(
+                "accounting_method expects 'consolidated' or 'separate'")
 
         if unit <= 0:
-            raise AttributeError("Unit value must be greater than 0")
+            raise ValueError("Unit expects a value greater than 0")
 
         if account_level not in [0, 1, 2, 3, 4]:
-            raise AttributeError(
-                "account_level must be 0 (all accounts), 1, 2, 3 or 4")
+            raise ValueError(
+                "account_level expects integers 0, 1, 2, 3 or 4")
 
         expression = '''
             accounting_method == @accounting_method and \
@@ -257,11 +257,8 @@ class Finance():
     def operating_performance(self, is_on: bool = True):
         """Return corporation main operating indicators."""
         df_as = self.report('assets')
-        # df_as.query('account_code == "1"', inplace=True)
         df_le = self.report('liabilities_and_equity')
-        # df_le.query('account_code == "2.03"', inplace=True)
         df_in = self.report('income')
-        # df_in.query('account_code == "3.11"', inplace=True)
         df = pd.concat([df_as, df_le, df_in], ignore_index=True)
         df.set_index(keys='account_code', drop=True, inplace=True)
         df.drop(columns=['account_fixed', 'account_name'], inplace=True)
@@ -282,24 +279,20 @@ class Finance():
         )
         invested_capital = self.shift_right(invested_capital, is_on)
 
-        # indicators calculation
-        df.loc['return_on_assets'] = (
+        # dfi: dataframe with indicators calculation
+        dfi = pd.DataFrame(columns=df.columns)
+        dfi.loc['return_on_assets'] = (
             ebit * (1 - Finance.TAX_RATE) / total_assets
         )
-        df.loc['return_on_capital'] = (
+        dfi.loc['return_on_capital'] = (
             ebit * (1 - Finance.TAX_RATE) / invested_capital
         )
-        df.loc['return_on_equity'] = net_income / equity
-        df.loc['gross_margin'] = gross_profit / revenues
-        df.loc['operating_margin'] = ebit * (1 - Finance.TAX_RATE) / revenues
-        df.loc['net_margin'] = net_income / revenues
+        dfi.loc['return_on_equity'] = net_income / equity
+        dfi.loc['gross_margin'] = gross_profit / revenues
+        dfi.loc['operating_margin'] = ebit * (1 - Finance.TAX_RATE) / revenues
+        dfi.loc['net_margin'] = net_income / revenues
 
-        # discard rows used for calculation
-        df = df.iloc[-6:]
-        # discard index name 'account_code'
-        df.index.name = None
-        # df.reset_index(drop=True, inplace=True)
-        return df
+        return dfi
 
     def _make_report(self, df: pd.DataFrame) -> pd.DataFrame:
         # keep only last quarterly fs
