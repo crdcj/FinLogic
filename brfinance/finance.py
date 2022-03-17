@@ -262,6 +262,7 @@ class Finance():
         df = pd.concat([df_as, df_le, df_in], ignore_index=True)
         df.set_index(keys='account_code', drop=True, inplace=True)
         df.drop(columns=['account_fixed', 'account_name'], inplace=True)
+        df.fillna(0, inplace=True)
 
         # series definition
         revenues = df.loc['3.01']
@@ -284,6 +285,7 @@ class Finance():
         dfi.loc['return_on_assets'] = (
             ebit * (1 - Finance.TAX_RATE) / total_assets
         )
+        # dfi.loc['invested_capital'] = invested_capital
         dfi.loc['return_on_capital'] = (
             ebit * (1 - Finance.TAX_RATE) / invested_capital
         )
