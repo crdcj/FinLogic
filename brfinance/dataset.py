@@ -87,7 +87,7 @@ def update_raw_dataset():
     return updated_urls
 
 
-def clean_raw_df(df) -> pd.DataFrame:
+def clean_raw_df(df: pd.DataFrame) -> pd.DataFrame:
     """Convert raw dataframe into processed dataframe."""
 
     columns_translation = {
