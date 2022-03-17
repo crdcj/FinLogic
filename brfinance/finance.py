@@ -256,12 +256,11 @@ class Finance():
 
     def operating_performance(self, is_on: bool = True):
         """Return corporation main operating indicators."""
-        df = self._filter_main_df()
-        df_as = self.assets
+        df_as = self.report('assets')
         # df_as.query('account_code == "1"', inplace=True)
-        df_le = self.liabilities_and_equity
+        df_le = self.report('liabilities_and_equity')
         # df_le.query('account_code == "2.03"', inplace=True)
-        df_in = self.income
+        df_in = self.report('income')
         # df_in.query('account_code == "3.11"', inplace=True)
         df = pd.concat([df_as, df_le, df_in], ignore_index=True)
         df.set_index(keys='account_code', drop=True, inplace=True)
@@ -342,6 +341,9 @@ class Finance():
             df_year = df.query('period_end == @period').copy()
             df_year = df_year[['account_value', 'account_code']]
             period_str = np.datetime_as_string(period, unit='D')
+            if period == self._LAST_QUARTERLY:
+                period_str += ' (ltm)'
+
             df_year.rename(columns={'account_value': period_str}, inplace=True)
             df_report = pd.merge(
                 df_report,
