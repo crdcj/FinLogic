@@ -25,10 +25,8 @@ class Finance():
     CORP_IDS = list(DATASET['corp_id'].unique())
     FISCAL_IDS = list(DATASET['corp_fiscal_id'].unique())
 
-    def __init__(
-            self,
-            identifier,
-            unit: float = 1):
+    def __init__(self,
+                 identifier):
         """Initialize main variables.
 
         Args:
@@ -39,11 +37,7 @@ class Finance():
             unit (float, optional): number to divide account values
         """
         # Control atributes validation during object initalization
-        self._is_object_initialized = False  
         self.identifier = identifier
-        self.unit = unit
-        self._set_main_data()
-        self._is_object_initialized = True
 
     @classmethod
     def search_corp_name(cls, expression: str) -> pd.DataFrame:
@@ -78,25 +72,9 @@ class Finance():
             self._corp_id = df.loc[0, 'corp_id']
         else:
             raise ValueError(
-                "Selected CVM ID or Fiscal ID for the corporation  not found")
+                "Selected CVM ID or Fiscal ID for the corporation not found")
         # Only modify _DF after first object atributes validation in __init__
-        if self._is_object_initialized:
-            self._set_main_data()
-
-    @property
-    def unit(self):
-        """Divide account values by 'unit' number."""
-        return self._unit
-
-    @unit.setter
-    def unit(self, value):
-        if value > 0:
-            self._unit = value
-        else:
-            raise ValueError("Unit value must be greater than 0")
-        # Only modify _DF after first object atributes validation in __init__
-        if self._is_object_initialized:
-            self._set_main_data()
+        self._set_main_data()
 
     def _set_main_data(self) -> pd.DataFrame:
         self._CORP_DF = Finance.DATASET.query(
@@ -118,14 +96,9 @@ class Finance():
             'account_value': float,
             'equity_statement_column': str,
         })
-        # Change unit only for accounts different from 3.99
-        self._CORP_DF['account_value'] = np.where(
-            self._CORP_DF['account_code'].str.startswith('3.99'),
-            self._CORP_DF['account_value'],
-            self._CORP_DF['account_value'] / self._unit
-        )
         self._CORP_DF.sort_values(
             by='account_code', ignore_index=True, inplace=True)
+
         self._CORP_NAME = self._CORP_DF['corp_name'].unique()[0]
         self._FIRST_ANNUAL = self._CORP_DF.query(
             'report_type == "annual"')['period_end'].min()
@@ -147,13 +120,12 @@ class Finance():
         }
         return corporation_info
 
-    def report(
-            self,
-            rtype: str,
-            accounting_method: str='consolidated',
-            account_level: int=0,
-            first_period: str='2009-01-01'
-        ) -> pd.DataFrame:
+    def report(self,
+               rtype: str,
+               accounting_method: str='consolidated',
+               unit: float=1,
+               account_level: int=0,
+               first_period: str='2009-01-01') -> pd.DataFrame:
         """
         Return Corporation Financial Statements.
 
@@ -179,6 +151,9 @@ class Finance():
             raise AttributeError(
                 "accounting_method must be 'consolidated' or 'separate'")
 
+        if unit <= 0:
+            raise AttributeError("Unit value must be greater than 0")
+
         if account_level not in [0, 1, 2, 3, 4]:
             raise AttributeError(
                 "account_level must be 0 (all accounts), 1, 2, 3 or 4")
@@ -188,6 +163,13 @@ class Finance():
             period_end >= @first_period
         '''
         df = self._CORP_DF.query(expression).copy()
+
+        # Change unit only for accounts different from 3.99
+        df['account_value'] = np.where(
+            df['account_code'].str.startswith('3.99'),
+            df['account_value'],
+            df['account_value'] / unit
+        )
 
         # Filter dataframe only with selected account_level
         if account_level:
