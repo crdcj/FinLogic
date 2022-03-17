@@ -229,9 +229,9 @@ class Finance():
         return df_flow_ltm
 
     @staticmethod
-    def shift_right(s: pd.Series, is_on: bool) -> pd.Series:
+    def shift_right(s: pd.Series, is_shifted: bool) -> pd.Series:
         """Shift row to the right in order to obtain series previous values"""
-        if is_on:
+        if is_shifted:
             arr = s.iloc[:-1].values
             return np.append(np.nan, arr)
         else:
@@ -244,17 +244,17 @@ class Finance():
         first_period: str='2009-01-01'
     ) -> pd.DataFrame:
         """Return a report for a list of account codes"""
-        df_as = self.report('assets', unit=unit, first_period=first_period)
-        df_le = self.report(
-            'liabilities_and_equity', unit=unit, first_period=first_period)
-        df_is = self.report('income', unit=unit, first_period=first_period)
-        df_cf = self.report('cash_flow', unit=unit, first_period=first_period)
+        kwargs = {'unit': unit, 'first_period': first_period}
+        df_as = self.report('assets', **kwargs)
+        df_le = self.report('liabilities_and_equity', **kwargs)
+        df_is = self.report('income', **kwargs)
+        df_cf = self.report('cash_flow', **kwargs)
         df = pd.concat([df_as, df_le, df_is, df_cf], ignore_index=True)
         df.query('account_code == @accounts', inplace=True)
         df.reset_index(drop=True, inplace=True)
         return df
 
-    def operating_performance(self, is_on: bool = True):
+    def operating_performance(self, is_shifted: bool = True):
         """Return corporation main operating indicators."""
         df_as = self.report('assets')
         df_le = self.report('liabilities_and_equity')
@@ -264,13 +264,13 @@ class Finance():
         df.drop(columns=['account_fixed', 'account_name'], inplace=True)
         df.fillna(0, inplace=True)
 
-        # series definition
+        # series with indicators
         revenues = df.loc['3.01']
         gross_profit = df.loc['3.03']
         ebit = df.loc['3.05']
         net_income = df.loc['3.11']
-        total_assets = self.shift_right(df.loc['1'], is_on)
-        equity = self.shift_right(df.loc['2.03'], is_on)
+        total_assets = self.shift_right(df.loc['1'], is_shifted)
+        equity = self.shift_right(df.loc['2.03'], is_shifted)
         invested_capital = (
             df.loc['2.03']
             + df.loc['2.01.04']
@@ -278,9 +278,9 @@ class Finance():
             - df.loc['1.01.01']
             - df.loc['1.01.02']
         )
-        invested_capital = self.shift_right(invested_capital, is_on)
+        invested_capital = self.shift_right(invested_capital, is_shifted)
 
-        # dfi: dataframe with indicators calculation
+        # dfi: dataframe with indicators
         dfi = pd.DataFrame(columns=df.columns)
         dfi.loc['return_on_assets'] = (
             ebit * (1 - Finance.TAX_RATE) / total_assets
