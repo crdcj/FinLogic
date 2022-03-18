@@ -1,4 +1,4 @@
-"""Module containing Finance Class definition for Brazilian Corporations.
+"""Module containing Corporation Class definition for Brazilian Corporations.
 Abbreviation used for Financial Statement = FS
 df['account_code'].str[0].unique() -> [1, 2, 3, 4, 5, 6, 7]
 The first part of 'account_code' is the FS type
@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 
-class Finance():
+class Corporation():
     """corporation Financials Class for Brazilian Companies."""
 
     script_dir = os.path.dirname(__file__)
@@ -58,15 +58,15 @@ class Finance():
     def identifier(self, value):
         self._identifier = value
         # Checks for value existance in DATASET
-        if value in Finance.CORP_IDS:
+        if value in Corporation.CORP_IDS:
             self._corp_id = value
-            df = Finance.DATASET.query('corp_id == @self._corp_id').copy()
+            df = Corporation.DATASET.query('corp_id == @self._corp_id').copy()
             df.reset_index(drop=True, inplace=True)
             self._corp_fiscal_id = df.loc[0, 'corp_fiscal_id']
-        elif value in Finance.FISCAL_IDS:
+        elif value in Corporation.FISCAL_IDS:
             self._corp_fiscal_id = value
             expression = 'corp_fiscal_id == @self._corp_fiscal_id'
-            df = Finance.DATASET.query(expression).copy()
+            df = Corporation.DATASET.query(expression).copy()
             df.reset_index(drop=True, inplace=True)
             self._corp_id = df.loc[0, 'corp_id']
         else:
@@ -76,7 +76,7 @@ class Finance():
         self._set_main_data()
 
     def _set_main_data(self) -> pd.DataFrame:
-        self._CORP_DF = Finance.DATASET.query(
+        self._CORP_DF = Corporation.DATASET.query(
             'corp_id == @self._corp_id').copy()
         self._CORP_DF = self._CORP_DF.astype({
             'corp_name': str,
@@ -283,15 +283,15 @@ class Finance():
         # dfi: dataframe with indicators
         dfi = pd.DataFrame(columns=df.columns)
         dfi.loc['return_on_assets'] = (
-            ebit * (1 - Finance.TAX_RATE) / total_assets
+            ebit * (1 - Corporation.TAX_RATE) / total_assets
         )
         # dfi.loc['invested_capital'] = invested_capital
         dfi.loc['return_on_capital'] = (
-            ebit * (1 - Finance.TAX_RATE) / invested_capital
+            ebit * (1 - Corporation.TAX_RATE) / invested_capital
         )
         dfi.loc['return_on_equity'] = net_income / equity
         dfi.loc['gross_margin'] = gross_profit / revenues
-        dfi.loc['operating_margin'] = ebit * (1 - Finance.TAX_RATE) / revenues
+        dfi.loc['operating_margin'] = ebit * (1 - Corporation.TAX_RATE) / revenues
         dfi.loc['net_margin'] = net_income / revenues
 
         return dfi
