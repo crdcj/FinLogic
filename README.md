@@ -1,5 +1,5 @@
-# Brazilian corporations financial statements and performance indicators in
-Pandas dataframe format
+# Brazilian corporation financial statements and performance indicators in
+# Pandas dataframe format
 
 
 <table border=1 cellpadding=10><tr><td>
@@ -10,7 +10,7 @@ Pandas dataframe format
 
 BrFinance is **not** affiliated, endorsed, or vetted by the Securities and
 Exchange Commission of Brazil (CVM). It's an open-source tool that uses CVM
-publicly available Database, and is intended for research and educational
+publicly available data and is intended for research and educational
 purposes.
 
 </td></tr></table>
@@ -36,10 +36,9 @@ import brfinance as bf
 ### The corporation module
 petro = bf.Corporation("MSFT")
 
-# get stock info
-msft.info
+# get corporation info
+petro.info
 
-I've also added some options to make life easier :)
 
 ## Installation
 
