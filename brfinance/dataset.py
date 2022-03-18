@@ -25,16 +25,17 @@ def update_raw_file(url: str) -> bool:
     with requests.Session() as s:
         r = s.get(url, stream=True)
         if r.status_code != requests.codes.ok:
-            print(f'{file_name} not found in CVM server -> continue')
+            print(
+                f'{file_name} not found in CVM server -> continue', flush=True)
             return False
         tam_arq_arm = 0
         if os.path.isfile(cam_arq):
             tam_arq_arm = os.path.getsize(cam_arq)
         tam_arq_url = int(r.headers['Content-Length'])
         if(tam_arq_arm == tam_arq_url):
-            print(f'{file_name} already updated -> continue')
+            print(f'{file_name} already updated -> continue', flush=True)
             return False
-        print(f'{file_name} outdated -> download file')
+        print(f'{file_name} outdated -> download file', flush=True)
         with open(cam_arq, 'wb') as f:
             f.write(r.content)
         return True
@@ -258,4 +259,17 @@ def update_processed_dataset():
 
     file_path = PROCESSED_DIR + 'dataset.pkl.zst'
     df.to_pickle(file_path)
-    print('Dataset saved')
+
+
+def update_dataset():
+    urls = list_urls()
+    print('')
+    print('Updating CVM raw datasets...')
+    urls = update_raw_dataset()
+    for url in urls:
+        print(url)
+    print('')
+    print('Processing CVM raw dataset...')
+    update_processed_dataset()
+    print('')
+    print('Processed dataset saved')
