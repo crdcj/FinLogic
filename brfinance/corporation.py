@@ -22,7 +22,7 @@ class Corporation():
     script_dir = os.path.dirname(__file__)
     DATASET = pd.read_pickle(script_dir + '/data/processed/dataset.pkl.zst')
     TAX_RATE = 0.34
-    CORP_IDS = list(DATASET['corp_id'].unique())
+    CORP_IDS = list(DATASET['corp_cvm_id'].unique())
     FISCAL_IDS = list(DATASET['corp_fiscal_id'].unique())
 
     def __init__(self, identifier):
@@ -39,19 +39,37 @@ class Corporation():
         self.identifier = identifier
 
     @classmethod
-    def search_corp_name(cls, expression: str) -> pd.DataFrame:
-        """Return dataframe with corp. names that contains the 'expression'"""
+    def search_by_name(cls, expression: str) -> pd.DataFrame:
+        """Search dataset for corp. names that contains the 'expression'"""
         expression = expression.upper()
         mask = cls.DATASET['corp_name'].str.contains(expression)
         df = cls.DATASET[mask].copy()
         df.sort_values(by='corp_name', inplace=True)
-        df.drop_duplicates(subset='corp_id', inplace=True, ignore_index=True)
-        columns = ['corp_name', 'corp_id', 'corp_fiscal_id']
+        df.drop_duplicates(subset='corp_cvm_id', inplace=True, ignore_index=True)
+        columns = ['corp_name', 'corp_cvm_id', 'corp_fiscal_id']
         return df[columns]
+
+    @classmethod
+    def dataset_info(cls) -> pd.DataFrame:
+        """Return dataframe with dataset info"""
+        num_corp = cls.DATASET['corp_cvm_id'].nunique()
+        columns_duplicates = [
+            'corp_cvm_id', 'report_version', 'report_type', 'period_reference']
+        fs_periods = cls.DATASET['period_end'].astype('datetime64')
+        info = {
+            'Number of corporations in dataset': (
+                cls.DATASET['corp_cvm_id'].nunique()),
+            'Number of Financial Statements in dataset':  len(
+                cls.DATASET.drop_duplicates(subset=columns_duplicates).index),
+            'First Financial Statement': fs_periods.min().strftime('%Y-%m-%d'),
+            'Last Financial Statement': fs_periods.max().strftime('%Y-%m-%d')
+        }
+        return info
+
 
     @property
     def identifier(self):
-        """Change corporation identifier."""
+        """This is the corporation identifier for the class."""
         return self._identifier
 
     @identifier.setter
@@ -59,8 +77,9 @@ class Corporation():
         self._identifier = value
         # Checks for value existance in DATASET
         if value in Corporation.CORP_IDS:
-            self._corp_id = value
-            df = Corporation.DATASET.query('corp_id == @self._corp_id').copy()
+            self._corp_cvm_id = value
+            df = Corporation.DATASET.query(
+                'corp_cvm_id == @self._corp_cvm_id').copy()
             df.reset_index(drop=True, inplace=True)
             self._corp_fiscal_id = df.loc[0, 'corp_fiscal_id']
         elif value in Corporation.FISCAL_IDS:
@@ -68,7 +87,7 @@ class Corporation():
             expression = 'corp_fiscal_id == @self._corp_fiscal_id'
             df = Corporation.DATASET.query(expression).copy()
             df.reset_index(drop=True, inplace=True)
-            self._corp_id = df.loc[0, 'corp_id']
+            self._corp_cvm_id = df.loc[0, 'corp_cvm_id']
         else:
             raise ValueError(
                 "Selected CVM ID or Fiscal ID for the corporation not found")
@@ -77,10 +96,10 @@ class Corporation():
 
     def _set_main_data(self) -> pd.DataFrame:
         self._CORP_DF = Corporation.DATASET.query(
-            'corp_id == @self._corp_id').copy()
+            'corp_cvm_id == @self._corp_cvm_id').copy()
         self._CORP_DF = self._CORP_DF.astype({
             'corp_name': str,
-            'corp_id': np.uint32,
+            'corp_cvm_id': np.uint32,
             'corp_fiscal_id': str,            
             'report_type': str,
             'report_version': str,
@@ -106,18 +125,22 @@ class Corporation():
         self._LAST_QUARTERLY = self._CORP_DF.query(
             'report_type == "quarterly"')['period_end'].max()
 
-    def info(self) -> dict:
+    def info(self) -> pd.DataFrame:
         """Return dictionary with corporation info."""
         f = '%Y-%m-%d'
         corporation_info = {
             'Corp. Name': self._CORP_NAME,
-            'Corp. ID (CVM number)': self._corp_id,
-            'Corp. Fiscal ID': self._corp_fiscal_id,
+            'Corp. CVM ID': self._corp_cvm_id,
+            'Corp. Fiscal ID (CNPJ)': self._corp_fiscal_id,
             'First Annual Report': self._FIRST_ANNUAL.strftime(f),
             'Last Annual Report': self._LAST_ANNUAL.strftime(f),
             'Last Quarterly Report': self._LAST_QUARTERLY.strftime(f),
-        }
-        return corporation_info
+        }        
+        df = pd.DataFrame(corporation_info.items(), columns=['Item', 'Value'])
+        df.set_index('Item', inplace=True)
+        df.index.name = None
+
+        return df
 
     def report(
         self,

@@ -1,15 +1,11 @@
 """Tests for the main class (Company)."""
 import importlib
 import context # noqa
-import brfinance.finance as bf
+import brfinance as bf
 importlib.reload(bf)
 
-corporation = bf.Finance(
-    corporation_id=20036,
-    account_basis='consolidated',
-    unit=1_000_000,
-)
-df = corporation.income
+corp = bf.Corporation(20036)
+df = corp.report('income')
 print(df)
 print(df.info())
 # df = petro.liabilities_and_equity

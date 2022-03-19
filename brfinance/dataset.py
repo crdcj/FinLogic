@@ -92,7 +92,7 @@ def clean_raw_df(df: pd.DataFrame) -> pd.DataFrame:
     """Convert raw dataframe into processed dataframe."""
 
     columns_translation = {
-        'CD_CVM': 'corp_id',
+        'CD_CVM': 'corp_cvm_id',
         'CNPJ_CIA': 'corp_fiscal_id',
         'DENOM_CIA': 'corp_name',
         'VERSAO': 'report_version',
@@ -112,7 +112,7 @@ def clean_raw_df(df: pd.DataFrame) -> pd.DataFrame:
     # df['report_version'].unique()
     # ['3', '2', '4', '1', '7', '5', '6', '9', '8']
     df['report_version'] = df['report_version'].astype(np.int8)
-    df['corp_id'] = df['corp_id'].astype(np.int32)  # max < 600_000
+    df['corp_cvm_id'] = df['corp_cvm_id'].astype(np.int32)  # max < 600_000
     df['account_value'] = df['account_value'].astype(float)
 
     # df.query("account_value == 0") -> 10.891.139 rows from 17.674.199
@@ -185,7 +185,7 @@ def clean_raw_df(df: pd.DataFrame) -> pd.DataFrame:
 
     columns_order = [
         'corp_name',
-        'corp_id',
+        'corp_cvm_id',
         'corp_fiscal_id',        
         'report_type',
         'report_version',
@@ -245,7 +245,7 @@ def update_processed_dataset():
     df.replace(to_replace=['\xa0ON\xa0', 'On'], value='ON', inplace=True)
 
     sort_by = [
-        'corp_id',
+        'corp_cvm_id',
         'period_reference',
         'report_version',
         'period_order',
