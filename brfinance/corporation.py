@@ -52,7 +52,6 @@ class Corporation():
     @classmethod
     def dataset_info(cls) -> pd.DataFrame:
         """Return dataframe with dataset info"""
-        num_corp = cls.DATASET['corp_cvm_id'].nunique()
         columns_duplicates = [
             'corp_cvm_id', 'report_version', 'report_type', 'period_reference']
         fs_periods = cls.DATASET['period_end'].astype('datetime64')

@@ -25,17 +25,16 @@ def update_raw_file(url: str) -> bool:
     with requests.Session() as s:
         r = s.get(url, stream=True)
         if r.status_code != requests.codes.ok:
-            print(
-                f'{file_name} not found in CVM server -> continue', flush=True)
+            # print(f'{file_name} not found -> continue', flush=True)
             return False
         tam_arq_arm = 0
         if os.path.isfile(cam_arq):
             tam_arq_arm = os.path.getsize(cam_arq)
         tam_arq_url = int(r.headers['Content-Length'])
         if(tam_arq_arm == tam_arq_url):
-            print(f'{file_name} already updated -> continue', flush=True)
+            # print(f'{file_name} already updated -> continue', flush=True)
             return False
-        print(f'{file_name} outdated -> download file', flush=True)
+        print(f'{file_name} new/outdated -> download file', flush=True)
         with open(cam_arq, 'wb') as f:
             f.write(r.content)
         return True
@@ -262,9 +261,15 @@ def update_processed_dataset():
 
 
 def update_dataset():
+    # create dataset folders in case they do not exist
+    if not os.path.isdir(RAW_DIR):
+        os.makedirs(RAW_DIR)
+    if not os.path.isdir(PROCESSED_DIR):
+        os.makedirs(PROCESSED_DIR)
+
     urls = list_urls()
     print('')
-    print('Updating CVM raw datasets...')
+    print('Downloading CVM raw files...')
     urls = update_raw_dataset()
     for url in urls:
         print(url)
