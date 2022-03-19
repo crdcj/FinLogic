@@ -56,16 +56,19 @@ class Corporation():
         columns_duplicates = [
             'corp_cvm_id', 'report_version', 'report_type', 'period_reference']
         fs_periods = cls.DATASET['period_end'].astype('datetime64')
-        info = {
-            'Number of corporations in dataset': (
-                cls.DATASET['corp_cvm_id'].nunique()),
-            'Number of Financial Statements in dataset':  len(
+        dataset_info = {
+            'Number of account values (total rows)': len(cls.DATASET.index),
+            'Number of unique account codes': cls.DATASET[
+                'account_code'].nunique(),
+            'Number of corporations': cls.DATASET['corp_cvm_id'].nunique(),
+            'Number of Financial Statements':  len(
                 cls.DATASET.drop_duplicates(subset=columns_duplicates).index),
             'First Financial Statement': fs_periods.min().strftime('%Y-%m-%d'),
             'Last Financial Statement': fs_periods.max().strftime('%Y-%m-%d')
         }
-        return info
-
+        df = pd.DataFrame.from_dict(
+            dataset_info, orient='index', columns=['Dataset Info'])
+        return df
 
     @property
     def identifier(self):
@@ -136,10 +139,8 @@ class Corporation():
             'Last Annual Report': self._LAST_ANNUAL.strftime(f),
             'Last Quarterly Report': self._LAST_QUARTERLY.strftime(f),
         }        
-        df = pd.DataFrame(corporation_info.items(), columns=['Item', 'Value'])
-        df.set_index('Item', inplace=True)
-        df.index.name = None
-
+        df = pd.DataFrame.from_dict(
+            corporation_info, orient='index', columns=['Corporation Info'])
         return df
 
     def report(
