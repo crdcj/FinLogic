@@ -15,7 +15,6 @@ import os
 import numpy as np
 import pandas as pd
 
-
 class Corporation():
     """corporation Financials Class for Brazilian Companies."""
 
@@ -25,58 +24,27 @@ class Corporation():
     CORP_IDS = list(DATASET['corp_cvm_id'].unique())
     FISCAL_IDS = list(DATASET['corp_fiscal_id'].unique())
 
-    def __init__(self, identifier):
+    def __init__(self, identity):
         """Initialize main variables.
 
         Args:
-            identifier: can be used both CVM (regulator) ID or Fiscal ID.
+            identity: can be used both CVM (regulator) ID or Fiscal ID.
                 CVM ID must be an integer
                 Fiscal ID must be a string in the format: 'XX.XXX.XXX/XXXX-XX'
             
             unit (float, optional): number to divide account values
         """
         # Control atributes validation during object initalization
-        self.identifier = identifier
-
-    @classmethod
-    def search_by_name(cls, expression: str) -> pd.DataFrame:
-        """Search dataset for corp. names that contains the 'expression'"""
-        expression = expression.upper()
-        mask = cls.DATASET['corp_name'].str.contains(expression)
-        df = cls.DATASET[mask].copy()
-        df.sort_values(by='corp_name', inplace=True)
-        df.drop_duplicates(subset='corp_cvm_id', inplace=True, ignore_index=True)
-        columns = ['corp_name', 'corp_cvm_id', 'corp_fiscal_id']
-        return df[columns]
-
-    @classmethod
-    def dataset_info(cls) -> pd.DataFrame:
-        """Return dataframe with dataset info"""
-        columns_duplicates = [
-            'corp_cvm_id', 'report_version', 'report_type', 'period_reference']
-        fs_periods = cls.DATASET['period_end'].astype('datetime64')
-        dataset_info = {
-            'Number of account values (total rows)': len(cls.DATASET.index),
-            'Number of unique account codes': cls.DATASET[
-                'account_code'].nunique(),
-            'Number of corporations': cls.DATASET['corp_cvm_id'].nunique(),
-            'Number of Financial Statements':  len(
-                cls.DATASET.drop_duplicates(subset=columns_duplicates).index),
-            'First Financial Statement': fs_periods.min().strftime('%Y-%m-%d'),
-            'Last Financial Statement': fs_periods.max().strftime('%Y-%m-%d')
-        }
-        df = pd.DataFrame.from_dict(
-            dataset_info, orient='index', columns=['Dataset Info'])
-        return df
+        self.identity = identity
 
     @property
-    def identifier(self):
-        """This is the corporation identifier for the class."""
-        return self._identifier
+    def identity(self):
+        """This is the corporation identity for the class."""
+        return self._identity
 
-    @identifier.setter
-    def identifier(self, value):
-        self._identifier = value
+    @identity.setter
+    def identity(self, value):
+        self._identity = value
         # Checks for value existance in DATASET
         if value in Corporation.CORP_IDS:
             self._corp_cvm_id = value
@@ -91,9 +59,9 @@ class Corporation():
             df.reset_index(drop=True, inplace=True)
             self._corp_cvm_id = df.loc[0, 'corp_cvm_id']
         else:
-            raise ValueError(
-                "Selected CVM ID or Fiscal ID for the corporation not found")
-        # Only modify _DF after first object atributes validation in __init__
+            raise ValueError("Selected CVM ID or Fiscal ID for the corporation \
+not found in dataset")
+        # Only set corporation data after object identity validation
         self._set_main_data()
 
     def _set_main_data(self) -> pd.DataFrame:

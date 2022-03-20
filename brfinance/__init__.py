@@ -6,7 +6,7 @@
 # Copyright 2022 Carlos Carvalho
 #
 from . import version
-from .dataset import update_dataset
+from .dataset import update_dataset, search_in_dataset, dataset_info
 from .corporation import Corporation
 
 # create_dataset points to update_dataset

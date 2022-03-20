@@ -11,11 +11,7 @@ URL_ITR = 'http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/'
 script_dir = os.path.dirname(__file__)
 RAW_DIR = script_dir + '/data/raw/'
 PROCESSED_DIR = script_dir + '/data/processed/'
-READ_OPTIONS = {
-    'sep': ';',
-    'encoding': 'iso-8859-1',
-    'dtype': str,
-}
+DATASET_PATH = PROCESSED_DIR + 'dataset.pkl.zst'
 
 
 def update_raw_file(url: str) -> bool:
@@ -214,7 +210,8 @@ def process_raw_file(parent_filename):
     for child_filename in child_filenames[1:]:
         # print(child_parent_file_name)
         child_file = parent_file.open(child_filename)
-        df_child = pd.read_csv(child_file, **READ_OPTIONS)
+        df_child = pd.read_csv(
+            child_file, sep=';', encoding='iso-8859-1', dtype=str)
         # There are two types of CVM files: DFP(annual) and ITR(quarterly).
         if parent_filename[0:3] == 'dfp':
             df_child['report_type'] = 'annual'
@@ -256,8 +253,7 @@ def update_processed_dataset():
     df = df.astype('category')
     print('Columns data type changed to category')
 
-    file_path = PROCESSED_DIR + 'dataset.pkl.zst'
-    df.to_pickle(file_path)
+    df.to_pickle(DATASET_PATH)
 
 
 def update_dataset():
@@ -278,3 +274,36 @@ def update_dataset():
     update_processed_dataset()
     print('')
     print('Processed dataset saved')
+
+
+def search_in_dataset(expression: str) -> pd.DataFrame:
+    """Search dataset for corp. names that contains the 'expression'"""
+    expression = expression.upper()
+    df = pd.read_pickle(DATASET_PATH)
+    mask = df['corp_name'].str.contains(expression)
+    df = df[mask].copy()
+    df.sort_values(by='corp_name', inplace=True)
+    df.drop_duplicates(subset='corp_cvm_id', inplace=True, ignore_index=True)
+    columns = ['corp_name', 'corp_cvm_id', 'corp_fiscal_id']
+    return df[columns]
+
+def dataset_info() -> pd.DataFrame:
+    """Return dataframe with dataset info"""
+    df = pd.read_pickle(DATASET_PATH)
+    columns_duplicates = [
+        'corp_cvm_id', 'report_version', 'report_type', 'period_reference']
+    fs_periods = df['period_end'].astype('datetime64')
+    dataset_info = {
+        'Number of account values (total rows)': len(df.index),
+        'Number of unique account codes': df[
+            'account_code'].nunique(),
+        'Number of corporations': df['corp_cvm_id'].nunique(),
+        'Number of Financial Statements':  len(
+            df.drop_duplicates(subset=columns_duplicates).index),
+        'First Financial Statement': fs_periods.min().strftime('%Y-%m-%d'),
+        'Last Financial Statement': fs_periods.max().strftime('%Y-%m-%d')
+    }
+    df_info = pd.DataFrame.from_dict(
+        dataset_info, orient='index', columns=['Dataset Info'])
+    return df_info
+
