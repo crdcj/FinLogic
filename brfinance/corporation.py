@@ -78,7 +78,7 @@ not found in dataset")
             'period_order': np.int8,
             'account_code': str,
             'account_name': str,
-            'accounting_method': str,
+            'accounting_basis': str,
             'account_fixed': bool,
             'account_value': float,
             'equity_statement_column': str,
@@ -112,21 +112,27 @@ not found in dataset")
     def report(
         self,
         report_type: str,
-        accounting_method: str = 'consolidated',
+        accounting_basis: str = 'consolidated',
         unit: float = 1,
         account_level: int | None = None,
         first_period: str = '2009-01-01'
     ) -> pd.DataFrame:
         """
-        Return Corporation Financial Statements.
+        Return a DataFrame with selected report type.
+
+        This function generates a accounting report based on the parameters
+        passed and returns a Pandas DataFrame with this report
 
         Parameters
         ----------
-
-        report_type: assets, liabilities_and_equity, liabilities, equity, 
-            income and cash_flow.
-        accounting_method (str, optional): 'consolidated' or 'separate'.
-        account_level (int, optional): detail level to show for account codes
+        report_type : {{'assets', 'liabilities_and_equity', 'liabilities',
+            'equity', 'income', 'cash_flow'}}
+            Name of the report type to generate.
+        accounting_basis : {{'consolidated', 'separate'}}, default
+            'consolidated'
+            Name of the accounting basis used in registering investments types.
+        account_level : {{None, 2, 3, 4}}, default None
+            Detail level to show for account codes. 
             account_level = None -> X...       (default: show all accounts)
             account_level = 2    -> X.YY       (show 2 levels)
             account_level = 3    -> X.YY.ZZ    (show 3 levels)
@@ -139,9 +145,9 @@ not found in dataset")
             raise ValueError(
                 'first_period expects a string in YYYY-MM-DD format')
 
-        if accounting_method not in ['consolidated', 'separate']:
+        if accounting_basis not in ['consolidated', 'separate']:
             raise ValueError(
-                "accounting_method expects 'consolidated' or 'separate'")
+                "accounting_basis expects 'consolidated' or 'separate'")
 
         if unit <= 0:
             raise ValueError("Unit expects a value greater than 0")
@@ -151,7 +157,7 @@ not found in dataset")
                 "account_level expects None, 2, 3 or 4")
 
         expression = '''
-            accounting_method == @accounting_method and \
+            accounting_basis == @accounting_basis and \
             period_end >= @first_period
         '''
         df = self._CORP_DF.query(expression).copy()
@@ -180,7 +186,7 @@ not found in dataset")
             "earnings_per_share": ["3.99.01.01", "3.99.02.01"]
         }
         account_codes = report_types[report_type]
-        expression = ''
+        expression = ""
         for count, account_code in enumerate(account_codes):
             if count > 0:
                 expression += " or "
@@ -228,13 +234,19 @@ not found in dataset")
         else:
             return s
 
-    def get_accounts(
+    def special_report(
         self,
-        accounts: list,
+        accounts: list[str],
         unit: float = 1,
         first_period: str = '2009-01-01'
     ) -> pd.DataFrame:
-        """Return a report for a list of account codes"""
+        """
+        Return a DataFrame with the given list of account codes
+        
+        Parameters
+        ----------
+
+        """
         kwargs = {'unit': unit, 'first_period': first_period}
         df_as = self.report('assets', **kwargs)
         df_le = self.report('liabilities_and_equity', **kwargs)
