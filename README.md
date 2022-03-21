@@ -1,4 +1,4 @@
-# Brazilian corporation financial statements and performance indicators
+# Brazilian corporation financial statements and finance indicators
 
 
 <table border=1 cellpadding=10><tr><td>
@@ -54,7 +54,7 @@ petro.report(
     rtype='liabilities',
     accounting_method='separate', # in separate accounting basis
     unit=1_000_000, # in BRL million
-    account_level=3, # show account details only up to level 3
+    account_level=3, # show account up to level 3 of detail
     first_period='2015-01-01'
 )
 

@@ -45,7 +45,6 @@ class Corporation():
     @identity.setter
     def identity(self, value):
         self._identity = value
-        # Checks for value existance in DATASET
         if value in Corporation.CORP_IDS:
             self._corp_cvm_id = value
             df = Corporation.DATASET.query(
@@ -112,11 +111,11 @@ not found in dataset")
 
     def report(
         self,
-        rtype: str,
-        accounting_method: str='consolidated',
-        unit: float=1,
-        account_level: int=0,
-        first_period: str='2009-01-01'
+        report_type: str,
+        accounting_method: str = 'consolidated',
+        unit: float = 1,
+        account_level: int | None = None,
+        first_period: str = '2009-01-01'
     ) -> pd.DataFrame:
         """
         Return Corporation Financial Statements.
@@ -124,16 +123,17 @@ not found in dataset")
         Parameters
         ----------
 
-        type: assets, liabilities_and_equity, liabilities, equity, income and
-            cash_flow
+        report_type: assets, liabilities_and_equity, liabilities, equity, 
+            income and cash_flow.
         accounting_method (str, optional): 'consolidated' or 'separate'.
         account_level (int, optional): detail level to show for account codes
-            account_level = 0 -> X...       (default: show all accounts)
-            account_level = 2 -> X.YY       (show 2 levels)
-            account_level = 3 -> X.YY.ZZ    (show 3 levels)
-            account_level = 4 -> X.YY.ZZ.WW (show 4 levels)
+            account_level = None -> X...       (default: show all accounts)
+            account_level = 2    -> X.YY       (show 2 levels)
+            account_level = 3    -> X.YY.ZZ    (show 3 levels)
+            account_level = 4    -> X.YY.ZZ.WW (show 4 levels)
         first_period: first accounting period, in YYYY-MM-DD format, to show
         """
+        # Check input arguments.
         first_period = pd.to_datetime(first_period, errors='coerce')
         if first_period == pd.NaT:
             raise ValueError(
@@ -146,9 +146,9 @@ not found in dataset")
         if unit <= 0:
             raise ValueError("Unit expects a value greater than 0")
 
-        if account_level not in [0, 1, 2, 3, 4]:
+        if account_level not in [None, 2, 3, 4]:
             raise ValueError(
-                "account_level expects integers 0, 1, 2, 3 or 4")
+                "account_level expects None, 2, 3 or 4")
 
         expression = '''
             accounting_method == @accounting_method and \
@@ -169,7 +169,7 @@ not found in dataset")
             expression = 'account_code.str.len() <= @account_code_limit'
             df.query(expression, inplace=True)
 
-        # Filter dataframe for selected rtype (report type)
+        # Filter dataframe for selected report_type (report type)
         report_types = {
             "assets": ["1"],
             "liabilities_and_equity": ["2"],
@@ -179,7 +179,7 @@ not found in dataset")
             "cash_flow": ["6"],
             "earnings_per_share": ["3.99.01.01", "3.99.02.01"]
         }
-        account_codes = report_types[rtype]
+        account_codes = report_types[report_type]
         expression = ''
         for count, account_code in enumerate(account_codes):
             if count > 0:
@@ -187,7 +187,7 @@ not found in dataset")
             expression += f'account_code.str.startswith("{account_code}")'
         df.query(expression, inplace=True)
 
-        if rtype in ['income', 'cash_flow']:
+        if report_type in ['income', 'cash_flow']:
             df = self._calculate_ltm(df)
 
         df.reset_index(drop=True, inplace=True)
@@ -231,8 +231,8 @@ not found in dataset")
     def get_accounts(
         self,
         accounts: list,
-        unit: float=1,
-        first_period: str='2009-01-01'
+        unit: float = 1,
+        first_period: str = '2009-01-01'
     ) -> pd.DataFrame:
         """Return a report for a list of account codes"""
         kwargs = {'unit': unit, 'first_period': first_period}

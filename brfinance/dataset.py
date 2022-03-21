@@ -204,11 +204,9 @@ def process_raw_file(parent_filename):
     """Read yearly raw files, process it and consolidate into one dataframe."""
     df = pd.DataFrame()
     parent_path = RAW_DIR + parent_filename
-    # print(parent_path, flush=True)
     parent_file = zf.ZipFile(parent_path)
     child_filenames = parent_file.namelist()
     for child_filename in child_filenames[1:]:
-        # print(child_parent_file_name)
         child_file = parent_file.open(child_filename)
         df_child = pd.read_csv(
             child_file, sep=';', encoding='iso-8859-1', dtype=str)
@@ -220,13 +218,12 @@ def process_raw_file(parent_filename):
 
         df_child = clean_raw_df(df_child)
         df = pd.concat([df, df_child], ignore_index=True)
-    print(parent_filename, 'processed')
+    # print(parent_filename, 'processed')
     return df
 
 
 def update_processed_dataset():
     """Update the processed dataset."""
-    # print(os.path.dirname(os.path.abspath(__file__)))
     filenames = sorted(os.listdir(RAW_DIR))
     with ProcessPoolExecutor() as executor:
         results = executor.map(process_raw_file, filenames)
