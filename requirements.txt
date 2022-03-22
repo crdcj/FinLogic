@@ -1,0 +1,4 @@
+pandas>=1.4.0
+numpy>=1.2.0
+requests>=2.27.1
+zstandard>=0.17
