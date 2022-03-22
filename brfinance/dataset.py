@@ -37,18 +37,18 @@ def update_raw_file(url: str) -> bool:
 
 
 def list_urls() -> list:
-    """Atualizar a base de arquivos do Portal da CVM.
+    """Update the CVM Portal file base.
 
-    Urls com os links para as tabelas de dados:
+    Urls with CVM raw files:
     http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/
     http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/
-    Exemplos de links:
+    Links example:
     http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_2020.zip
     http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/itr_cia_aberta_2020.zip
-    Ao longo de 2021, já existem DFs do ano 2022 por conta do calendário social
-    da empresa poder não coincidir, necessariamente, com o calendário oficial.
-    Por conta disso, soma-se 2 ano ano atual (o segundo limite da função range
-    é exlusivo)
+    Throughout 2021, there are already DFs for the year 2022 because the
+    company's social calendar may not necessarily coincide with the official
+    calendar. Because of this, 2 is added to the current year (the second limit
+    of the range function is exclusive)
     """
     first_year = 2010  # First year avaible at CVM Portal.
     # Next year files will appear during current year.
@@ -254,6 +254,7 @@ def update_processed_dataset():
 
 
 def update_dataset():
+    "Create/Update dataset from CVM public data"
     # create dataset folders in case they do not exist
     if not os.path.isdir(RAW_DIR):
         os.makedirs(RAW_DIR)
@@ -274,7 +275,18 @@ def update_dataset():
 
 
 def search_in_dataset(expression: str) -> pd.DataFrame:
-    """Search dataset for corp. names that contains the 'expression'"""
+    """
+    Search corporations names in dataset that contains the 'expression'
+
+    Parameters
+    ----------
+    expression: str
+        A expression to search in dataset column 'corp_name'.
+
+    Returns
+    -------
+    pd.DataFrame with search results
+    """
     expression = expression.upper()
     df = pd.read_pickle(DATASET_PATH)
     mask = df['corp_name'].str.contains(expression)
@@ -286,7 +298,13 @@ def search_in_dataset(expression: str) -> pd.DataFrame:
 
 
 def dataset_info() -> pd.DataFrame:
-    """Return dataframe with dataset info"""
+    """
+    Return dataframe with dataset info
+
+    Returns
+    -------
+    pd.DataFrame
+    """
     df = pd.read_pickle(DATASET_PATH)
     columns_duplicates = [
         'corp_cvm_id', 'report_version', 'report_type', 'period_reference']
