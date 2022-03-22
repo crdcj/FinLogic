@@ -16,7 +16,18 @@ import numpy as np
 import pandas as pd
 
 class Corporation():
-    """corporation Financials Class for Brazilian Companies."""
+    """
+    Finance Data Class for Brazilian Corporations.
+    
+    Attributes
+    ----------
+        identity: int or str
+            Both CVM ID or a Fiscal ID for the corporation can be used.
+            CVM ID (regulator ID) must be an integer.
+            Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
+    
+    """
+
 
     script_dir = os.path.dirname(__file__)
     DATASET = pd.read_pickle(script_dir + '/data/processed/dataset.pkl.zst')
@@ -24,22 +35,34 @@ class Corporation():
     CORP_IDS = list(DATASET['corp_cvm_id'].unique())
     FISCAL_IDS = list(DATASET['corp_fiscal_id'].unique())
 
-    def __init__(self, identity):
+    def __init__(self, identity: int | str):
         """Initialize main variables.
 
-        Args:
-            identity: can be used both CVM (regulator) ID or Fiscal ID.
-                CVM ID must be an integer
-                Fiscal ID must be a string in the format: 'XX.XXX.XXX/XXXX-XX'
-            
-            unit (float, optional): number to divide account values
+        Parameters
+        ----------
+            identity: int or str
+                Both CVM ID or a Fiscal ID for the corporation can be used.
+                CVM ID (regulator ID) must be an integer.
+                Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
         """
-        # Control atributes validation during object initalization
         self.identity = identity
 
     @property
     def identity(self):
-        """This is the corporation identity for the class."""
+        """
+        Get or set corporation unique identity for the class.
+        
+        Parameters
+        ----------
+            value: int or str
+                Both CVM ID or a Fiscal ID for the corporation can be used.
+                CVM ID (regulator ID) must be an integer.
+                Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
+        Returns
+        -------
+        Selected unique identity for the object if found in dataset
+        
+        """
         return self._identity
 
     @identity.setter
@@ -125,19 +148,26 @@ not found in dataset")
 
         Parameters
         ----------
-        report_type : {{'assets', 'liabilities_and_equity', 'liabilities',
-            'equity', 'income', 'cash_flow'}}
-            Name of the report type to generate.
-        accounting_basis : {{'consolidated', 'separate'}}, default
-            'consolidated'
-            Name of the accounting basis used in registering investments types.
-        account_level : {{None, 2, 3, 4}}, default None
+        report_type : {'assets', 'liabilities_and_equity', 'liabilities',
+            'equity', 'income', 'cash_flow'}
+            Report type to be generated.
+        accounting_basis : {'consolidated', 'separate'}, default 'consolidated'
+            Accounting basis used for registering investments.            
+        account_level : {None, 2, 3, 4}, default None
             Detail level to show for account codes. 
             account_level = None -> X...       (default: show all accounts)
             account_level = 2    -> X.YY       (show 2 levels)
             account_level = 3    -> X.YY.ZZ    (show 3 levels)
             account_level = 4    -> X.YY.ZZ.WW (show 4 levels)
-        first_period: first accounting period, in YYYY-MM-DD format, to show
+        first_period: str, default '2009-01-01'
+            First accounting period to show. Format must be YYYY-MM-DD.
+        unit : float, default 1.0
+            Number to divide account values.
+
+        Return
+        ------
+        pandas.DataFrame
+            Report representing a financial statement for the corporation.
         """
         # Check input arguments.
         first_period = pd.to_datetime(first_period, errors='coerce')
@@ -145,14 +175,14 @@ not found in dataset")
             raise ValueError(
                 'first_period expects a string in YYYY-MM-DD format')
 
-        if accounting_basis not in ['consolidated', 'separate']:
+        if accounting_basis not in {'consolidated', 'separate'}:
             raise ValueError(
                 "accounting_basis expects 'consolidated' or 'separate'")
 
         if unit <= 0:
             raise ValueError("Unit expects a value greater than 0")
 
-        if account_level not in [None, 2, 3, 4]:
+        if account_level not in {None, 2, 3, 4}:
             raise ValueError(
                 "account_level expects None, 2, 3 or 4")
 
@@ -193,7 +223,7 @@ not found in dataset")
             expression += f'account_code.str.startswith("{account_code}")'
         df.query(expression, inplace=True)
 
-        if report_type in ['income', 'cash_flow']:
+        if report_type in {'income', 'cash_flow'}:
             df = self._calculate_ltm(df)
 
         df.reset_index(drop=True, inplace=True)
