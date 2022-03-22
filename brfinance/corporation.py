@@ -1,4 +1,4 @@
-"""Module containing Corporation Class definition for Brazilian Corporations.
+"""Module containing the Corporation Class.
 Abbreviation used for Financial Statement = FS
 df['account_code'].str[0].unique() -> [1, 2, 3, 4, 5, 6, 7]
 The first part of 'account_code' is the FS type
@@ -21,14 +21,11 @@ class Corporation():
     
     Attributes
     ----------
-        identity: int or str
-            Both CVM ID or a Fiscal ID for the corporation can be used.
-            CVM ID (regulator ID) must be an integer.
-            Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
-    
+    identity: int or str
+        A unique value to select the corporation in dataset. Both
+        CVM ID or a Fiscal ID can be used. CVM ID (regulator ID) must be an
+        integer. Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
     """
-
-
     script_dir = os.path.dirname(__file__)
     DATASET = pd.read_pickle(script_dir + '/data/processed/dataset.pkl.zst')
     TAX_RATE = 0.34
@@ -40,28 +37,29 @@ class Corporation():
 
         Parameters
         ----------
-            identity: int or str
-                Both CVM ID or a Fiscal ID for the corporation can be used.
-                CVM ID (regulator ID) must be an integer.
-                Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
+        identity: int or str
+            A unique value to select the corporation in dataset. Both
+            CVM ID or a Fiscal ID can be used. CVM ID (regulator ID) must be an
+            integer. Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
         """
         self.identity = identity
 
     @property
     def identity(self):
         """
-        Get or set corporation unique identity for the class.
+        Get or set corporation unique identity. Raise KeyError if not found in
+        dataset.
         
         Parameters
         ----------
-            value: int or str
-                Both CVM ID or a Fiscal ID for the corporation can be used.
-                CVM ID (regulator ID) must be an integer.
-                Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
+        value: int or str
+            A unique value to select the corporation in dataset. Both
+            CVM ID or a Fiscal ID can be used. CVM ID (regulator ID) must be an
+            integer. Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
+
         Returns
         -------
-        Selected unique identity for the object if found in dataset
-        
+        int or str
         """
         return self._identity
 
@@ -81,8 +79,7 @@ class Corporation():
             df.reset_index(drop=True, inplace=True)
             self._corp_cvm_id = df.loc[0, 'corp_cvm_id']
         else:
-            raise ValueError("Selected CVM ID or Fiscal ID for the corporation \
-not found in dataset")
+            raise KeyError("Identity for the corporation not found in dataset")
         # Only set corporation data after object identity validation
         self._set_main_data()
 
@@ -141,10 +138,11 @@ not found in dataset")
         first_period: str = '2009-01-01'
     ) -> pd.DataFrame:
         """
-        Return a DataFrame with selected report type.
+        Return a DataFrame with corporation selected report type.
 
-        This function generates a accounting report based on the parameters
-        passed and returns a Pandas DataFrame with this report
+        This function generates a report representing one of the financial
+        statements for the corporation adjusted by the attributes passed and
+        returns a pandas.DataFrame with this report.
 
         Parameters
         ----------
@@ -162,12 +160,20 @@ not found in dataset")
         first_period: str, default '2009-01-01'
             First accounting period to show. Format must be YYYY-MM-DD.
         unit : float, default 1.0
-            Number to divide account values.
+            Account values will be divided by 'unit' value.
 
-        Return
+        Raises
+        ------
+        ValueError
+            * If passed ``report_type`` does not exist
+            * If passed ``accounting_basis`` does not exist
+            * If passed ``account_level`` does not exist
+            * If passed ``first_period`` not in YYYY-MM-DD string format
+            * If passed ``unit`` <= 0
+
+        Returns
         ------
         pandas.DataFrame
-            Report representing a financial statement for the corporation.
         """
         # Check input arguments.
         first_period = pd.to_datetime(first_period, errors='coerce')
@@ -256,26 +262,37 @@ not found in dataset")
         return df_flow_ltm
 
     @staticmethod
-    def shift_right(s: pd.Series, is_shifted: bool) -> pd.Series:
+    def shift_right(s: pd.Series, t_minus1: bool) -> pd.Series:
         """Shift row to the right in order to obtain series previous values"""
-        if is_shifted:
+        if t_minus1:
             arr = s.iloc[:-1].values
             return np.append(np.nan, arr)
         else:
             return s
 
-    def special_report(
+    def custom_report(
         self,
         accounts: list[str],
         unit: float = 1,
         first_period: str = '2009-01-01'
     ) -> pd.DataFrame:
         """
-        Return a DataFrame with the given list of account codes
+        Return a DataFrame with a custom list of accounting codes
         
+        Creates DataFrame object with a custom list of accounting codes
+        adjusted by function attributes
+
         Parameters
         ----------
+        accounts : list[str]
+            A list of strings containg accounting codes to be used
+        unit : float, default 1.0
+            Account values will be divided by 'unit' value.
 
+
+        Returns
+        ------
+        pandas.DataFrame
         """
         kwargs = {'unit': unit, 'first_period': first_period}
         df_as = self.report('assets', **kwargs)
@@ -287,8 +304,25 @@ not found in dataset")
         df.reset_index(drop=True, inplace=True)
         return df
 
-    def operating_performance(self, is_shifted: bool = True):
-        """Return corporation main operating indicators."""
+    def operating_performance(self, t_minus1: bool = True):
+        """
+        Return corporation main operating indicators.
+
+        Creates DataFrame object with corporation operating indicators as
+        described by Aswath Damodaran 2007 Paper "Return on Capital (ROC),
+        Return on Invested Capital (ROIC) and Return on Equity (ROE):
+        Measurement and Implications"
+        https://people.stern.nyu.edu/adamodar/pdfiles/papers/returnmeasures.pdf
+
+        Parameters
+        ----------
+        t_minus1 : bool, default True
+            Wheather to divide return measurements by book values from the end
+            of the prior year (see Damodaran paper above).
+        Returns
+        -------
+
+        """
         df_as = self.report('assets')
         df_le = self.report('liabilities_and_equity')
         df_in = self.report('income')
@@ -302,8 +336,8 @@ not found in dataset")
         gross_profit = df.loc['3.03']
         ebit = df.loc['3.05']
         net_income = df.loc['3.11']
-        total_assets = self.shift_right(df.loc['1'], is_shifted)
-        equity = self.shift_right(df.loc['2.03'], is_shifted)
+        total_assets = self.shift_right(df.loc['1'], t_minus1)
+        equity = self.shift_right(df.loc['2.03'], t_minus1)
         invested_capital = (
             df.loc['2.03']
             + df.loc['2.01.04']
@@ -311,7 +345,7 @@ not found in dataset")
             - df.loc['1.01.01']
             - df.loc['1.01.02']
         )
-        invested_capital = self.shift_right(invested_capital, is_shifted)
+        invested_capital = self.shift_right(invested_capital, t_minus1)
 
         # dfi: dataframe with indicators
         dfi = pd.DataFrame(columns=df.columns)
