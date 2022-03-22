@@ -1,4 +1,4 @@
-# BrFinance: Python finance data analysis for Brazilian corporations
+# BrFinance: finance data for Brazilian corporations
 
 
 <table border=1 cellpadding=10><tr><td>
