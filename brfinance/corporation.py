@@ -1,24 +1,13 @@
-"""Module containing the Corporation Class.
-Abbreviation used for Financial Statement = FS
-df['account_code'].str[0].unique() -> [1, 2, 3, 4, 5, 6, 7]
-The first part of 'account_code' is the FS type
-Table of statements correspondence:
-    1 -> Balance Sheet - Assets
-    2 -> Balance Sheet - Liabilities and Shareholders’ Equity
-    3 -> Income
-    4 -> Comprehensive Income
-    5 -> Changes in Equity
-    6 -> Cash Flow (Indirect Method)
-    7 -> Added Value
-"""
+"""Module containing the Corporation Class."""
 import os
 import numpy as np
 import pandas as pd
 
+
 class Corporation():
     """
     Finance Data Class for Brazilian Corporations.
-    
+
     Attributes
     ----------
     identity: int or str
@@ -47,9 +36,8 @@ class Corporation():
     @property
     def identity(self):
         """
-        Get or set corporation unique identity. Raise KeyError if not found in
-        dataset.
-        
+        Get or set corporation unique identity for dataset selection.
+
         Parameters
         ----------
         value: int or str
@@ -60,6 +48,11 @@ class Corporation():
         Returns
         -------
         int or str
+
+        Raises
+        ------
+        KeyError
+            * If passed ``identity`` not found in dataset.
         """
         return self._identity
 
@@ -89,7 +82,7 @@ class Corporation():
         self._CORP_DF = self._CORP_DF.astype({
             'corp_name': str,
             'corp_cvm_id': np.uint32,
-            'corp_fiscal_id': str,            
+            'corp_fiscal_id': str,
             'report_type': str,
             'report_version': str,
             'period_reference': 'datetime64',
@@ -98,7 +91,7 @@ class Corporation():
             'period_order': np.int8,
             'account_code': str,
             'account_name': str,
-            'accounting_basis': str,
+            'accounting_method': str,
             'account_fixed': bool,
             'account_value': float,
             'equity_statement_column': str,
@@ -124,7 +117,7 @@ class Corporation():
             'First Annual Report': self._FIRST_ANNUAL.strftime(f),
             'Last Annual Report': self._LAST_ANNUAL.strftime(f),
             'Last Quarterly Report': self._LAST_QUARTERLY.strftime(f),
-        }        
+        }
         df = pd.DataFrame.from_dict(
             corporation_info, orient='index', columns=['Corporation Info'])
         return df
@@ -132,8 +125,8 @@ class Corporation():
     def report(
         self,
         report_type: str,
-        accounting_basis: str = 'consolidated',
-        unit: float = 1,
+        accounting_method: str = 'consolidated',
+        unit: float = 1.0,
         account_level: int | None = None,
         first_period: str = '2009-01-01'
     ) -> pd.DataFrame:
@@ -149,10 +142,11 @@ class Corporation():
         report_type : {'assets', 'liabilities_and_equity', 'liabilities',
             'equity', 'income', 'cash_flow'}
             Report type to be generated.
-        accounting_basis : {'consolidated', 'separate'}, default 'consolidated'
-            Accounting basis used for registering investments.            
+        accounting_method : {'consolidated', 'separate'}, default
+            'consolidated'
+            Accounting method used for registering investments.
         account_level : {None, 2, 3, 4}, default None
-            Detail level to show for account codes. 
+            Detail level to show for account codes.
             account_level = None -> X...       (default: show all accounts)
             account_level = 2    -> X.YY       (show 2 levels)
             account_level = 3    -> X.YY.ZZ    (show 3 levels)
@@ -162,38 +156,39 @@ class Corporation():
         unit : float, default 1.0
             Account values will be divided by 'unit' value.
 
-        Raises
-        ------
-        ValueError
-            * If passed ``report_type`` does not exist
-            * If passed ``accounting_basis`` does not exist
-            * If passed ``account_level`` does not exist
-            * If passed ``first_period`` not in YYYY-MM-DD string format
-            * If passed ``unit`` <= 0
-
         Returns
         ------
         pandas.DataFrame
+
+        Raises
+        ------
+        ValueError
+            * If ``report_type`` attribute is invalid
+            * If ``accounting_method`` attribute is invalid
+            * If ``account_level`` attribute is invalid
+            * If ``first_period`` attribute is not in YYYY-MM-DD string format
+            * If ``unit`` <= 0
+
         """
         # Check input arguments.
+        if account_level not in {None, 2, 3, 4}:
+            raise ValueError(
+                "account_level expects None, 2, 3 or 4")
+
         first_period = pd.to_datetime(first_period, errors='coerce')
         if first_period == pd.NaT:
             raise ValueError(
                 'first_period expects a string in YYYY-MM-DD format')
 
-        if accounting_basis not in {'consolidated', 'separate'}:
+        if accounting_method not in {'consolidated', 'separate'}:
             raise ValueError(
-                "accounting_basis expects 'consolidated' or 'separate'")
+                "accounting_method expects 'consolidated' or 'separate'")
 
         if unit <= 0:
             raise ValueError("Unit expects a value greater than 0")
 
-        if account_level not in {None, 2, 3, 4}:
-            raise ValueError(
-                "account_level expects None, 2, 3 or 4")
-
         expression = '''
-            accounting_basis == @accounting_basis and \
+            accounting_method == @accounting_method and \
             period_end >= @first_period
         '''
         df = self._CORP_DF.query(expression).copy()
@@ -211,7 +206,20 @@ class Corporation():
             expression = 'account_code.str.len() <= @account_code_limit'
             df.query(expression, inplace=True)
 
-        # Filter dataframe for selected report_type (report type)
+        """
+        Filter dataframe for selected report_type (report type)
+
+        df['account_code'].str[0].unique() -> [1, 2, 3, 4, 5, 6, 7]
+        The first part of 'account_code' is the report type
+        Table of reports correspondence:
+            1 -> Balance Sheet - Assets
+            2 -> Balance Sheet - Liabilities and Shareholders’ Equity
+            3 -> Income
+            4 -> Comprehensive Income
+            5 -> Changes in Equity
+            6 -> Cash Flow (Indirect Method)
+            7 -> Added Value
+        """
         report_types = {
             "assets": ["1"],
             "liabilities_and_equity": ["2"],
@@ -262,7 +270,7 @@ class Corporation():
         return df_flow_ltm
 
     @staticmethod
-    def shift_right(s: pd.Series, t_minus1: bool) -> pd.Series:
+    def _shift_right(s: pd.Series, t_minus1: bool) -> pd.Series:
         """Shift row to the right in order to obtain series previous values"""
         if t_minus1:
             arr = s.iloc[:-1].values
@@ -273,28 +281,36 @@ class Corporation():
     def custom_report(
         self,
         accounts: list[str],
-        unit: float = 1,
-        first_period: str = '2009-01-01'
+        accounting_method: str = 'consolidated',
+        first_period: str = '2009-01-01',
+        unit: float = 1.0
     ) -> pd.DataFrame:
         """
-        Return a DataFrame with a custom list of accounting codes
-        
+        Return a financial report from custom list of accounting codes
+
         Creates DataFrame object with a custom list of accounting codes
         adjusted by function attributes
 
         Parameters
         ----------
         accounts : list[str]
-            A list of strings containg accounting codes to be used
+            A list of strings containg accounting codes to be used in report
+        accounting_method : {'consolidated', 'separate'}, default
+            'consolidated'
+            Accounting method used for registering investments.
+        first_period: str, default '2009-01-01'
+            First accounting period to show. Format must be YYYY-MM-DD.
         unit : float, default 1.0
             Account values will be divided by 'unit' value.
 
-
         Returns
-        ------
+        -------
         pandas.DataFrame
         """
-        kwargs = {'unit': unit, 'first_period': first_period}
+        kwargs = {
+            'accounting_method': accounting_method,
+            'unit': unit,
+            'first_period': first_period}
         df_as = self.report('assets', **kwargs)
         df_le = self.report('liabilities_and_equity', **kwargs)
         df_is = self.report('income', **kwargs)
@@ -304,15 +320,16 @@ class Corporation():
         df.reset_index(drop=True, inplace=True)
         return df
 
-    def operating_performance(self, t_minus1: bool = True):
+    def operating_performance(
+        self,
+        accounting_method: str = 'consolidated',
+        t_minus1: bool = True
+    ) -> pd.DataFrame:
         """
         Return corporation main operating indicators.
 
         Creates DataFrame object with corporation operating indicators as
-        described by Aswath Damodaran 2007 Paper "Return on Capital (ROC),
-        Return on Invested Capital (ROIC) and Return on Equity (ROE):
-        Measurement and Implications"
-        https://people.stern.nyu.edu/adamodar/pdfiles/papers/returnmeasures.pdf
+        described in reference [1]
 
         Parameters
         ----------
@@ -321,11 +338,19 @@ class Corporation():
             of the prior year (see Damodaran paper above).
         Returns
         -------
+        pandas.Dataframe
 
+        References
+        ----------
+        .. [1]  Aswath Damodaran, "Return on Capital (ROC), Return on Invested
+                Capital (ROIC) and Return on Equity (ROE): Measurement and
+                Implications.", 2007,
+                https://people.stern.nyu.edu/adamodar/pdfiles/papers/returnmeasures.pdf
         """
-        df_as = self.report('assets')
-        df_le = self.report('liabilities_and_equity')
-        df_in = self.report('income')
+        kwargs = {'accounting_method': accounting_method}
+        df_as = self.report('assets', **kwargs)
+        df_le = self.report('liabilities_and_equity', **kwargs)
+        df_in = self.report('income', **kwargs)
         df = pd.concat([df_as, df_le, df_in], ignore_index=True)
         df.set_index(keys='account_code', drop=True, inplace=True)
         df.drop(columns=['account_fixed', 'account_name'], inplace=True)
@@ -336,8 +361,8 @@ class Corporation():
         gross_profit = df.loc['3.03']
         ebit = df.loc['3.05']
         net_income = df.loc['3.11']
-        total_assets = self.shift_right(df.loc['1'], t_minus1)
-        equity = self.shift_right(df.loc['2.03'], t_minus1)
+        total_assets = self._shift_right(df.loc['1'], t_minus1)
+        equity = self._shift_right(df.loc['2.03'], t_minus1)
         invested_capital = (
             df.loc['2.03']
             + df.loc['2.01.04']
@@ -345,7 +370,7 @@ class Corporation():
             - df.loc['1.01.01']
             - df.loc['1.01.02']
         )
-        invested_capital = self.shift_right(invested_capital, t_minus1)
+        invested_capital = self._shift_right(invested_capital, t_minus1)
 
         # dfi: dataframe with indicators
         dfi = pd.DataFrame(columns=df.columns)
@@ -358,7 +383,9 @@ class Corporation():
         )
         dfi.loc['return_on_equity'] = net_income / equity
         dfi.loc['gross_margin'] = gross_profit / revenues
-        dfi.loc['operating_margin'] = ebit * (1 - Corporation.TAX_RATE) / revenues
+        dfi.loc['operating_margin'] = (
+            ebit * (1 - Corporation.TAX_RATE) / revenues
+        )
         dfi.loc['net_margin'] = net_income / revenues
 
         return dfi

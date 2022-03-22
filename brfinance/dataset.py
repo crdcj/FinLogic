@@ -181,7 +181,7 @@ def clean_raw_df(df: pd.DataFrame) -> pd.DataFrame:
     columns_order = [
         'corp_name',
         'corp_cvm_id',
-        'corp_fiscal_id',        
+        'corp_fiscal_id',
         'report_type',
         'report_version',
         'period_reference',
@@ -284,6 +284,7 @@ def search_in_dataset(expression: str) -> pd.DataFrame:
     columns = ['corp_name', 'corp_cvm_id', 'corp_fiscal_id']
     return df[columns]
 
+
 def dataset_info() -> pd.DataFrame:
     """Return dataframe with dataset info"""
     df = pd.read_pickle(DATASET_PATH)
@@ -303,4 +304,3 @@ def dataset_info() -> pd.DataFrame:
     df_info = pd.DataFrame.from_dict(
         dataset_info, orient='index', columns=['Dataset Info'])
     return df_info
-

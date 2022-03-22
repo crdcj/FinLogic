@@ -1,4 +1,4 @@
-# BrFinance: finance data for Brazilian corporations
+# BrFinance: finance toolkit for Brazilian corporations
 
 
 <table border=1 cellpadding=10><tr><td>
@@ -16,9 +16,8 @@ purposes.
 
 ---
 
-**BrFinance** offers a Pythonic way to generate financial information, in
-Brazilian currency (BRL) and output in Pandas dataframe format, from data made
-publicly avaible by the securities market authority in Brazil (CVM)
+**BrFinance** offers a Pythonic/Pandas way to make financial data analysis in
+Brazilian corporations from data made publicly avaible by the securities market authority in Brazil (CVM).
 
 ---
 
@@ -45,8 +44,7 @@ petro = bf.Corporation(9512)
 # show corporation info
 petro.info()
 
-# show corporation assets
-# default arguments: consolidated basis, one BRL as unit and all accounts
+# show corporation assets in Brazilian currency 
 petro.report(rtype='assets')
 
 # show corporation liabilities with different arguments
