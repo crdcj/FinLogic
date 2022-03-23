@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 #
-# BFinance - finance toolkit for Brazilian corporations
+# BFinance - finance toolkit for Brazilian companies
 # https://github.com/crdcj/BFinance
 
-"""BFinance - finance toolkit for Brazilian corporations"""
+"""BFinance - finance toolkit for Brazilian companies"""
 
 from setuptools import setup, find_packages
 import io
@@ -26,7 +26,7 @@ with io.open(path.join(here, 'README.md'), encoding='utf-8') as f:
 setup(
     name='BFinance',
     version=version,
-    description='Finance toolkit for Brazilian corporations',
+    description='Finance toolkit for Brazilian companies',
     long_description=long_description,
     long_description_content_type='text/markdown',
     url='https://github.com/crdcj/BFinance',

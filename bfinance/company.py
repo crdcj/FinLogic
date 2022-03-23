@@ -1,26 +1,26 @@
-"""Module containing the Corporation Class."""
+"""Module containing the Company Class."""
 import os
 from typing import Union
 import numpy as np
 import pandas as pd
 
 
-class Corporation():
+class Company():
     """
-    Finance Data Class for Brazilian Corporations.
+    Finance Data Class for Brazilian Companies.
 
     Attributes
     ----------
     identity: int or str
-        A unique value to select the corporation in dataset. Both
+        A unique value to select the company in dataset. Both
         CVM ID or a Fiscal ID can be used. CVM ID (regulator ID) must be an
         integer. Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
     """
     script_dir = os.path.dirname(__file__)
     DATASET = pd.read_pickle(script_dir + '/data/processed/dataset.pkl.zst')
     TAX_RATE = 0.34
-    CORP_IDS = list(DATASET['corp_cvm_id'].unique())
-    FISCAL_IDS = list(DATASET['corp_fiscal_id'].unique())
+    CVM_IDS = list(DATASET['cvm_id'].unique())
+    FISCAL_IDS = list(DATASET['fiscal_id'].unique())
 
     def __init__(self, identity: Union[int, str]):
         """Initialize main variables.
@@ -28,7 +28,7 @@ class Corporation():
         Parameters
         ----------
         identity: int or str
-            A unique value to select the corporation in dataset. Both
+            A unique value to select the company in dataset. Both
             CVM ID or a Fiscal ID can be used. CVM ID (regulator ID) must be an
             integer. Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
         """
@@ -37,12 +37,12 @@ class Corporation():
     @property
     def identity(self):
         """
-        Get or set corporation unique identity for dataset selection.
+        Get or set company unique identity for dataset selection.
 
         Parameters
         ----------
         value: int or str
-            A unique value to select the corporation in dataset. Both
+            A unique value to select the company in dataset. Both
             CVM ID or a Fiscal ID can be used. CVM ID (regulator ID) must be an
             integer. Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
 
@@ -60,30 +60,29 @@ class Corporation():
     @identity.setter
     def identity(self, value):
         self._identity = value
-        if value in Corporation.CORP_IDS:
-            self._corp_cvm_id = value
-            df = Corporation.DATASET.query(
-                'corp_cvm_id == @self._corp_cvm_id').copy()
+        if value in Company.CVM_IDS:
+            self._cvm_id = value
+            df = Company.DATASET.query('cvm_id == @self._cvm_id').copy()
             df.reset_index(drop=True, inplace=True)
-            self._corp_fiscal_id = df.loc[0, 'corp_fiscal_id']
-        elif value in Corporation.FISCAL_IDS:
-            self._corp_fiscal_id = value
-            expression = 'corp_fiscal_id == @self._corp_fiscal_id'
-            df = Corporation.DATASET.query(expression).copy()
+            self._fiscal_id = df.loc[0, 'fiscal_id']
+        elif value in Company.FISCAL_IDS:
+            self._fiscal_id = value
+            expression = 'fiscal_id == @self._fiscal_id'
+            df = Company.DATASET.query(expression).copy()
             df.reset_index(drop=True, inplace=True)
-            self._corp_cvm_id = df.loc[0, 'corp_cvm_id']
+            self._cvm_id = df.loc[0, 'cvm_id']
         else:
-            raise KeyError("Identity for the corporation not found in dataset")
-        # Only set corporation data after object identity validation
+            raise KeyError("Identity for the company not found in dataset")
+        # Only set company data after object identity validation
         self._set_main_data()
 
     def _set_main_data(self) -> pd.DataFrame:
-        self._CORP_DF = Corporation.DATASET.query(
-            'corp_cvm_id == @self._corp_cvm_id').copy()
-        self._CORP_DF = self._CORP_DF.astype({
-            'corp_name': str,
-            'corp_cvm_id': np.uint32,
-            'corp_fiscal_id': str,
+        self._CO_DF = Company.DATASET.query(
+            'cvm_id == @self._cvm_id').copy()
+        self._CO_DF = self._CO_DF.astype({
+            'co_name': str,
+            'cvm_id': np.uint32,
+            'fiscal_id': str,
             'report_type': str,
             'report_version': str,
             'period_reference': 'datetime64',
@@ -97,30 +96,30 @@ class Corporation():
             'account_value': float,
             'equity_statement_column': str,
         })
-        self._CORP_DF.sort_values(
+        self._CO_DF.sort_values(
             by='account_code', ignore_index=True, inplace=True)
 
-        self._CORP_NAME = self._CORP_DF['corp_name'].unique()[0]
-        self._FIRST_ANNUAL = self._CORP_DF.query(
+        self._NAME = self._CO_DF['co_name'].unique()[0]
+        self._FIRST_ANNUAL = self._CO_DF.query(
             'report_type == "annual"')['period_end'].min()
-        self._LAST_ANNUAL = self._CORP_DF.query(
+        self._LAST_ANNUAL = self._CO_DF.query(
             'report_type == "annual"')['period_end'].max()
-        self._LAST_QUARTERLY = self._CORP_DF.query(
+        self._LAST_QUARTERLY = self._CO_DF.query(
             'report_type == "quarterly"')['period_end'].max()
 
     def info(self) -> pd.DataFrame:
-        """Return dictionary with corporation info."""
+        """Return dictionary with company info."""
         f = '%Y-%m-%d'
-        corporation_info = {
-            'Corp. Name': self._CORP_NAME,
-            'Corp. CVM ID': self._corp_cvm_id,
-            'Corp. Fiscal ID (CNPJ)': self._corp_fiscal_id,
+        company_info = {
+            'Company Name': self._NAME,
+            'Company CVM ID': self._cvm_id,
+            'Company Fiscal ID (CNPJ)': self._fiscal_id,
             'First Annual Report': self._FIRST_ANNUAL.strftime(f),
             'Last Annual Report': self._LAST_ANNUAL.strftime(f),
             'Last Quarterly Report': self._LAST_QUARTERLY.strftime(f),
         }
         df = pd.DataFrame.from_dict(
-            corporation_info, orient='index', columns=['Corporation Info'])
+            company_info, orient='index', columns=['Company Info'])
         return df
 
     def report(
@@ -132,10 +131,10 @@ class Corporation():
         first_period: str = '2009-01-01'
     ) -> pd.DataFrame:
         """
-        Return a DataFrame with corporation selected report type.
+        Return a DataFrame with company selected report type.
 
         This function generates a report representing one of the financial
-        statements for the corporation adjusted by the attributes passed and
+        statements for the company adjusted by the attributes passed and
         returns a pandas.DataFrame with this report.
 
         Parameters
@@ -192,7 +191,7 @@ class Corporation():
             accounting_method == @accounting_method and \
             period_end >= @first_period
         '''
-        df = self._CORP_DF.query(expression).copy()
+        df = self._CO_DF.query(expression).copy()
 
         # Change unit only for accounts different from 3.99
         df['account_value'] = np.where(
@@ -333,9 +332,9 @@ class Corporation():
         t_minus1: bool = True
     ) -> pd.DataFrame:
         """
-        Return corporation main operating indicators.
+        Return company main operating indicators.
 
-        Creates DataFrame object with corporation operating indicators as
+        Creates DataFrame object with company operating indicators as
         described in reference [1]
 
         Parameters
@@ -382,17 +381,15 @@ class Corporation():
         # dfi: dataframe with indicators
         dfi = pd.DataFrame(columns=df.columns)
         dfi.loc['return_on_assets'] = (
-            ebit * (1 - Corporation.TAX_RATE) / total_assets
+            ebit * (1 - Company.TAX_RATE) / total_assets
         )
         # dfi.loc['invested_capital'] = invested_capital
         dfi.loc['return_on_capital'] = (
-            ebit * (1 - Corporation.TAX_RATE) / invested_capital
+            ebit * (1 - Company.TAX_RATE) / invested_capital
         )
         dfi.loc['return_on_equity'] = net_income / equity
         dfi.loc['gross_margin'] = gross_profit / revenues
-        dfi.loc['operating_margin'] = (
-            ebit * (1 - Corporation.TAX_RATE) / revenues
-        )
+        dfi.loc['operating_margin'] = ebit * (1 - Company.TAX_RATE) / revenues
         dfi.loc['net_margin'] = net_income / revenues
 
         return dfi

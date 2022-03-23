@@ -1,4 +1,4 @@
-## BFinance: finance toolkit for Brazilian corporations
+## BFinance: finance toolkit for Brazilian listed companies
 
 
 <table border=1 cellpadding=10><tr><td>
@@ -16,9 +16,9 @@ purposes.
 
 ---
 
-**BFinance** offers a Pythonic way to analyze Brazilian corporations financial
-data from data made publicly avaible by the securities market authority in
-Brazil (CVM).
+**BFinance** offers a Pythonic way to analyze financial data of listed
+companies in Brazil from information made publicly avaible by local securities
+market authority (CVM).
 
 ---
 
@@ -37,24 +37,24 @@ bf.create_dataset()
 ## Show dataset info
 bf.dataset_info()
 
-## Search a corporation in dataset by name
-bf.search_in_dataset('petro')
+## Search a company in dataset by name
+bf.search_company('petro')
 ```
 
-### The Corporation Class
+### The Company Class
 ```python
-# Both CVM (regulator) ID or Fiscal ID can be used for corporation identity
+# Both CVM (regulator) ID or Fiscal ID can be used for company identity
 import bfinance as bf
 
-petro = bf.Corporation(9512)
+petro = bf.Company(9512)
 
-# show corporation info
+# show company info
 petro.info()
 
-# show corporation assets in Brazilian currency 
+# show company assets in Brazilian currency 
 petro.report(rtype='assets')
 
-# show corporation liabilities with different arguments
+# show company liabilities with different arguments
 petro.report(
     rtype='liabilities',
     accounting_method='separate', # in separate accounting basis

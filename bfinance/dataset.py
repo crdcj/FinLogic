@@ -87,9 +87,9 @@ def clean_raw_df(df: pd.DataFrame) -> pd.DataFrame:
     """Convert raw dataframe into processed dataframe."""
 
     columns_translation = {
-        'CD_CVM': 'corp_cvm_id',
-        'CNPJ_CIA': 'corp_fiscal_id',
-        'DENOM_CIA': 'corp_name',
+        'CD_CVM': 'cvm_id',
+        'CNPJ_CIA': 'fiscal_id',
+        'DENOM_CIA': 'co_name',
         'VERSAO': 'report_version',
         'DT_INI_EXERC': 'period_begin',
         'DT_FIM_EXERC': 'period_end',
@@ -108,7 +108,7 @@ def clean_raw_df(df: pd.DataFrame) -> pd.DataFrame:
     # df['report_version'].unique()
     # ['3', '2', '4', '1', '7', '5', '6', '9', '8']
     df['report_version'] = df['report_version'].astype(np.int8)
-    df['corp_cvm_id'] = df['corp_cvm_id'].astype(np.int32)  # max < 600_000
+    df['cvm_id'] = df['cvm_id'].astype(np.int32)  # max < 600_000
     df['account_value'] = df['account_value'].astype(float)
 
     # df.query("account_value == 0") -> 10.891.139 rows from 17.674.199
@@ -180,9 +180,9 @@ def clean_raw_df(df: pd.DataFrame) -> pd.DataFrame:
     df.drop(columns=['GRUPO_DFP'], inplace=True)
 
     columns_order = [
-        'corp_name',
-        'corp_cvm_id',
-        'corp_fiscal_id',
+        'co_name',
+        'cvm_id',
+        'fiscal_id',
         'report_type',
         'report_version',
         'period_reference',
@@ -239,7 +239,7 @@ def update_processed_dataset():
     df.replace(to_replace=['\xa0ON\xa0', 'On'], value='ON', inplace=True)
 
     sort_by = [
-        'corp_cvm_id',
+        'cvm_id',
         'period_reference',
         'report_version',
         'period_order',
@@ -279,14 +279,14 @@ def update_dataset():
 create_dataset = update_dataset
 
 
-def search_in_dataset(expression: str) -> pd.DataFrame:
+def search_company(expression: str) -> pd.DataFrame:
     """
-    Search corporations names in dataset that contains the 'expression'
+    Search companies names in dataset that contains the 'expression'
 
     Parameters
     ----------
     expression: str
-        A expression to search in dataset column 'corp_name'.
+        A expression to search in dataset column 'co_name'.
 
     Returns
     -------
@@ -294,11 +294,11 @@ def search_in_dataset(expression: str) -> pd.DataFrame:
     """
     expression = expression.upper()
     df = pd.read_pickle(DATASET_PATH)
-    mask = df['corp_name'].str.contains(expression)
+    mask = df['co_name'].str.contains(expression)
     df = df[mask].copy()
-    df.sort_values(by='corp_name', inplace=True)
-    df.drop_duplicates(subset='corp_cvm_id', inplace=True, ignore_index=True)
-    columns = ['corp_name', 'corp_cvm_id', 'corp_fiscal_id']
+    df.sort_values(by='co_name', inplace=True)
+    df.drop_duplicates(subset='cvm_id', inplace=True, ignore_index=True)
+    columns = ['co_name', 'cvm_id', 'fiscal_id']
     return df[columns]
 
 
@@ -312,13 +312,13 @@ def dataset_info() -> pd.DataFrame:
     """
     df = pd.read_pickle(DATASET_PATH)
     columns_duplicates = [
-        'corp_cvm_id', 'report_version', 'report_type', 'period_reference']
+        'cvm_id', 'report_version', 'report_type', 'period_reference']
     fs_periods = df['period_end'].astype('datetime64')
     dataset_info = {
         'Number of account values (total rows)': len(df.index),
         'Number of unique account codes': df[
             'account_code'].nunique(),
-        'Number of corporations': df['corp_cvm_id'].nunique(),
+        'Number of companies': df['cvm_id'].nunique(),
         'Number of Financial Statements':  len(
             df.drop_duplicates(subset=columns_duplicates).index),
         'First Financial Statement': fs_periods.min().strftime('%Y-%m-%d'),
