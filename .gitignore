@@ -3,3 +3,6 @@
 **/__pycache__
 .vscode/
 dev/
+dist/
+build/
+BFinance.egg-info/

@@ -12,7 +12,7 @@ from os import path
 
 # --- get version ---
 version = "unknown"
-with open("BFinance/version.py") as f:
+with open("bfinance/version.py") as f:
     line = f.read().strip()
     version = line.replace("version = ", "").replace('"', '')
 # --- /get version ---
