@@ -1,4 +1,4 @@
-# BrFinance: finance toolkit for Brazilian corporations
+## BrFinance: finance data analysis toolkit for Brazilian corporations
 
 
 <table border=1 cellpadding=10><tr><td>
@@ -16,8 +16,9 @@ purposes.
 
 ---
 
-**BrFinance** offers a Pythonic/Pandas way to make financial data analysis in
-Brazilian corporations from data made publicly avaible by the securities market authority in Brazil (CVM).
+**BrFinance** is a toolkit that offers a Pythonic way to analyse Brazilian
+corporations financial data from data made publicly avaible by the securities
+market authority in Brazil (CVM).
 
 ---
 
@@ -36,9 +37,13 @@ bf.dataset_info()
 
 ## Search a corporation in dataset by name
 bf.search_in_dataset('petro')
+```
 
 ### The Corporation Class
-## CVM (regulator) ID or Fiscal ID can be used for corporation identity
+```python
+# Both CVM (regulator) ID or Fiscal ID can be used for corporation identity
+import brfinance as bf
+
 petro = bf.Corporation(9512)
 
 # show corporation info
@@ -55,7 +60,8 @@ petro.report(
     account_level=3, # show account up to level 3 of detail
     first_period='2015-01-01'
 )
-
+```
+---
 ## Installation
 
 Install `brfinance` using `pip`:
@@ -69,8 +75,8 @@ To install `brfinance` using `conda`, see
 
 ### Requirements
 
--   [Python](https://www.python.org) \>= 3.8+
--   [Pandas](https://github.com/pydata/pandas) (tested to work with \>=1.4.0)
+-   [Python](https://www.python.org) \>= 3.10+
+-   [Pandas](https://github.com/pydata/pandas) (tested to work with \>= 1.4.0)
 -   [Numpy](http://www.numpy.org) (tested to work with \>= 1.20)
 -   [requests](http://docs.python-requests.org/en/master/) \>= 2.27.1
 -   [zstandard](https://pypi.org/project/zstandard/) \>= 0.17.0
@@ -80,7 +86,7 @@ To install `brfinance` using `conda`, see
 
 ### Legal Stuff
 
-**yfinance** is distributed under the **MIT License**. See
+**BrFinance** is distributed under the **MIT License**. See
 the [LICENSE.txt](./LICENSE.txt) file in the release for details.
 
 ---
