@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 #
-# BrFinance - finance toolkit for Brazilian corporations
-# https://github.com/crdcj/BrFinance
+# BFin - finance toolkit for Brazilian corporations
+# https://github.com/crdcj/BFin
 
-"""BrFinance - finance toolkit for Brazilian corporations"""
+"""BFin - finance toolkit for Brazilian corporations"""
 
 from setuptools import setup, find_packages
 import io
@@ -24,12 +24,12 @@ with io.open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
-    name='BrFinance',
+    name='BFin',
     version=version,
     description='Finance toolkit for Brazilian corporations',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url='https://github.com/crdcj/BrFinance',
+    url='https://github.com/crdcj/BFin',
     author='Carlos Carvalho',
     author_email='carlos.r.carvalho@outlook.com.br',
     license='MIT',
@@ -60,7 +60,7 @@ setup(
 )
 
 print("""
-NOTE: BrFinance is **not** affiliated, endorsed, or vetted by the Securities
+NOTE: BFin is **not** affiliated, endorsed, or vetted by the Securities
 and Exchange Commission of Brazil (CVM). It's an open-source tool that uses CVM
 publicly available data and is intended for research and educational purposes.
 """)
