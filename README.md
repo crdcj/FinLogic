@@ -1,4 +1,4 @@
-## BrFinance: finance data analysis toolkit for Brazilian corporations
+## BrFinance: finance toolkit for Brazilian corporations
 
 
 <table border=1 cellpadding=10><tr><td>
@@ -16,9 +16,9 @@ purposes.
 
 ---
 
-**BrFinance** is a toolkit that offers a Pythonic way to analyse Brazilian
-corporations financial data from data made publicly avaible by the securities
-market authority in Brazil (CVM).
+**BrFinance** offers a Pythonic way to analyze Brazilian corporations financial
+data from data made publicly avaible by the securities market authority in
+Brazil (CVM).
 
 ---
 

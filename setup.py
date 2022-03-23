@@ -38,6 +38,7 @@ setup(
         # 'Development Status :: 4 - Beta',
         'Development Status :: 5 - Production/Stable',
         'Operating System :: OS Independent',
+        'License :: OSI Approved :: MIT License',
         'Intended Audience :: Developers',
         'Topic :: Office/Business :: Financial',
         'Topic :: Office/Business :: Financial :: Investment',
@@ -46,8 +47,8 @@ setup(
         'Programming Language :: Python :: 3.10',
     ],
     platforms=['any'],
-    keywords='pandas, requests, cvm, finance, investment',
-    packages=find_packages(exclude=['contrib', 'docs', 'tests', 'examples']),
+    keywords='pandas, requests, cvm, finance, investment, accounting',
+    packages=find_packages(exclude=['docs', 'tests']),
     install_requires=[
         'pandas>=1.4.0', 'numpy>=1.2.0', 'requests>=2.27.1', 'zstandard>=0.17'
     ],
