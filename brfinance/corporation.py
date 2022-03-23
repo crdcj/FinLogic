@@ -1,5 +1,6 @@
 """Module containing the Corporation Class."""
 import os
+from typing import Union
 import numpy as np
 import pandas as pd
 
@@ -21,7 +22,7 @@ class Corporation():
     CORP_IDS = list(DATASET['corp_cvm_id'].unique())
     FISCAL_IDS = list(DATASET['corp_fiscal_id'].unique())
 
-    def __init__(self, identity: int | str):
+    def __init__(self, identity: Union[int, str]):
         """Initialize main variables.
 
         Parameters
@@ -127,7 +128,7 @@ class Corporation():
         report_type: str,
         accounting_method: str = 'consolidated',
         unit: float = 1.0,
-        account_level: int | None = None,
+        account_level: Union[int, None] = None,
         first_period: str = '2009-01-01'
     ) -> pd.DataFrame:
         """
@@ -222,8 +223,14 @@ class Corporation():
         """
         report_types = {
             "assets": ["1"],
-            "liabilities_and_equity": ["2"],
+            "cash": ["1.01.01", "1.01.02"],
+            "current_assets": ["1.01"],
+            "non_current_assets": ["1.02"],
             "liabilities": ["2.01", "2.02"],
+            "debt": ["2.01.04", "2.02.01"],
+            "current_liabilities": ["2.01"],
+            "non_current_liabilities": ["2.02"],
+            "liabilities_and_equity": ["2"],
             "equity": ["2.03"],
             "income": ["3"],
             "cash_flow": ["6"],

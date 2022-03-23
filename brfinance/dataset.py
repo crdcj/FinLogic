@@ -104,6 +104,7 @@ def clean_raw_df(df: pd.DataFrame) -> pd.DataFrame:
         'ESCALA_MOEDA': 'currency_unit',
     }
     df.rename(columns=columns_translation, inplace=True)
+
     # df['report_version'].unique()
     # ['3', '2', '4', '1', '7', '5', '6', '9', '8']
     df['report_version'] = df['report_version'].astype(np.int8)
