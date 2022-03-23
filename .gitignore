@@ -2,3 +2,4 @@
 **/backup
 **/__pycache__
 .vscode/
+dev/
