@@ -44,13 +44,13 @@ setup(
         'Topic :: Office/Business :: Financial :: Investment',
         'Topic :: Software Development :: Libraries',
         'Topic :: Software Development :: Libraries :: Python Modules',
-        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.8',
     ],
     platforms=['any'],
     keywords='pandas, requests, cvm, finance, investment, accounting',
     packages=find_packages(exclude=['docs', 'tests']),
     install_requires=[
-        'pandas>=1.4.0', 'numpy>=1.2.0', 'requests>=2.27.1', 'zstandard>=0.17'
+        'pandas>=1.4.0', 'numpy>=1.18.5', 'requests>=2.27.1', 'zstandard>=0.17'
     ],
     entry_points={
         'console_scripts': [

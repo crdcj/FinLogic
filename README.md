@@ -24,7 +24,9 @@ Brazil (CVM).
 
 ## Quick Start
 
-### The dataset module
+### Create Dataset
+#### The create_dataset function is responsible for downloading raw financial
+files from CVM, processesing these files and saving the data for local access:
 
 ```python
 import brfinance as bf
