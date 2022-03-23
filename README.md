@@ -1,4 +1,4 @@
-## BrFinance: finance toolkit for Brazilian corporations
+## BFin: finance toolkit for Brazilian corporations
 
 
 <table border=1 cellpadding=10><tr><td>
@@ -7,7 +7,7 @@
 
 ---
 
-BrFinance is **not** affiliated, endorsed, or vetted by the Securities and
+BFin is **not** affiliated, endorsed, or vetted by the Securities and
 Exchange Commission of Brazil (CVM). It's an open-source tool that uses CVM
 publicly available data and is intended for research and educational
 purposes.
@@ -16,7 +16,7 @@ purposes.
 
 ---
 
-**BrFinance** offers a Pythonic way to analyze Brazilian corporations financial
+**BFin** offers a Pythonic way to analyze Brazilian corporations financial
 data from data made publicly avaible by the securities market authority in
 Brazil (CVM).
 
@@ -29,7 +29,7 @@ Brazil (CVM).
 files from CVM, processesing these files and saving the data for local access:
 
 ```python
-import brfinance as bf
+import bfin as bf
 
 ### Starting the dataset
 bf.create_dataset()
@@ -44,7 +44,7 @@ bf.search_in_dataset('petro')
 ### The Corporation Class
 ```python
 # Both CVM (regulator) ID or Fiscal ID can be used for corporation identity
-import brfinance as bf
+import bfin as bf
 
 petro = bf.Corporation(9512)
 
@@ -66,14 +66,14 @@ petro.report(
 ---
 ## Installation
 
-Install `brfinance` using `pip`:
+Install `bfin` using `pip`:
 
 ``` {.sourceCode .bash}
-$ pip install brfinance --upgrade --no-cache-dir
+$ pip install bfin --upgrade --no-cache-dir
 ```
 
-To install `brfinance` using `conda`, see
-[this](https://anaconda.org/carloscarvalho/brfinance).
+To install `bfin` using `conda`, see
+[this](https://anaconda.org/carloscarvalho/bfin).
 
 ### Requirements
 
@@ -88,7 +88,7 @@ To install `brfinance` using `conda`, see
 
 ### Legal Stuff
 
-**BrFinance** is distributed under the **MIT License**. See
+**bfin** is distributed under the **MIT License**. See
 the [LICENSE.txt](./LICENSE.txt) file in the release for details.
 
 ---

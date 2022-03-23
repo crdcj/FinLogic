@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
-# brfinance - Brazilian Corporation Financial Data
-# https://github.com/crdcj/BrFinance
+# BFin - Brazilian Corporation Financial Data
+# https://github.com/crdcj/bfin
 #
 # Copyright 2022 Carlos Carvalho
 #
