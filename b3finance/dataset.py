@@ -275,6 +275,10 @@ def update_dataset():
     print('Processed dataset saved')
 
 
+# create_dataset points to update_dataset
+create_dataset = update_dataset
+
+
 def search_in_dataset(expression: str) -> pd.DataFrame:
     """
     Search corporations names in dataset that contains the 'expression'
