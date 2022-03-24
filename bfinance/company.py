@@ -326,6 +326,20 @@ class Company():
         else:
             return s
 
+    @staticmethod
+    def _acc_values(df: pd.DataFrame, acc: str) -> pd.Series:
+        """
+        Return account values or null if account not found
+
+        Some companies have less accounts if separate financial statements is
+        selected, as for accounts '3.01' and '3.03'
+        """
+        if acc in df.index:
+            s = df.loc[acc]
+        else:
+            s = pd.Series(data=np.NAN, index=df.columns)
+        return s
+
     def indicators(
         self,
         acc_method: str = 'consolidated',
@@ -364,18 +378,9 @@ class Company():
         df.fillna(0, inplace=True)
 
         # series with indicators
-        if '3.01' in df.index:
-            revenues = df.loc['3.01']
-        else:
-            revenues = df.iloc[0]
-            revenues = np.NAN
-        if '3.03' in df.index:
-            gross_profit = df.loc['3.03']
-        else:
-            gross_profit = df.iloc[0]
-            gross_profit = np.NAN
+        revenues = self._acc_values(df, '3.01')
+        gross_profit = self._acc_values(df, '3.03')
 
-        # gross_profit = df.loc['3.03']
         ebit = df.loc['3.05']
         net_income = df.loc['3.11']
         total_assets = df.loc['1']
