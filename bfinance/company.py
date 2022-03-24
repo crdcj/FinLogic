@@ -232,8 +232,11 @@ class Company():
             "liabilities_and_equity": ["2"],
             "equity": ["2.03"],
             "income": ["3"],
+            "earnings_per_share": ["3.99.01.01", "3.99.02.01"],
+            "comprehensive_income": ["4"],
+            "changes_in_equity": ["5"],
             "cash_flow": ["6"],
-            "earnings_per_share": ["3.99.01.01", "3.99.02.01"]
+            "added_value": ["7"],
         }
         acc_codes = report_types[report_type]
         expression = ""
@@ -326,20 +329,6 @@ class Company():
         else:
             return s
 
-    @staticmethod
-    def _acc_values(df: pd.DataFrame, acc: str) -> pd.Series:
-        """
-        Return account values or null if account not found
-
-        Some companies have less accounts if separate financial statements is
-        selected, as for accounts '3.01' and '3.03'
-        """
-        if acc in df.index:
-            s = df.loc[acc]
-        else:
-            s = pd.Series(data=np.NAN, index=df.columns)
-        return s
-
     def indicators(
         self,
         acc_method: str = 'consolidated',
@@ -372,31 +361,42 @@ class Company():
         df_as = self.report('assets', **kwargs)
         df_le = self.report('liabilities_and_equity', **kwargs)
         df_in = self.report('income', **kwargs)
-        df = pd.concat([df_as, df_le, df_in], ignore_index=True)
+        df_cf = self.report('cash_flow', **kwargs)
+        df = pd.concat([df_as, df_le, df_in, df_cf], ignore_index=True)
         df.set_index(keys='acc_code', drop=True, inplace=True)
         df.drop(columns=['acc_fixed', 'acc_name'], inplace=True)
-        df.fillna(0, inplace=True)
-
-        # These accounts may not exist in separate accounting method
-        revenues = self._acc_values(df, '3.01')
-        gross_profit = self._acc_values(df, '3.03')
-        # Accounts without problems
+        # Calculate indicators series
+        revenues = df.loc['3.01']
+        gross_profit = df.loc['3.03']
         ebit = df.loc['3.05']
+        depreciation_amortization = df.loc['6.01.01.04']
+        ebitda = ebit + depreciation_amortization
+        operating_cash_flow = df.loc['6.01']
         net_income = df.loc['3.11']
         total_assets = df.loc['1']
         total_assets_p = self._prior_values(total_assets, is_prior)
         equity = df.loc['2.03']
         equity_p = self._prior_values(equity, is_prior)
-        cash = df.loc['1.01.01'] + df.loc['1.01.02']
+        total_cash = df.loc['1.01.01'] + df.loc['1.01.02']
+        current_assets = df.loc['1.01']
+        current_liabilities = df.loc['2.01']
+        working_capital = current_assets - current_liabilities
         total_debt = df.loc['2.01.04'] + df.loc['2.02.01']
-        net_debt = total_debt - cash
-        invested_capital = total_debt + equity - cash
+        net_debt = total_debt - total_cash
+        invested_capital = total_debt + equity - total_cash
         invested_capital_p = self._prior_values(invested_capital, is_prior)
 
         # dfi: dataframe with indicators
         dfi = pd.DataFrame(columns=df.columns)
+        dfi.loc['revenues'] = revenues
+        dfi.loc['operating_cash_flow'] = operating_cash_flow
+        dfi.loc['ebitda'] = ebitda
+        dfi.loc['ebit'] = ebit
+        dfi.loc['net_income'] = net_income
+        dfi.loc['total_cash'] = total_cash
         dfi.loc['total_debt'] = total_debt
         dfi.loc['net_debt'] = net_debt
+        dfi.loc['working_capital'] = working_capital
         dfi.loc['invested_capital'] = invested_capital
         dfi.loc['return_on_assets'] = (
             ebit * (1 - Company.TAX_RATE) / total_assets_p
@@ -406,6 +406,7 @@ class Company():
         )
         dfi.loc['return_on_equity'] = net_income / equity_p
         dfi.loc['gross_margin'] = gross_profit / revenues
+        dfi.loc['ebitda_margin'] = ebitda / revenues
         dfi.loc['operating_margin'] = ebit * (1 - Company.TAX_RATE) / revenues
         dfi.loc['net_margin'] = net_income / revenues
 

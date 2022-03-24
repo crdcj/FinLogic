@@ -113,7 +113,7 @@ def clean_raw_df(df: pd.DataFrame) -> pd.DataFrame:
 
     # df.query("acc_value == 0") -> 10.891.139 rows from 17.674.199
     # Zero values will not be used.
-    df.query("acc_value != 0", inplace=True)
+    # df.query("acc_value != 0", inplace=True)
 
     # df['currency'].value_counts() -> REAL    43391302
     df.drop(columns=['currency'], inplace=True)
