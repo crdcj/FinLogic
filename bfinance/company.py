@@ -22,7 +22,11 @@ class Company():
     CVM_IDS = list(DATASET['cvm_id'].unique())
     FISCAL_IDS = list(DATASET['fiscal_id'].unique())
 
-    def __init__(self, identity: Union[int, str]):
+    def __init__(
+        self,
+        identity: Union[int, str],
+        acc_unit: Union[float, str] = 1.0
+    ):
         """Initialize main variables.
 
         Parameters
@@ -31,8 +35,13 @@ class Company():
             A unique value to select the company in dataset. Both CVM ID or
             Fiscal ID can be used. CVM ID (regulator ID) must be an integer.
             Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
+        acc_unit : float or str, default 1.0
+            acc_unit is a constant that will divide company account values.
+            The constant can be a number greater than zero or the strings
+            {'thousand', 'million', 'billion'}.
         """
         self.identity = identity
+        self.acc_unit = acc_unit
 
     @property
     def identity(self):
@@ -75,6 +84,42 @@ class Company():
             raise KeyError("Identity for the company not found in dataset")
         # Only set company data after object identity validation
         self._set_main_data()
+
+    @property
+    def acc_unit(self):
+        """
+        Get or set a constant to divide company account values.
+
+        Parameters
+        ----------
+        acc_unit : float or str, default 1.0
+            acc_unit is a constant that will divide company account values.
+            The constant can be a number greater than zero or the strings
+            {'thousand', 'million', 'billion'}.
+
+        Returns
+        -------
+        float
+
+        Raises
+        ------
+        ValueError
+            * If passed ``acc_unit`` is invalid.
+        """
+        return self._acc_unit
+
+    @acc_unit.setter
+    def acc_unit(self, value: Union[float, str]):
+        if value == 'thousand':
+            self._acc_unit = 1_000
+        elif value == 'million':
+            self._acc_unit = 1_000_000
+        elif value == 'billion':
+            self._acc_unit = 1_000_000_000
+        elif value >= 0:
+            self._acc_unit = value
+        else:
+            raise ValueError("Accounting Unit is invalid")
 
     def _set_main_data(self) -> pd.DataFrame:
         self._CO_DF = Company.DATASET.query(
@@ -126,7 +171,6 @@ class Company():
         self,
         report_type: str,
         acc_method: str = 'consolidated',
-        acc_unit: float = 1.0,
         acc_level: Union[int, None] = None,
         first_period: str = '2009-01-01'
     ) -> pd.DataFrame:
@@ -184,9 +228,6 @@ class Company():
             raise ValueError(
                 "acc_method expects 'consolidated' or 'separate'")
 
-        if acc_unit <= 0:
-            raise ValueError("acc_Unit expects a value greater than 0")
-
         expression = '''
             acc_method == @acc_method and \
             period_end >= @first_period
@@ -197,7 +238,7 @@ class Company():
         df['acc_value'] = np.where(
             df['acc_code'].str.startswith('3.99'),
             df['acc_value'],
-            df['acc_value'] / acc_unit
+            df['acc_value'] / self.acc_unit
         )
 
         # Filter dataframe for selected acc_level
@@ -283,7 +324,6 @@ class Company():
         acc_list: list[str],
         acc_method: str = 'consolidated',
         first_period: str = '2009-01-01',
-        acc_unit: float = 1.0
     ) -> pd.DataFrame:
         """
         Return a financial report from custom list of accounting codes
@@ -307,10 +347,7 @@ class Company():
         -------
         pandas.DataFrame
         """
-        kwargs = {
-            'acc_method': acc_method,
-            'acc_unit': acc_unit,
-            'first_period': first_period}
+        kwargs = {'acc_method': acc_method, 'first_period': first_period}
         df_as = self.report('assets', **kwargs)
         df_le = self.report('liabilities_and_equity', **kwargs)
         df_is = self.report('income', **kwargs)
@@ -332,7 +369,6 @@ class Company():
     def indicators(
         self,
         acc_method: str = 'consolidated',
-        acc_unit: float = 1.0,
         is_prior: bool = True
     ) -> pd.DataFrame:
         """
@@ -357,7 +393,8 @@ class Company():
                 Implications.", 2007,
                 https://people.stern.nyu.edu/adamodar/pdfiles/papers/returnmeasures.pdf
         """
-        kwargs = {'acc_method': acc_method, 'acc_unit': acc_unit}
+
+        kwargs = {'acc_method': acc_method}
         df_as = self.report('assets', **kwargs)
         df_le = self.report('liabilities_and_equity', **kwargs)
         df_in = self.report('income', **kwargs)

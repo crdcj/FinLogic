@@ -24,9 +24,11 @@ market authority (CVM).
 
 ## Quick Start
 
-### Create Dataset
-#### The create_dataset function is responsible for downloading raw financial
-files from CVM, processesing these files and saving the data for local access:
+### Create local dataset
+
+The create_dataset function is responsible for downloading raw financial
+files from CVM, processesing aprox. 18 millions rows of accounting values and
+storing it into a single compressed pickle file for local data analysis.
 
 ```python
 import bfinance as bf
@@ -42,26 +44,31 @@ bf.search_company('petro')
 ```
 
 ### The Company Class
-```python
-# Both CVM (regulator) ID or Fiscal ID can be used for company identity
-import bfinance as bf
 
+The Company Class allows you to easily access accounting data from companies.
+All values are in Brazilian currency.
+```python
+
+import bfinance as bf
+# Both CVM (regulator) ID or Fiscal ID can be used for company identity
 petro = bf.Company(9512)
 
 # show company info
 petro.info()
 
 # show company assets in Brazilian currency 
-petro.report(rtype='assets')
+petro.report(report_type='assets')
 
-# show company liabilities with different arguments
+# show company liabilities with custom arguments
 petro.report(
-    rtype='liabilities',
-    accounting_method='separate', # in separate accounting basis
-    unit=1_000_000, # in BRL million
-    account_level=3, # show account up to level 3 of detail
+    report_type='liabilities',
+    acc_method='separate', # in separate accounting basis
+    acc_unit=1_000_000, # in BRL million
+    acc_level=3, # show account up to level 3 of detail
     first_period='2015-01-01'
 )
+# show company main indicators
+petro.indicators(acc_unit=1_000_000_000)
 ```
 ---
 ## Installation
