@@ -377,36 +377,34 @@ class Company():
         df.drop(columns=['acc_fixed', 'acc_name'], inplace=True)
         df.fillna(0, inplace=True)
 
-        # series with indicators
+        # These accounts may not exist in separate accounting method
         revenues = self._acc_values(df, '3.01')
         gross_profit = self._acc_values(df, '3.03')
-
+        # Accounts without problems
         ebit = df.loc['3.05']
         net_income = df.loc['3.11']
         total_assets = df.loc['1']
-        total_assets_tm1 = self._prior_values(total_assets, is_prior)
+        total_assets_p = self._prior_values(total_assets, is_prior)
         equity = df.loc['2.03']
-        equity_tm1 = self._prior_values(equity, is_prior)
-        invested_capital = (
-            df.loc['2.03']
-            + df.loc['2.01.04']
-            + df.loc['2.02.01']
-            - df.loc['1.01.01']
-            - df.loc['1.01.02']
-        )
-        invested_capital_tm1 = self._prior_values(invested_capital, is_prior)
+        equity_p = self._prior_values(equity, is_prior)
+        cash = df.loc['1.01.01'] + df.loc['1.01.02']
+        total_debt = df.loc['2.01.04'] + df.loc['2.02.01']
+        net_debt = total_debt - cash
+        invested_capital = total_debt + equity - cash
+        invested_capital_p = self._prior_values(invested_capital, is_prior)
 
         # dfi: dataframe with indicators
         dfi = pd.DataFrame(columns=df.columns)
+        dfi.loc['total_debt'] = total_debt
+        dfi.loc['net_debt'] = net_debt
         dfi.loc['invested_capital'] = invested_capital
         dfi.loc['return_on_assets'] = (
-            ebit * (1 - Company.TAX_RATE) / total_assets_tm1
+            ebit * (1 - Company.TAX_RATE) / total_assets_p
         )
-        # dfi.loc['invested_capital'] = invested_capital
         dfi.loc['return_on_capital'] = (
-            ebit * (1 - Company.TAX_RATE) / invested_capital_tm1
+            ebit * (1 - Company.TAX_RATE) / invested_capital_p
         )
-        dfi.loc['return_on_equity'] = net_income / equity_tm1
+        dfi.loc['return_on_equity'] = net_income / equity_p
         dfi.loc['gross_margin'] = gross_profit / revenues
         dfi.loc['operating_margin'] = ebit * (1 - Company.TAX_RATE) / revenues
         dfi.loc['net_margin'] = net_income / revenues
