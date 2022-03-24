@@ -7,14 +7,14 @@ import pandas as pd
 
 class Company():
     """
-    Finance Data Class for Brazilian Companies.
+    Finance Data Class for listed Brazilian Companies.
 
     Attributes
     ----------
     identity: int or str
-        A unique value to select the company in dataset. Both
-        CVM ID or a Fiscal ID can be used. CVM ID (regulator ID) must be an
-        integer. Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
+        A unique value to select the company in dataset. Both CVM ID or
+        Fiscal ID can be used. CVM ID (regulator ID) must be an integer.
+        Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
     """
     script_dir = os.path.dirname(__file__)
     DATASET = pd.read_pickle(script_dir + '/data/processed/dataset.pkl.zst')
@@ -28,9 +28,9 @@ class Company():
         Parameters
         ----------
         identity: int or str
-            A unique value to select the company in dataset. Both
-            CVM ID or a Fiscal ID can be used. CVM ID (regulator ID) must be an
-            integer. Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
+            A unique value to select the company in dataset. Both CVM ID or
+            Fiscal ID can be used. CVM ID (regulator ID) must be an integer.
+            Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
         """
         self.identity = identity
 
@@ -42,9 +42,9 @@ class Company():
         Parameters
         ----------
         value: int or str
-            A unique value to select the company in dataset. Both
-            CVM ID or a Fiscal ID can be used. CVM ID (regulator ID) must be an
-            integer. Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
+            A unique value to select the company in dataset. Both CVM ID or
+            Fiscal ID can be used. CVM ID (regulator ID) must be an integer.
+            Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
 
         Returns
         -------
@@ -89,15 +89,15 @@ class Company():
             'period_begin': 'datetime64',
             'period_end': 'datetime64',
             'period_order': np.int8,
-            'account_code': str,
-            'account_name': str,
-            'accounting_method': str,
-            'account_fixed': bool,
-            'account_value': float,
+            'acc_code': str,
+            'acc_name': str,
+            'acc_method': str,
+            'acc_fixed': bool,
+            'acc_value': float,
             'equity_statement_column': str,
         })
         self._CO_DF.sort_values(
-            by='account_code', ignore_index=True, inplace=True)
+            by='acc_code', ignore_index=True, inplace=True)
 
         self._NAME = self._CO_DF['co_name'].unique()[0]
         self._FIRST_ANNUAL = self._CO_DF.query(
@@ -125,9 +125,9 @@ class Company():
     def report(
         self,
         report_type: str,
-        accounting_method: str = 'consolidated',
-        unit: float = 1.0,
-        account_level: Union[int, None] = None,
+        acc_method: str = 'consolidated',
+        acc_unit: float = 1.0,
+        acc_level: Union[int, None] = None,
         first_period: str = '2009-01-01'
     ) -> pd.DataFrame:
         """
@@ -142,19 +142,19 @@ class Company():
         report_type : {'assets', 'liabilities_and_equity', 'liabilities',
             'equity', 'income', 'cash_flow'}
             Report type to be generated.
-        accounting_method : {'consolidated', 'separate'}, default
+        acc_method : {'consolidated', 'separate'}, default
             'consolidated'
             Accounting method used for registering investments.
-        account_level : {None, 2, 3, 4}, default None
+        acc_level : {None, 2, 3, 4}, default None
             Detail level to show for account codes.
-            account_level = None -> X...       (default: show all accounts)
-            account_level = 2    -> X.YY       (show 2 levels)
-            account_level = 3    -> X.YY.ZZ    (show 3 levels)
-            account_level = 4    -> X.YY.ZZ.WW (show 4 levels)
+            acc_level = None -> X...       (default: show all accounts)
+            acc_level = 2    -> X.YY       (show 2 levels)
+            acc_level = 3    -> X.YY.ZZ    (show 3 levels)
+            acc_level = 4    -> X.YY.ZZ.WW (show 4 levels)
         first_period: str, default '2009-01-01'
             First accounting period to show. Format must be YYYY-MM-DD.
-        unit : float, default 1.0
-            Account values will be divided by 'unit' value.
+        acc_unit : float, default 1.0
+            Account values will be divided by 'acc_unit' value.
 
         Returns
         ------
@@ -164,53 +164,53 @@ class Company():
         ------
         ValueError
             * If ``report_type`` attribute is invalid
-            * If ``accounting_method`` attribute is invalid
-            * If ``account_level`` attribute is invalid
+            * If ``acc_method`` attribute is invalid
+            * If ``acc_level`` attribute is invalid
             * If ``first_period`` attribute is not in YYYY-MM-DD string format
-            * If ``unit`` <= 0
+            * If ``acc_unit`` <= 0
 
         """
         # Check input arguments.
-        if account_level not in {None, 2, 3, 4}:
+        if acc_level not in {None, 2, 3, 4}:
             raise ValueError(
-                "account_level expects None, 2, 3 or 4")
+                "acc_level expects None, 2, 3 or 4")
 
         first_period = pd.to_datetime(first_period, errors='coerce')
         if first_period == pd.NaT:
             raise ValueError(
                 'first_period expects a string in YYYY-MM-DD format')
 
-        if accounting_method not in {'consolidated', 'separate'}:
+        if acc_method not in {'consolidated', 'separate'}:
             raise ValueError(
-                "accounting_method expects 'consolidated' or 'separate'")
+                "acc_method expects 'consolidated' or 'separate'")
 
-        if unit <= 0:
-            raise ValueError("Unit expects a value greater than 0")
+        if acc_unit <= 0:
+            raise ValueError("acc_Unit expects a value greater than 0")
 
         expression = '''
-            accounting_method == @accounting_method and \
+            acc_method == @acc_method and \
             period_end >= @first_period
         '''
         df = self._CO_DF.query(expression).copy()
 
-        # Change unit only for accounts different from 3.99
-        df['account_value'] = np.where(
-            df['account_code'].str.startswith('3.99'),
-            df['account_value'],
-            df['account_value'] / unit
+        # Change acc_unit only for accounts different from 3.99
+        df['acc_value'] = np.where(
+            df['acc_code'].str.startswith('3.99'),
+            df['acc_value'],
+            df['acc_value'] / acc_unit
         )
 
-        # Filter dataframe for selected account_level
-        if account_level:
-            account_code_limit = account_level * 3 - 2 # noqa
-            expression = 'account_code.str.len() <= @account_code_limit'
+        # Filter dataframe for selected acc_level
+        if acc_level:
+            acc_code_limit = acc_level * 3 - 2 # noqa
+            expression = 'acc_code.str.len() <= @acc_code_limit'
             df.query(expression, inplace=True)
 
         """
         Filter dataframe for selected report_type (report type)
 
-        df['account_code'].str[0].unique() -> [1, 2, 3, 4, 5, 6, 7]
-        The first part of 'account_code' is the report type
+        df['acc_code'].str[0].unique() -> [1, 2, 3, 4, 5, 6, 7]
+        The first part of 'acc_code' is the report type
         Table of reports correspondence:
             1 -> Balance Sheet - Assets
             2 -> Balance Sheet - Liabilities and Shareholders’ Equity
@@ -235,12 +235,12 @@ class Company():
             "cash_flow": ["6"],
             "earnings_per_share": ["3.99.01.01", "3.99.02.01"]
         }
-        account_codes = report_types[report_type]
+        acc_codes = report_types[report_type]
         expression = ""
-        for count, account_code in enumerate(account_codes):
+        for count, acc_code in enumerate(acc_codes):
             if count > 0:
                 expression += " or "
-            expression += f'account_code.str.startswith("{account_code}")'
+            expression += f'acc_code.str.startswith("{acc_code}")'
         df.query(expression, inplace=True)
 
         if report_type in {'income', 'cash_flow'}:
@@ -259,14 +259,14 @@ class Company():
 
         df2 = df_flow.query('period_reference == @self._LAST_QUARTERLY').copy()
         df2.query('period_begin == period_begin.min()', inplace=True)
-        df2['account_value'] = -df2['account_value']
+        df2['acc_value'] = -df2['acc_value']
 
         df3 = df_flow.query('period_end == @self._LAST_ANNUAL').copy()
 
         df_ltm = pd.concat([df1, df2, df3], ignore_index=True)
-        df_ltm = df_ltm[['account_code', 'account_value']]
-        df_ltm = df_ltm.groupby(by='account_code').sum().reset_index()
-        df1.drop(columns='account_value', inplace=True)
+        df_ltm = df_ltm[['acc_code', 'acc_value']]
+        df_ltm = df_ltm.groupby(by='acc_code').sum().reset_index()
+        df1.drop(columns='acc_value', inplace=True)
         df_ltm = pd.merge(df1, df_ltm)
         df_ltm['report_type'] = 'quarterly'
         df_ltm['period_begin'] = self._LAST_QUARTERLY - pd.DateOffset(years=1)
@@ -275,21 +275,12 @@ class Company():
         df_flow_ltm = pd.concat([df_flow, df_ltm], ignore_index=True)
         return df_flow_ltm
 
-    @staticmethod
-    def _shift_right(s: pd.Series, t_minus1: bool) -> pd.Series:
-        """Shift row to the right in order to obtain series previous values"""
-        if t_minus1:
-            arr = s.iloc[:-1].values
-            return np.append(np.nan, arr)
-        else:
-            return s
-
     def custom_report(
         self,
-        accounts: list[str],
-        accounting_method: str = 'consolidated',
+        acc_list: list[str],
+        acc_method: str = 'consolidated',
         first_period: str = '2009-01-01',
-        unit: float = 1.0
+        acc_unit: float = 1.0
     ) -> pd.DataFrame:
         """
         Return a financial report from custom list of accounting codes
@@ -299,37 +290,47 @@ class Company():
 
         Parameters
         ----------
-        accounts : list[str]
+        acc_list : list[str]
             A list of strings containg accounting codes to be used in report
-        accounting_method : {'consolidated', 'separate'}, default
+        acc_method : {'consolidated', 'separate'}, default
             'consolidated'
             Accounting method used for registering investments.
         first_period: str, default '2009-01-01'
             First accounting period to show. Format must be YYYY-MM-DD.
-        unit : float, default 1.0
-            Account values will be divided by 'unit' value.
+        acc_unit : float, default 1.0
+            Account values will be divided by 'acc_unit' value.
 
         Returns
         -------
         pandas.DataFrame
         """
         kwargs = {
-            'accounting_method': accounting_method,
-            'unit': unit,
+            'acc_method': acc_method,
+            'acc_unit': acc_unit,
             'first_period': first_period}
         df_as = self.report('assets', **kwargs)
         df_le = self.report('liabilities_and_equity', **kwargs)
         df_is = self.report('income', **kwargs)
         df_cf = self.report('cash_flow', **kwargs)
         df = pd.concat([df_as, df_le, df_is, df_cf], ignore_index=True)
-        df.query('account_code == @accounts', inplace=True)
+        df.query('acc_code == @acc_list', inplace=True)
         df.reset_index(drop=True, inplace=True)
         return df
 
-    def operating_performance(
+    @staticmethod
+    def _prior_values(s: pd.Series, is_prior: bool) -> pd.Series:
+        """Shift row to the right in order to obtain series previous values"""
+        if is_prior:
+            arr = s.iloc[:-1].values
+            return np.append(np.nan, arr)
+        else:
+            return s
+
+    def indicators(
         self,
-        accounting_method: str = 'consolidated',
-        t_minus1: bool = True
+        acc_method: str = 'consolidated',
+        acc_unit: float = 1.0,
+        is_prior: bool = True
     ) -> pd.DataFrame:
         """
         Return company main operating indicators.
@@ -339,9 +340,9 @@ class Company():
 
         Parameters
         ----------
-        t_minus1 : bool, default True
-            Wheather to divide return measurements by book values from the end
-            of the prior year (see Damodaran paper above).
+        is_prior : bool, default True
+            Divide return measurements by book values from the end of the prior
+            year (see Damodaran reference).
         Returns
         -------
         pandas.Dataframe
@@ -353,22 +354,34 @@ class Company():
                 Implications.", 2007,
                 https://people.stern.nyu.edu/adamodar/pdfiles/papers/returnmeasures.pdf
         """
-        kwargs = {'accounting_method': accounting_method}
+        kwargs = {'acc_method': acc_method, 'acc_unit': acc_unit}
         df_as = self.report('assets', **kwargs)
         df_le = self.report('liabilities_and_equity', **kwargs)
         df_in = self.report('income', **kwargs)
         df = pd.concat([df_as, df_le, df_in], ignore_index=True)
-        df.set_index(keys='account_code', drop=True, inplace=True)
-        df.drop(columns=['account_fixed', 'account_name'], inplace=True)
+        df.set_index(keys='acc_code', drop=True, inplace=True)
+        df.drop(columns=['acc_fixed', 'acc_name'], inplace=True)
         df.fillna(0, inplace=True)
 
         # series with indicators
-        revenues = df.loc['3.01']
-        gross_profit = df.loc['3.03']
+        if '3.01' in df.index:
+            revenues = df.loc['3.01']
+        else:
+            revenues = df.iloc[0]
+            revenues = np.NAN
+        if '3.03' in df.index:
+            gross_profit = df.loc['3.03']
+        else:
+            gross_profit = df.iloc[0]
+            gross_profit = np.NAN
+
+        # gross_profit = df.loc['3.03']
         ebit = df.loc['3.05']
         net_income = df.loc['3.11']
-        total_assets = self._shift_right(df.loc['1'], t_minus1)
-        equity = self._shift_right(df.loc['2.03'], t_minus1)
+        total_assets = df.loc['1']
+        total_assets_tm1 = self._prior_values(total_assets, is_prior)
+        equity = df.loc['2.03']
+        equity_tm1 = self._prior_values(equity, is_prior)
         invested_capital = (
             df.loc['2.03']
             + df.loc['2.01.04']
@@ -376,18 +389,19 @@ class Company():
             - df.loc['1.01.01']
             - df.loc['1.01.02']
         )
-        invested_capital = self._shift_right(invested_capital, t_minus1)
+        invested_capital_tm1 = self._prior_values(invested_capital, is_prior)
 
         # dfi: dataframe with indicators
         dfi = pd.DataFrame(columns=df.columns)
+        dfi.loc['invested_capital'] = invested_capital
         dfi.loc['return_on_assets'] = (
-            ebit * (1 - Company.TAX_RATE) / total_assets
+            ebit * (1 - Company.TAX_RATE) / total_assets_tm1
         )
         # dfi.loc['invested_capital'] = invested_capital
         dfi.loc['return_on_capital'] = (
-            ebit * (1 - Company.TAX_RATE) / invested_capital
+            ebit * (1 - Company.TAX_RATE) / invested_capital_tm1
         )
-        dfi.loc['return_on_equity'] = net_income / equity
+        dfi.loc['return_on_equity'] = net_income / equity_tm1
         dfi.loc['gross_margin'] = gross_profit / revenues
         dfi.loc['operating_margin'] = ebit * (1 - Company.TAX_RATE) / revenues
         dfi.loc['net_margin'] = net_income / revenues
@@ -418,13 +432,10 @@ class Company():
 
         # Create Index
         df.sort_values(by='period_end', inplace=True, ascending=True)
-        base_columns = ['account_name', 'account_code', 'account_fixed']
+        base_columns = ['acc_name', 'acc_code', 'acc_fixed']
         df_report = df.loc[:, base_columns]
         df_report.drop_duplicates(
-            subset='account_code',
-            ignore_index=True,
-            inplace=True,
-            keep='last'
+            subset='acc_code', ignore_index=True, inplace=True, keep='last'
         )
 
         periods = list(df.period_end.unique())
@@ -432,18 +443,15 @@ class Company():
         for period in periods:
             # print(date)
             df_year = df.query('period_end == @period').copy()
-            df_year = df_year[['account_value', 'account_code']]
+            df_year = df_year[['acc_value', 'acc_code']]
             period_str = np.datetime_as_string(period, unit='D')
             if period == self._LAST_QUARTERLY:
                 period_str += ' (ltm)'
 
-            df_year.rename(columns={'account_value': period_str}, inplace=True)
+            df_year.rename(columns={'acc_value': period_str}, inplace=True)
             df_report = pd.merge(
-                df_report,
-                df_year,
-                how='left',
-                on=['account_code']
+                df_report, df_year, how='left', on=['acc_code']
             )
 
-        df_report.sort_values('account_code', ignore_index=True, inplace=True)
+        df_report.sort_values('acc_code', ignore_index=True, inplace=True)
         return df_report

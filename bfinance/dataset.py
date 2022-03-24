@@ -95,10 +95,10 @@ def clean_raw_df(df: pd.DataFrame) -> pd.DataFrame:
         'DT_FIM_EXERC': 'period_end',
         'DT_REFER': 'period_reference',
         'ORDEM_EXERC': 'period_order',
-        'CD_CONTA': 'account_code',
-        'DS_CONTA': 'account_name',
-        'ST_CONTA_FIXA': 'account_fixed',
-        'VL_CONTA': 'account_value',
+        'CD_CONTA': 'acc_code',
+        'DS_CONTA': 'acc_name',
+        'ST_CONTA_FIXA': 'acc_fixed',
+        'VL_CONTA': 'acc_value',
         'COLUNA_DF': 'equity_statement_column',
         'MOEDA': 'currency',
         'ESCALA_MOEDA': 'currency_unit',
@@ -109,11 +109,11 @@ def clean_raw_df(df: pd.DataFrame) -> pd.DataFrame:
     # ['3', '2', '4', '1', '7', '5', '6', '9', '8']
     df['report_version'] = df['report_version'].astype(np.int8)
     df['cvm_id'] = df['cvm_id'].astype(np.int32)  # max < 600_000
-    df['account_value'] = df['account_value'].astype(float)
+    df['acc_value'] = df['acc_value'].astype(float)
 
-    # df.query("account_value == 0") -> 10.891.139 rows from 17.674.199
+    # df.query("acc_value == 0") -> 10.891.139 rows from 17.674.199
     # Zero values will not be used.
-    df.query("account_value != 0", inplace=True)
+    df.query("acc_value != 0", inplace=True)
 
     # df['currency'].value_counts() -> REAL    43391302
     df.drop(columns=['currency'], inplace=True)
@@ -124,16 +124,16 @@ def clean_raw_df(df: pd.DataFrame) -> pd.DataFrame:
     df['currency_unit'] = df['currency_unit'].map({'MIL': 1000, 'UNIDADE': 1})
 
     # Unit base currency.
-    df['account_codes_level'] = df['account_code'].str[0:4]
+    df['acc_codes_level'] = df['acc_code'].str[0:4]
     # Do not adjust earnings per share rows (account codes 3.99...)
-    df['account_value'] = np.where(
-        df.account_codes_level == '3.99',
-        df['account_value'],
-        df['account_value'] * df['currency_unit'])
-    df.drop(columns=['currency_unit', 'account_codes_level'], inplace=True)
+    df['acc_value'] = np.where(
+        df.acc_codes_level == '3.99',
+        df['acc_value'],
+        df['acc_value'] * df['currency_unit'])
+    df.drop(columns=['currency_unit', 'acc_codes_level'], inplace=True)
 
-    # df['account_fixed'].unique() -> ['S', 'N']
-    df['account_fixed'] = df['account_fixed'].map({'S': True, 'N': False})
+    # df['acc_fixed'].unique() -> ['S', 'N']
+    df['acc_fixed'] = df['acc_fixed'].map({'S': True, 'N': False})
 
     # df['period_order'].unique() -> ['PENÚLTIMO', 'ÚLTIMO']
     df['period_order'] = df['period_order'].map({'ÚLTIMO': 0, 'PENÚLTIMO': -1})
@@ -151,7 +151,7 @@ def clean_raw_df(df: pd.DataFrame) -> pd.DataFrame:
         df['equity_statement_column'] = np.nan
 
     """
-    accounting_method -> Financial Statemen Type
+    acc_method -> Financial Statemen Type
     Consolidated and Separate Financial Statements (IAS 27/2003)
     df['GRUPO_DFP'].unique() result:
         'DF Consolidado - Balanço Patrimonial Ativo',
@@ -172,11 +172,11 @@ def clean_raw_df(df: pd.DataFrame) -> pd.DataFrame:
     if == 'Con' -> consolidated statement
     if == 'Ind' -> separate statement
     """
-    df['accounting_method'] = df['GRUPO_DFP'].str[3:6].map({
+    df['acc_method'] = df['GRUPO_DFP'].str[3:6].map({
         'Con': 'consolidated',
         'Ind': 'separate'})
-    df['accounting_method'] = df['accounting_method'].astype('category')
-    # 'GRUPO_DFP' data can be inferred from 'accounting_method' and report_type
+    df['acc_method'] = df['acc_method'].astype('category')
+    # 'GRUPO_DFP' data can be inferred from 'acc_method' and report_type
     df.drop(columns=['GRUPO_DFP'], inplace=True)
 
     columns_order = [
@@ -189,11 +189,11 @@ def clean_raw_df(df: pd.DataFrame) -> pd.DataFrame:
         'period_begin',
         'period_end',
         'period_order',
-        'account_code',
-        'account_name',
-        'accounting_method',
-        'account_fixed',
-        'account_value',
+        'acc_code',
+        'acc_name',
+        'acc_method',
+        'acc_fixed',
+        'acc_value',
         'equity_statement_column',
     ]
     df = df[columns_order]
@@ -243,8 +243,8 @@ def update_processed_dataset():
         'period_reference',
         'report_version',
         'period_order',
-        'accounting_method',
-        'account_code',
+        'acc_method',
+        'acc_code',
     ]
     df.sort_values(by=sort_by, ignore_index=True, inplace=True)
 
@@ -317,7 +317,7 @@ def dataset_info() -> pd.DataFrame:
     dataset_info = {
         'Number of account values (total rows)': len(df.index),
         'Number of unique account codes': df[
-            'account_code'].nunique(),
+            'acc_code'].nunique(),
         'Number of companies': df['cvm_id'].nunique(),
         'Number of Financial Statements':  len(
             df.drop_duplicates(subset=columns_duplicates).index),
