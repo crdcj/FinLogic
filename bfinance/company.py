@@ -1,6 +1,6 @@
 """Module containing the Company Class."""
 import os
-from typing import Union
+from typing import Union, Literal
 import numpy as np
 import pandas as pd
 
@@ -19,13 +19,12 @@ class Company():
     script_dir = os.path.dirname(__file__)
     DATASET = pd.read_pickle(script_dir + '/data/processed/dataset.pkl.zst')
     TAX_RATE = 0.34
-    CVM_IDS = list(DATASET['cvm_id'].unique())
-    FISCAL_IDS = list(DATASET['fiscal_id'].unique())
 
     def __init__(
         self,
         identity: Union[int, str],
-        acc_unit: Union[float, str] = 1.0
+        acc_method: Literal["consolidated", "separate"] = "consolidated",
+        acc_unit: Union[float, str] = 1.0,
     ):
         """Initialize main variables.
 
@@ -35,18 +34,20 @@ class Company():
             A unique value to select the company in dataset. Both CVM ID or
             Fiscal ID can be used. CVM ID (regulator ID) must be an integer.
             Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
+        acc_method : {'consolidated', 'separate'}, default 'consolidated'
+            Accounting method used for registering investments in subsidiaries.
         acc_unit : float or str, default 1.0
             acc_unit is a constant that will divide company account values.
             The constant can be a number greater than zero or the strings
             {'thousand', 'million', 'billion'}.
         """
-        self.identity = identity
+        self.set_id(identity)
+        self.acc_method = acc_method
         self.acc_unit = acc_unit
 
-    @property
-    def identity(self):
+    def set_id(self, value: Union[int, str]):
         """
-        Get or set company unique identity for dataset selection.
+        Set company unique identity for dataset selection.
 
         Parameters
         ----------
@@ -64,26 +65,49 @@ class Company():
         KeyError
             * If passed ``identity`` not found in dataset.
         """
-        return self._identity
-
-    @identity.setter
-    def identity(self, value):
-        self._identity = value
-        if value in Company.CVM_IDS:
+        df = Company.DATASET[['cvm_id', 'fiscal_id']].drop_duplicates().copy()
+        df = df.astype({'cvm_id': int, 'fiscal_id': str})
+        if value in df['cvm_id'].values:
             self._cvm_id = value
-            df = Company.DATASET.query('cvm_id == @self._cvm_id').copy()
-            df.reset_index(drop=True, inplace=True)
-            self._fiscal_id = df.loc[0, 'fiscal_id']
-        elif value in Company.FISCAL_IDS:
+            self._fiscal_id = df[df['cvm_id'] == value]['fiscal_id'].iloc[0]
+        elif value in df['fiscal_id'].values:
             self._fiscal_id = value
-            expression = 'fiscal_id == @self._fiscal_id'
-            df = Company.DATASET.query(expression).copy()
-            df.reset_index(drop=True, inplace=True)
-            self._cvm_id = df.loc[0, 'cvm_id']
+            self._cvm_id = df[df['fiscal_id'] == value]['cvm_id'].iloc[0]
         else:
             raise KeyError("Identity for the company not found in dataset")
         # Only set company data after object identity validation
         self._set_main_data()
+
+    @property
+    def acc_method(self):
+        """
+        Get or set accounting method used for registering investments in
+        subsidiaries.
+
+        Parameters
+        ----------
+        acc_method : {'consolidated', 'separate'}, default 'consolidated'
+            Accounting method used for registering investments in subsidiaries.
+
+        Returns
+        -------
+        str
+
+        Raises
+        ------
+        ValueError
+            * If passed ``acc_method`` is invalid.
+        """
+        return self._acc_unit
+
+    @acc_method.setter
+    def acc_method(self, value: Literal["consolidated", "separate"]):
+        self._acc_method = value
+        # if value in {'consolidated', 'separate'}:
+        #     self._acc_method = value
+        # else:
+        #     raise ValueError(
+        # "acc_method expects 'consolidated' or 'separate'")
 
     @property
     def acc_unit(self):
@@ -159,6 +183,8 @@ class Company():
             'Company Name': self._NAME,
             'Company CVM ID': self._cvm_id,
             'Company Fiscal ID (CNPJ)': self._fiscal_id,
+            'Selected Accounting Method': self._acc_method,
+            'Selected Accounting Unit': self._acc_unit,
             'First Annual Report': self._FIRST_ANNUAL.strftime(f),
             'Last Annual Report': self._LAST_ANNUAL.strftime(f),
             'Last Quarterly Report': self._LAST_QUARTERLY.strftime(f),
@@ -170,7 +196,6 @@ class Company():
     def report(
         self,
         report_type: str,
-        acc_method: str = 'consolidated',
         acc_level: Union[int, None] = None,
         first_period: str = '2009-01-01'
     ) -> pd.DataFrame:
@@ -186,9 +211,6 @@ class Company():
         report_type : {'assets', 'liabilities_and_equity', 'liabilities',
             'equity', 'income', 'cash_flow'}
             Report type to be generated.
-        acc_method : {'consolidated', 'separate'}, default
-            'consolidated'
-            Accounting method used for registering investments.
         acc_level : {None, 2, 3, 4}, default None
             Detail level to show for account codes.
             acc_level = None -> X...       (default: show all accounts)
@@ -197,8 +219,6 @@ class Company():
             acc_level = 4    -> X.YY.ZZ.WW (show 4 levels)
         first_period: str, default '2009-01-01'
             First accounting period to show. Format must be YYYY-MM-DD.
-        acc_unit : float, default 1.0
-            Account values will be divided by 'acc_unit' value.
 
         Returns
         ------
@@ -208,10 +228,8 @@ class Company():
         ------
         ValueError
             * If ``report_type`` attribute is invalid
-            * If ``acc_method`` attribute is invalid
             * If ``acc_level`` attribute is invalid
             * If ``first_period`` attribute is not in YYYY-MM-DD string format
-            * If ``acc_unit`` <= 0
 
         """
         # Check input arguments.
@@ -224,12 +242,8 @@ class Company():
             raise ValueError(
                 'first_period expects a string in YYYY-MM-DD format')
 
-        if acc_method not in {'consolidated', 'separate'}:
-            raise ValueError(
-                "acc_method expects 'consolidated' or 'separate'")
-
         expression = '''
-            acc_method == @acc_method and \
+            acc_method == @self._acc_method and \
             period_end >= @first_period
         '''
         df = self._CO_DF.query(expression).copy()
@@ -238,7 +252,7 @@ class Company():
         df['acc_value'] = np.where(
             df['acc_code'].str.startswith('3.99'),
             df['acc_value'],
-            df['acc_value'] / self.acc_unit
+            df['acc_value'] / self._acc_unit
         )
 
         # Filter dataframe for selected acc_level
@@ -322,7 +336,6 @@ class Company():
     def custom_report(
         self,
         acc_list: list[str],
-        acc_method: str = 'consolidated',
         first_period: str = '2009-01-01',
     ) -> pd.DataFrame:
         """
@@ -347,7 +360,7 @@ class Company():
         -------
         pandas.DataFrame
         """
-        kwargs = {'acc_method': acc_method, 'first_period': first_period}
+        kwargs = {'first_period': first_period}
         df_as = self.report('assets', **kwargs)
         df_le = self.report('liabilities_and_equity', **kwargs)
         df_is = self.report('income', **kwargs)
@@ -368,7 +381,6 @@ class Company():
 
     def indicators(
         self,
-        acc_method: str = 'consolidated',
         is_prior: bool = True
     ) -> pd.DataFrame:
         """
@@ -393,12 +405,10 @@ class Company():
                 Implications.", 2007,
                 https://people.stern.nyu.edu/adamodar/pdfiles/papers/returnmeasures.pdf
         """
-
-        kwargs = {'acc_method': acc_method}
-        df_as = self.report('assets', **kwargs)
-        df_le = self.report('liabilities_and_equity', **kwargs)
-        df_in = self.report('income', **kwargs)
-        df_cf = self.report('cash_flow', **kwargs)
+        df_as = self.report('assets')
+        df_le = self.report('liabilities_and_equity')
+        df_in = self.report('income')
+        df_cf = self.report('cash_flow')
         df = pd.concat([df_as, df_le, df_in, df_cf], ignore_index=True)
         df.set_index(keys='acc_code', drop=True, inplace=True)
         df.drop(columns=['acc_fixed', 'acc_name'], inplace=True)
