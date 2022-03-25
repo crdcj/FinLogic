@@ -16,9 +16,13 @@ class Company():
         ID or Fiscal ID can be used. CVM ID (regulator ID) must be an integer.
         Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
     """
+    TAX_RATE = 0.34
+    # Create class main data frame
     script_dir = os.path.dirname(__file__)
     _MAIN_DF = pd.read_pickle(script_dir + '/data/main_df.pkl.zst')
-    TAX_RATE = 0.34
+    # Create data frame with unique CVM IDs and Fiscal IDs values
+    _ID_DF = _MAIN_DF[['cvm_id', 'fiscal_id']].drop_duplicates()
+    _ID_DF = _ID_DF.astype({'cvm_id': int, 'fiscal_id': str})
 
     def __init__(
         self,
@@ -46,12 +50,6 @@ class Company():
         self.acc_method = acc_method
         self.acc_unit = acc_unit
 
-    @classmethod
-    def create_id_series(cls):
-        """Create a Pandas Series with unique CVM (Brazilian SEC equivalent)
-        IDs as index and Fiscal IDs as values"""
-        pass
-
     def set_id(self, identifier: Union[int, str]):
         """
         Set a unique identifier to filter the company in main data frame.
@@ -73,16 +71,17 @@ class Company():
         KeyError
             * If passed ``identifier`` not found in main data frame.
         """
-        df = Company._MAIN_DF[['cvm_id', 'fiscal_id']].drop_duplicates()
-        df = df.astype({'cvm_id': int, 'fiscal_id': str})
+        df = self._ID_DF
         if identifier in df['cvm_id'].values:
             self._cvm_id = identifier
             self._fiscal_id = (
-                df[df['cvm_id'] == identifier]['fiscal_id'].iloc[0]
+                df.loc[df['cvm_id'] == identifier, 'fiscal_id'].item()
             )
         elif identifier in df['fiscal_id'].values:
             self._fiscal_id = identifier
-            self._cvm_id = df[df['fiscal_id'] == identifier]['cvm_id'].iloc[0]
+            self._cvm_id = (
+                df.loc[df['fiscal_id'] == identifier, 'cvm_id'].item()
+            )
         else:
             raise KeyError(
                 "identifier for the company not found in main data frame")
@@ -192,6 +191,7 @@ class Company():
             'Company Name': self._NAME,
             'Company CVM ID': self._cvm_id,
             'Company Fiscal ID (CNPJ)': self._fiscal_id,
+            'Company total accounting rows': len(self._COMP_DF.index),
             'Selected Accounting Method': self._acc_method,
             'Selected Accounting Unit': self._acc_unit,
             'First Annual Report': self._FIRST_ANNUAL.strftime(f),

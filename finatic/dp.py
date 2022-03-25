@@ -307,9 +307,8 @@ def info() -> pd.DataFrame:
         'cvm_id', 'report_version', 'report_type', 'period_reference']
     fs_periods = df['period_end'].astype('datetime64')
     info_dic = {
-        'Number of account values (total rows)': len(df.index),
-        'Number of unique account codes': df[
-            'acc_code'].nunique(),
+        'Number of accounting rows': len(df.index),
+        'Number of unique account codes': df['acc_code'].nunique(),
         'Number of companies': df['cvm_id'].nunique(),
         'Number of Financial Statements':  len(
             df.drop_duplicates(subset=columns_duplicates).index),
