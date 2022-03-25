@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
-# Finatic - Brazilian Company Financial Data
-# https://github.com/crdcj/Finatic
+# FinLogic - Brazilian Company Financial Data
+# https://github.com/crdcj/FinLogic
 #
 # Copyright 2022 Carlos Carvalho
 #

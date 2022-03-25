@@ -1,4 +1,4 @@
-## Finatic: finance data analysis toolkit for listed Brazilian companies
+## FinLogic: finance data analysis toolkit for listed Brazilian companies
 
 
 <table border=1 cellpadding=10><tr><td>
@@ -7,7 +7,7 @@
 
 ---
 
-Finatic is **not** affiliated, endorsed, or vetted by the Securities and
+FinLogic is **not** affiliated, endorsed, or vetted by the Securities and
 Exchange Commission of Brazil (CVM). It's an open-source tool that uses CVM
 publicly available data and is intended for research and educational purposes.
 
@@ -15,7 +15,7 @@ publicly available data and is intended for research and educational purposes.
 
 ---
 
-**Finatic** offers a Pythonic/Pandas way to analyze financial data of listed
+**FinLogic** offers a Pythonic/Pandas way to analyze financial data of listed
 companies in Brazil from information made publicly avaible by local securities
 market authority (CVM).
 
@@ -23,7 +23,7 @@ market authority (CVM).
 
 ## Quick Start
 
-### Create Finatic local database
+### Create FinLogic local database
 
 The 'update_database' function is responsible for downloading raw financial
 files from CVM, processesing aprox. 18 millions rows of accounting values and
@@ -32,9 +32,9 @@ analysis. The update process can take some minutes depending on CVM Server
 connection and local data processing power.
 
 ```python
-import finatic as fi
+import finlogic as fi
 
-### Starting Finatic for the first time
+### Starting FinLogic for the first time
 fi.update_database()
 
 ## Show database info
@@ -50,7 +50,7 @@ The Company Class allows you to easily access financial data from Brazilian
 companies. All values are in local currency (Real).
 ```python
 
-import finatic as fi
+import finlogic as fi
 # Create a Company object to acces its fiancial data.
 # Both CVM (regulator) ID or Fiscal ID can be used as an identifier.
 petro = fi.Company(9512, acc_method='separate', acc_unit='million')
@@ -79,10 +79,10 @@ petro.indicators(num_years=5)
 ---
 ## Installation
 
-Install `finatic` using `pip`:
+Install `finlogic` using `pip`:
 
 ``` {.sourceCode .bash}
-$ pip install finatic --upgrade --no-cache-dir
+$ pip install finlogic --upgrade --no-cache-dir
 ```
 
 ### Requirements
@@ -97,7 +97,7 @@ $ pip install finatic --upgrade --no-cache-dir
 
 ### Legal Stuff
 
-**Finatic** is distributed under the **MIT License**. See
+**FinLogic** is distributed under the **MIT License**. See
 the [LICENSE.txt](./LICENSE.txt) file in the release for details.
 
 ---

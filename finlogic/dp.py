@@ -268,7 +268,7 @@ def update_database():
     print('Processing CVM raw files...')
     update_main_df()
     print('Main data frame saved ')
-    print('Finatic database updated \u2705')
+    print('FinLogic database updated \u2705')
 
 
 def search_company(expression: str) -> pd.DataFrame:
