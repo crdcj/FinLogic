@@ -226,7 +226,7 @@ def process_yearly_raw_files(parent_filename):
 
 
 def update_main_df():
-    """Update main data frame."""
+    """Update as fi."""
     filenames = sorted(os.listdir(RAW_DIR))
     with ProcessPoolExecutor() as executor:
         results = executor.map(process_yearly_raw_files, filenames)
@@ -273,12 +273,12 @@ def update_database():
 
 def search_company(expression: str) -> pd.DataFrame:
     """
-    Search companies names in main data frame that contains ```expression```
+    Search companies names in as fi that contains ```expression```
 
     Parameters
     ----------
     expression: str
-        A expression to search in main data frame column 'co_name'.
+        A expression to search in as fi column 'co_name'.
 
     Returns
     -------
@@ -296,7 +296,7 @@ def search_company(expression: str) -> pd.DataFrame:
 
 def info() -> pd.DataFrame:
     """
-    Return information about the main data frame
+    Return information about the as fi
 
     Returns
     -------

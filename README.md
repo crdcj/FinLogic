@@ -1,4 +1,4 @@
-## Finatic: finance toolkit for Brazilian listed companies
+##Finatic: finance data analysis toolkit for listed Brazilian companies
 
 
 <table border=1 cellpadding=10><tr><td>
@@ -35,24 +35,31 @@ connection and local data processing power.
 import finatic as fi
 
 ### Starting Finatic for the first time
-fi.update_finatic()
+fi.update_database()
 
-## Show dataset info
+## Show database info
 fi.info()
 
-## Search a company in dataset by name
+## Search a company in database by name
 fi.search_company('petro')
 ```
 
 ### The Company Class
 
-The Company Class allows you to easily access accounting data from companies.
-All values are in Brazilian currency.
+The Company Class allows you to easily access financial data from Brazilian
+companies. All values are in local currency (Real).
 ```python
 
 import finatic as fi
-# Both CVM (regulator) ID or Fiscal ID can be used for company identity
-petro = fi.Company(9512)
+# Create a Company object to acces its fiancials. Both CVM (regulator) ID or
+# Fiscal ID can be used as an identifier.
+petro = fi.Company(9512, acc_method='separate', acc_unit='million')
+
+# Change company accouting method to 'separate' (default is 'consolidated')
+petro.acc_method = 'consolidated'
+
+# Change company accouting unit to billion (default is 1)
+petro.acc_unit = 'billion'
 
 # show company info
 petro.info()
@@ -63,13 +70,11 @@ petro.report(report_type='assets')
 # show company liabilities with custom arguments
 petro.report(
     report_type='liabilities',
-    acc_method='separate', # in separate accounting basis
-    acc_unit=1_000_000, # in BRL million
-    acc_level=3, # show account up to level 3 of detail
+    acc_level=3, # show accounts up to level 3 of detail (default is to show all accounts)
     first_period='2015-01-01'
 )
 # show company main indicators
-petro.indicators(acc_unit=1_000_000_000)
+petro.indicators()
 ```
 ---
 ## Installation

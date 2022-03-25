@@ -12,12 +12,12 @@ class Company():
     Attributes
     ----------
     identifier: int or str
-        A unique identifier to filter a company in main data frame. Both CVM
+        A unique identifier to filter a company in as fi. Both CVM
         ID or Fiscal ID can be used. CVM ID (regulator ID) must be an integer.
         Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
     """
     TAX_RATE = 0.34
-    # Create class main data frame
+    # Create class as fi
     script_dir = os.path.dirname(__file__)
     _MAIN_DF = pd.read_pickle(script_dir + '/data/main_df.pkl.zst')
     # Create data frame with unique CVM IDs and Fiscal IDs values
@@ -35,7 +35,7 @@ class Company():
         Parameters
         ----------
         identifier: int or str
-            A unique identifier to filter a company in main data frame.
+            A unique identifier to filter a company in as fi.
             Both CVM ID or Fiscal ID can be used.
             CVM ID (regulator ID) must be an integer.
             Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
@@ -52,12 +52,12 @@ class Company():
 
     def set_id(self, identifier: Union[int, str]):
         """
-        Set a unique identifier to filter the company in main data frame.
+        Set a unique identifier to filter the company in as fi.
 
         Parameters
         ----------
         value: int or str
-            A unique identifier to filter a company in main data frame.
+            A unique identifier to filter a company in as fi.
             Both CVM ID or Fiscal ID can be used.
             CVM ID (regulator ID) must be an integer.
             Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
@@ -69,7 +69,7 @@ class Company():
         Raises
         ------
         KeyError
-            * If passed ``identifier`` not found in main data frame.
+            * If passed ``identifier`` not found in as fi.
         """
         df = self._ID_DF
         if identifier in df['cvm_id'].values:
@@ -84,7 +84,7 @@ class Company():
             )
         else:
             raise KeyError(
-                "identifier for the company not found in main data frame")
+                "'identifier' for the company not found in database")
         # Only set company data after object identifier validation
         self._set_main_data()
 
