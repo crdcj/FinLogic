@@ -268,7 +268,7 @@ def update_database():
     print('Processing CVM raw files...')
     update_main_df()
     print('Main data frame saved ')
-    print('Finatic data files updated \u2705')
+    print('Finatic database updated \u2705')
 
 
 def search_company(expression: str) -> pd.DataFrame:
@@ -294,7 +294,7 @@ def search_company(expression: str) -> pd.DataFrame:
     return df[columns]
 
 
-def info() -> pd.DataFrame:
+def database_info() -> pd.DataFrame:
     """
     Return information about the as fi
 
@@ -304,18 +304,20 @@ def info() -> pd.DataFrame:
     """
     df = pd.read_pickle(MAIN_DF_PATH)
     columns_duplicates = [
-        'cvm_id', 'report_version', 'report_type', 'period_reference']
-    fs_periods = df['period_end'].astype('datetime64')
+        'cvm_id', 'report_version', 'report_type', 'period_reference'
+    ]
     info_dic = {
-        'Number of accounting rows': len(df.index),
-        'Number of unique account codes': df['acc_code'].nunique(),
+        'Number accounting rows in database': len(df.index),
+        'Number of unique accounting codes': df['acc_code'].nunique(),
         'Number of companies': df['cvm_id'].nunique(),
         'Number of Financial Statements':  len(
             df.drop_duplicates(subset=columns_duplicates).index),
-        'Data frame memory size in MB': round(df.memory_usage(
+        'Main Data frame memory size in MB': round(df.memory_usage(
             index=True, deep=True).sum()/(1024 * 1024), 1),
-        'First Financial Statement': fs_periods.min().strftime('%Y-%m-%d'),
-        'Last Financial Statement': fs_periods.max().strftime('%Y-%m-%d')
+        'First Financial Statement in database': (
+            df['period_end'].astype('datetime64').min().strftime('%Y-%m-%d')),
+        'Last Financial Statement in database': (
+            df['period_end'].astype('datetime64').max().strftime('%Y-%m-%d'))
     }
     info_df = pd.DataFrame.from_dict(
         info_dic, orient='index', columns=['Dataset Info'])

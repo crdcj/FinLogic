@@ -1,4 +1,4 @@
-##Finatic: finance data analysis toolkit for listed Brazilian companies
+## Finatic: finance data analysis toolkit for listed Brazilian companies
 
 
 <table border=1 cellpadding=10><tr><td>
@@ -23,7 +23,7 @@ market authority (CVM).
 
 ## Quick Start
 
-### Create local dataset
+### Create Finatic local database
 
 The 'update_database' function is responsible for downloading raw financial
 files from CVM, processesing aprox. 18 millions rows of accounting values and
@@ -38,7 +38,7 @@ import finatic as fi
 fi.update_database()
 
 ## Show database info
-fi.info()
+fi.database_info()
 
 ## Search a company in database by name
 fi.search_company('petro')
@@ -71,10 +71,10 @@ petro.report(report_type='assets')
 petro.report(
     report_type='liabilities',
     acc_level=3, # show accounts up to level 3 of detail (default is to show all accounts)
-    first_period='2015-01-01'
+    num_years=5
 )
 # show company main indicators
-petro.indicators()
+petro.indicators(num_years=5)
 ```
 ---
 ## Installation
