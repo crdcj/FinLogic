@@ -51,8 +51,8 @@ companies. All values are in local currency (Real).
 ```python
 
 import finatic as fi
-# Create a Company object to acces its fiancials. Both CVM (regulator) ID or
-# Fiscal ID can be used as an identifier.
+# Create a Company object to acces its fiancial data.
+# Both CVM (regulator) ID or Fiscal ID can be used as an identifier.
 petro = fi.Company(9512, acc_method='separate', acc_unit='million')
 
 # Change company accouting method to 'separate' (default is 'consolidated')
@@ -85,9 +85,6 @@ Install `finatic` using `pip`:
 $ pip install finatic --upgrade --no-cache-dir
 ```
 
-To install `finatic` using `conda`, see
-[this](https://anaconda.org/carloscarvalho/Finatic).
-
 ### Requirements
 
 -   [Python](https://www.python.org) \>= 3.8+
@@ -95,7 +92,6 @@ To install `finatic` using `conda`, see
 -   [Numpy](http://www.numpy.org) (tested to work with \>= 1.18.5)
 -   [requests](http://docs.python-requests.org/en/master/) \>= 2.27.1
 -   [zstandard](https://pypi.org/project/zstandard/) \>= 0.17.0
-
 
 ---
 
