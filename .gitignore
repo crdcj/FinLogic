@@ -6,3 +6,4 @@ dev/
 dist/
 build/
 FinLogic.egg-info/
+.venv/

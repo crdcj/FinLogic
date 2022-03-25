@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 #
-# FinLogic - finance toolkit for Brazilian companies
+# FinLogic - finance toolkit for listed Brazilian companies
 # https://github.com/crdcj/FinLogic
 
-"""FinLogic - finance toolkit for Brazilian companies"""
+"""FinLogic - finance toolkit for listed Brazilian companies"""
 
 from setuptools import setup, find_packages
 import io
@@ -24,9 +24,9 @@ with io.open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
-    name='FinLogic',
+    name='finlogic',
     version=version,
-    description='Finance toolkit for Brazilian companies',
+    description='Finance toolkit for listed Brazilian companies',
     long_description=long_description,
     long_description_content_type='text/markdown',
     url='https://github.com/crdcj/FinLogic',

@@ -30,7 +30,7 @@ def update_raw_file(url: str) -> bool:
         if(tam_arq_arm == tam_arq_url):
             # print(f'{file_name} already updated -> continue', flush=True)
             return False
-        print(f'{file_name} new/outdated -> download file', flush=True)
+        # print(f'{file_name} new/outdated -> download file', flush=True)
         with open(cam_arq, 'wb') as f:
             f.write(r.content)
         return True
@@ -263,8 +263,7 @@ def update_database():
     urls = list_urls()
     print('Updating CVM raw files...')
     urls = update_raw_files()
-    for url in urls:
-        print(url)
+    print(f'Number of CVM files updated = {len(urls)}')
     print('Processing CVM raw files...')
     update_main_df()
     print('Main data frame saved ')

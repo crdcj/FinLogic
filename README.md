@@ -102,8 +102,6 @@ the [LICENSE.txt](./LICENSE.txt) file in the release for details.
 
 ---
 
-### P.S.
-
-All contributors are welcome, from beginner to advanced.
+P.S.: All contributors are welcome, from beginner to advanced.
 
 **Carlos Carvalho**
