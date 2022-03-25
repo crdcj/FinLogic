@@ -293,7 +293,7 @@ class Company():
         df.query(expression, inplace=True)
 
         if report_type in {'income', 'cash_flow'}:
-            df = self._calculate_ltm(df)
+            df = self._calculate_ttm(df)
 
         df.reset_index(drop=True, inplace=True)
 
@@ -305,7 +305,7 @@ class Company():
             report_df = report_df[cols]
         return report_df
 
-    def _calculate_ltm(self, df_flow: pd.DataFrame) -> pd.DataFrame:
+    def _calculate_ttm(self, df_flow: pd.DataFrame) -> pd.DataFrame:
         if self._LAST_ANNUAL > self._LAST_QUARTERLY:
             df_flow.query('report_type == "annual"', inplace=True)
             return df_flow
@@ -319,17 +319,17 @@ class Company():
 
         df3 = df_flow.query('period_end == @self._LAST_ANNUAL').copy()
 
-        df_ltm = pd.concat([df1, df2, df3], ignore_index=True)
-        df_ltm = df_ltm[['acc_code', 'acc_value']]
-        df_ltm = df_ltm.groupby(by='acc_code').sum().reset_index()
+        df_ttm = pd.concat([df1, df2, df3], ignore_index=True)
+        df_ttm = df_ttm[['acc_code', 'acc_value']]
+        df_ttm = df_ttm.groupby(by='acc_code').sum().reset_index()
         df1.drop(columns='acc_value', inplace=True)
-        df_ltm = pd.merge(df1, df_ltm)
-        df_ltm['report_type'] = 'quarterly'
-        df_ltm['period_begin'] = self._LAST_QUARTERLY - pd.DateOffset(years=1)
+        df_ttm = pd.merge(df1, df_ttm)
+        df_ttm['report_type'] = 'quarterly'
+        df_ttm['period_begin'] = self._LAST_QUARTERLY - pd.DateOffset(years=1)
 
         df_flow.query('report_type == "annual"', inplace=True)
-        df_flow_ltm = pd.concat([df_flow, df_ltm], ignore_index=True)
-        return df_flow_ltm
+        df_flow_ttm = pd.concat([df_flow, df_ttm], ignore_index=True)
+        return df_flow_ttm
 
     def custom_report(
         self,
@@ -493,7 +493,7 @@ class Company():
             df_year = df_year[['acc_value', 'acc_code']]
             period_str = np.datetime_as_string(period, unit='D')
             if period == self._LAST_QUARTERLY:
-                period_str += ' (ltm)'
+                period_str += ' (ttm)'
             df_year.rename(columns={'acc_value': period_str}, inplace=True)
             df_report = pd.merge(
                 df_report, df_year, how='left', on=['acc_code']

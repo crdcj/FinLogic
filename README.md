@@ -40,7 +40,7 @@ fi.update_database()
 ## Show database info
 fi.database_info()
 
-## Search a company in database by name
+## Search a company name in database
 fi.search_company('petro')
 ```
 
