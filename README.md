@@ -1,4 +1,4 @@
-## BFinance: finance toolkit for Brazilian listed companies
+## Finatic: finance toolkit for Brazilian listed companies
 
 
 <table border=1 cellpadding=10><tr><td>
@@ -7,16 +7,15 @@
 
 ---
 
-BFinance is **not** affiliated, endorsed, or vetted by the Securities and
+Finatic is **not** affiliated, endorsed, or vetted by the Securities and
 Exchange Commission of Brazil (CVM). It's an open-source tool that uses CVM
-publicly available data and is intended for research and educational
-purposes.
+publicly available data and is intended for research and educational purposes.
 
 </td></tr></table>
 
 ---
 
-**BFinance** offers a Pythonic way to analyze financial data of listed
+**Finatic** offers a Pythonic/Pandas way to analyze financial data of listed
 companies in Brazil from information made publicly avaible by local securities
 market authority (CVM).
 
@@ -26,21 +25,23 @@ market authority (CVM).
 
 ### Create local dataset
 
-The create_dataset function is responsible for downloading raw financial
+The 'update_database' function is responsible for downloading raw financial
 files from CVM, processesing aprox. 18 millions rows of accounting values and
-storing it into a single compressed pickle file for local data analysis.
+storing it into a single Pandas DataFrame compressed file for local data
+analysis. The update process can take some minutes depending on CVM Server
+connection and local data processing power.
 
 ```python
-import bfinance as bf
+import finatic as fi
 
-### Starting the dataset
-bf.create_dataset()
+### Starting Finatic for the first time
+fi.update_finatic()
 
 ## Show dataset info
-bf.dataset_info()
+fi.info()
 
 ## Search a company in dataset by name
-bf.search_company('petro')
+fi.search_company('petro')
 ```
 
 ### The Company Class
@@ -49,9 +50,9 @@ The Company Class allows you to easily access accounting data from companies.
 All values are in Brazilian currency.
 ```python
 
-import bfinance as bf
+import finatic as fi
 # Both CVM (regulator) ID or Fiscal ID can be used for company identity
-petro = bf.Company(9512)
+petro = fi.Company(9512)
 
 # show company info
 petro.info()
@@ -73,14 +74,14 @@ petro.indicators(acc_unit=1_000_000_000)
 ---
 ## Installation
 
-Install `bfinance` using `pip`:
+Install `finatic` using `pip`:
 
 ``` {.sourceCode .bash}
-$ pip install bfinance --upgrade --no-cache-dir
+$ pip install finatic --upgrade --no-cache-dir
 ```
 
-To install `bfinance` using `conda`, see
-[this](https://anaconda.org/carloscarvalho/BFinance).
+To install `finatic` using `conda`, see
+[this](https://anaconda.org/carloscarvalho/Finatic).
 
 ### Requirements
 
@@ -95,7 +96,7 @@ To install `bfinance` using `conda`, see
 
 ### Legal Stuff
 
-**BFinance** is distributed under the **MIT License**. See
+**Finatic** is distributed under the **MIT License**. See
 the [LICENSE.txt](./LICENSE.txt) file in the release for details.
 
 ---

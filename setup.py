@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 #
-# BFinance - finance toolkit for Brazilian companies
-# https://github.com/crdcj/BFinance
+# Finatic - finance toolkit for Brazilian companies
+# https://github.com/crdcj/Finatic
 
-"""BFinance - finance toolkit for Brazilian companies"""
+"""Finatic - finance toolkit for Brazilian companies"""
 
 from setuptools import setup, find_packages
 import io
@@ -12,7 +12,7 @@ from os import path
 
 # --- get version ---
 version = "unknown"
-with open("bfinance/version.py") as f:
+with open("finatic/version.py") as f:
     line = f.read().strip()
     version = line.replace("version = ", "").replace('"', '')
 # --- /get version ---
@@ -24,12 +24,12 @@ with io.open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
-    name='BFinance',
+    name='Finatic',
     version=version,
     description='Finance toolkit for Brazilian companies',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url='https://github.com/crdcj/BFinance',
+    url='https://github.com/crdcj/Finatic',
     author='Carlos Carvalho',
     author_email='carlos.r.carvalho@outlook.com.br',
     license='MIT',
@@ -60,7 +60,7 @@ setup(
 )
 
 print("""
-NOTE: BFinance is **not** affiliated, endorsed, or vetted by the Securities
+NOTE: Finatic is **not** affiliated, endorsed, or vetted by the Securities
 and Exchange Commission of Brazil (CVM). It's an open-source tool that uses CVM
 publicly available data and is intended for research and educational purposes.
 """)

@@ -1,4 +1,4 @@
-"""Module containing functions for the DATASET generation, save and update."""
+"""Module containing data processing (DP) functions."""
 import os
 import zipfile as zf
 from concurrent.futures import ProcessPoolExecutor
@@ -9,9 +9,9 @@ import numpy as np
 URL_DFP = 'http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/'
 URL_ITR = 'http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/'
 script_dir = os.path.dirname(__file__)
-RAW_DIR = script_dir + '/data/raw/'
-PROCESSED_DIR = script_dir + '/data/processed/'
-DATASET_PATH = PROCESSED_DIR + 'dataset.pkl.zst'
+DATA_DIR = script_dir + '/data/'
+RAW_DIR = DATA_DIR + '/raw/'
+MAIN_DF_PATH = DATA_DIR + 'main_df.pkl.zst'
 
 
 def update_raw_file(url: str) -> bool:
@@ -68,8 +68,8 @@ def list_urls() -> list:
     return urls
 
 
-def update_raw_dataset():
-    """Update raw files according by comparing to CVM regulator site."""
+def update_raw_files():
+    """Update local CVM raw files in parallel."""
     urls = list_urls()
     with ProcessPoolExecutor() as executor:
         results = executor.map(update_raw_file, urls)
@@ -83,8 +83,8 @@ def update_raw_dataset():
     return updated_urls
 
 
-def clean_raw_df(df: pd.DataFrame) -> pd.DataFrame:
-    """Convert raw dataframe into processed dataframe."""
+def process_raw_df(df: pd.DataFrame) -> pd.DataFrame:
+    """Process a raw dataframe"""
 
     columns_translation = {
         'CD_CVM': 'cvm_id',
@@ -201,8 +201,10 @@ def clean_raw_df(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def process_raw_file(parent_filename):
-    """Read yearly raw files, process it and consolidate into one dataframe."""
+def process_yearly_raw_files(parent_filename):
+    """Read yearly raw files, process and consolidate them into a single data
+    frame.
+    """
     df = pd.DataFrame()
     parent_path = RAW_DIR + parent_filename
     parent_file = zf.ZipFile(parent_path)
@@ -217,22 +219,21 @@ def process_raw_file(parent_filename):
         else:
             df_child['report_type'] = 'quarterly'
 
-        df_child = clean_raw_df(df_child)
+        df_child = process_raw_df(df_child)
         df = pd.concat([df, df_child], ignore_index=True)
     # print(parent_filename, 'processed')
     return df
 
 
-def update_processed_dataset():
-    """Update the processed dataset."""
+def update_main_df():
+    """Update main data frame."""
     filenames = sorted(os.listdir(RAW_DIR))
     with ProcessPoolExecutor() as executor:
-        results = executor.map(process_raw_file, filenames)
+        results = executor.map(process_yearly_raw_files, filenames)
 
     lista_dfs = []
     [lista_dfs.append(df) for df in results]
-    print('')
-    print('Concatenating dataframes ...')
+    print('Concatenate data frames ...')
     df = pd.concat(lista_dfs, ignore_index=True)
 
     # Correct/harmonize some account texts.
@@ -251,49 +252,40 @@ def update_processed_dataset():
     df = df.astype('category')
     print('Columns data type changed to category')
 
-    df.to_pickle(DATASET_PATH)
+    df.to_pickle(MAIN_DF_PATH)
 
 
-def update_dataset():
-    "Create/Update dataset from CVM public data"
-    # create dataset folders in case they do not exist
+def update_database():
+    "Create/Update all local data files and process them"
+    # create data folders if they do not exist
     if not os.path.isdir(RAW_DIR):
         os.makedirs(RAW_DIR)
-    if not os.path.isdir(PROCESSED_DIR):
-        os.makedirs(PROCESSED_DIR)
-
     urls = list_urls()
-    print('')
-    print('Downloading CVM raw files...')
-    urls = update_raw_dataset()
+    print('Updating CVM raw files...')
+    urls = update_raw_files()
     for url in urls:
         print(url)
-    print('')
-    print('Processing CVM raw dataset...')
-    update_processed_dataset()
-    print('')
-    print('Processed dataset saved')
-
-
-# create_dataset points to update_dataset
-create_dataset = update_dataset
+    print('Processing CVM raw files...')
+    update_main_df()
+    print('Main data frame saved ')
+    print('Finatic data files updated \u2705')
 
 
 def search_company(expression: str) -> pd.DataFrame:
     """
-    Search companies names in dataset that contains the 'expression'
+    Search companies names in main data frame that contains ```expression```
 
     Parameters
     ----------
     expression: str
-        A expression to search in dataset column 'co_name'.
+        A expression to search in main data frame column 'co_name'.
 
     Returns
     -------
     pd.DataFrame with search results
     """
     expression = expression.upper()
-    df = pd.read_pickle(DATASET_PATH)
+    df = pd.read_pickle(MAIN_DF_PATH)
     mask = df['co_name'].str.contains(expression)
     df = df[mask].copy()
     df.sort_values(by='co_name', inplace=True)
@@ -302,28 +294,30 @@ def search_company(expression: str) -> pd.DataFrame:
     return df[columns]
 
 
-def dataset_info() -> pd.DataFrame:
+def info() -> pd.DataFrame:
     """
-    Return dataframe with dataset info
+    Return information about the main data frame
 
     Returns
     -------
     pd.DataFrame
     """
-    df = pd.read_pickle(DATASET_PATH)
+    df = pd.read_pickle(MAIN_DF_PATH)
     columns_duplicates = [
         'cvm_id', 'report_version', 'report_type', 'period_reference']
     fs_periods = df['period_end'].astype('datetime64')
-    dataset_info = {
+    info_dic = {
         'Number of account values (total rows)': len(df.index),
         'Number of unique account codes': df[
             'acc_code'].nunique(),
         'Number of companies': df['cvm_id'].nunique(),
         'Number of Financial Statements':  len(
             df.drop_duplicates(subset=columns_duplicates).index),
+        'Data frame memory size in MB': round(df.memory_usage(
+            index=True, deep=True).sum()/(1024 * 1024), 1),
         'First Financial Statement': fs_periods.min().strftime('%Y-%m-%d'),
         'Last Financial Statement': fs_periods.max().strftime('%Y-%m-%d')
     }
-    df_info = pd.DataFrame.from_dict(
-        dataset_info, orient='index', columns=['Dataset Info'])
-    return df_info
+    info_df = pd.DataFrame.from_dict(
+        info_dic, orient='index', columns=['Dataset Info'])
+    return info_df

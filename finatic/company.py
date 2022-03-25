@@ -11,18 +11,18 @@ class Company():
 
     Attributes
     ----------
-    identity: int or str
-        A unique value to select the company in dataset. Both CVM ID or
-        Fiscal ID can be used. CVM ID (regulator ID) must be an integer.
+    identifier: int or str
+        A unique identifier to filter a company in main data frame. Both CVM
+        ID or Fiscal ID can be used. CVM ID (regulator ID) must be an integer.
         Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
     """
     script_dir = os.path.dirname(__file__)
-    DATASET = pd.read_pickle(script_dir + '/data/processed/dataset.pkl.zst')
+    _MAIN_DF = pd.read_pickle(script_dir + '/data/main_df.pkl.zst')
     TAX_RATE = 0.34
 
     def __init__(
         self,
-        identity: Union[int, str],
+        identifier: Union[int, str],
         acc_method: Literal["consolidated", "separate"] = "consolidated",
         acc_unit: Union[float, str] = 1.0,
     ):
@@ -30,9 +30,10 @@ class Company():
 
         Parameters
         ----------
-        identity: int or str
-            A unique value to select the company in dataset. Both CVM ID or
-            Fiscal ID can be used. CVM ID (regulator ID) must be an integer.
+        identifier: int or str
+            A unique identifier to filter a company in main data frame.
+            Both CVM ID or Fiscal ID can be used.
+            CVM ID (regulator ID) must be an integer.
             Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
         acc_method : {'consolidated', 'separate'}, default 'consolidated'
             Accounting method used for registering investments in subsidiaries.
@@ -41,19 +42,26 @@ class Company():
             The constant can be a number greater than zero or the strings
             {'thousand', 'million', 'billion'}.
         """
-        self.set_id(identity)
+        self.set_id(identifier)
         self.acc_method = acc_method
         self.acc_unit = acc_unit
 
-    def set_id(self, value: Union[int, str]):
+    @classmethod
+    def create_id_series(cls):
+        """Create a Pandas Series with unique CVM (Brazilian SEC equivalent)
+        IDs as index and Fiscal IDs as values"""
+        pass
+
+    def set_id(self, identifier: Union[int, str]):
         """
-        Set company unique identity for dataset selection.
+        Set a unique identifier to filter the company in main data frame.
 
         Parameters
         ----------
         value: int or str
-            A unique value to select the company in dataset. Both CVM ID or
-            Fiscal ID can be used. CVM ID (regulator ID) must be an integer.
+            A unique identifier to filter a company in main data frame.
+            Both CVM ID or Fiscal ID can be used.
+            CVM ID (regulator ID) must be an integer.
             Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
 
         Returns
@@ -63,19 +71,22 @@ class Company():
         Raises
         ------
         KeyError
-            * If passed ``identity`` not found in dataset.
+            * If passed ``identifier`` not found in main data frame.
         """
-        df = Company.DATASET[['cvm_id', 'fiscal_id']].drop_duplicates().copy()
+        df = Company._MAIN_DF[['cvm_id', 'fiscal_id']].drop_duplicates()
         df = df.astype({'cvm_id': int, 'fiscal_id': str})
-        if value in df['cvm_id'].values:
-            self._cvm_id = value
-            self._fiscal_id = df[df['cvm_id'] == value]['fiscal_id'].iloc[0]
-        elif value in df['fiscal_id'].values:
-            self._fiscal_id = value
-            self._cvm_id = df[df['fiscal_id'] == value]['cvm_id'].iloc[0]
+        if identifier in df['cvm_id'].values:
+            self._cvm_id = identifier
+            self._fiscal_id = (
+                df[df['cvm_id'] == identifier]['fiscal_id'].iloc[0]
+            )
+        elif identifier in df['fiscal_id'].values:
+            self._fiscal_id = identifier
+            self._cvm_id = df[df['fiscal_id'] == identifier]['cvm_id'].iloc[0]
         else:
-            raise KeyError("Identity for the company not found in dataset")
-        # Only set company data after object identity validation
+            raise KeyError(
+                "identifier for the company not found in main data frame")
+        # Only set company data after object identifier validation
         self._set_main_data()
 
     @property
@@ -102,12 +113,10 @@ class Company():
 
     @acc_method.setter
     def acc_method(self, value: Literal["consolidated", "separate"]):
-        self._acc_method = value
-        # if value in {'consolidated', 'separate'}:
-        #     self._acc_method = value
-        # else:
-        #     raise ValueError(
-        # "acc_method expects 'consolidated' or 'separate'")
+        if value in {'consolidated', 'separate'}:
+            self._acc_method = value
+        else:
+            raise ValueError("acc_method expects 'consolidated' or 'separate'")
 
     @property
     def acc_unit(self):
@@ -146,9 +155,9 @@ class Company():
             raise ValueError("Accounting Unit is invalid")
 
     def _set_main_data(self) -> pd.DataFrame:
-        self._CO_DF = Company.DATASET.query(
+        self._COMP_DF = Company._MAIN_DF.query(
             'cvm_id == @self._cvm_id').copy()
-        self._CO_DF = self._CO_DF.astype({
+        self._COMP_DF = self._COMP_DF.astype({
             'co_name': str,
             'cvm_id': np.uint32,
             'fiscal_id': str,
@@ -165,15 +174,15 @@ class Company():
             'acc_value': float,
             'equity_statement_column': str,
         })
-        self._CO_DF.sort_values(
+        self._COMP_DF.sort_values(
             by='acc_code', ignore_index=True, inplace=True)
 
-        self._NAME = self._CO_DF['co_name'].unique()[0]
-        self._FIRST_ANNUAL = self._CO_DF.query(
+        self._NAME = self._COMP_DF['co_name'].unique()[0]
+        self._FIRST_ANNUAL = self._COMP_DF.query(
             'report_type == "annual"')['period_end'].min()
-        self._LAST_ANNUAL = self._CO_DF.query(
+        self._LAST_ANNUAL = self._COMP_DF.query(
             'report_type == "annual"')['period_end'].max()
-        self._LAST_QUARTERLY = self._CO_DF.query(
+        self._LAST_QUARTERLY = self._COMP_DF.query(
             'report_type == "quarterly"')['period_end'].max()
 
     def info(self) -> pd.DataFrame:
@@ -246,7 +255,7 @@ class Company():
             acc_method == @self._acc_method and \
             period_end >= @first_period
         '''
-        df = self._CO_DF.query(expression).copy()
+        df = self._COMP_DF.query(expression).copy()
 
         # Change acc_unit only for accounts different from 3.99
         df['acc_value'] = np.where(
