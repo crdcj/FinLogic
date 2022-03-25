@@ -1,4 +1,4 @@
-"""Module containing data processing (DP) functions."""
+"""Module containing local database functions."""
 import os
 import zipfile as zf
 from concurrent.futures import ProcessPoolExecutor

@@ -6,7 +6,7 @@
 # Copyright 2022 Carlos Carvalho
 #
 from . import version
-from .dp import update_database, search_company, database_info
+from .database import update_database, search_company, database_info
 from .company import Company
 
 __version__ = version.version
