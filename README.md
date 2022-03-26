@@ -7,17 +7,21 @@
 
 ---
 
-FinLogic is **not** affiliated, endorsed, or vetted by the Securities and
-Exchange Commission of Brazil (CVM). It's an open-source tool that uses CVM
-publicly available data and is intended for research and educational purposes.
+FinLogic is **not** affiliated, endorsed, or vetted by the Securities and Exchange Commission of Brazil (CVM). It's an open-source tool that uses CVM publicly available data and is intended for research and educational purposes.
 
 </td></tr></table>
 
 ---
 
-**FinLogic** offers a Pythonic/Pandas way to analyze financial data of listed
-companies in Brazil from information made publicly avaible by local securities
-market authority (CVM).
+<a target="new" href="https://pypi.python.org/pypi/finlogic"><img border=0 src="https://img.shields.io/badge/python-3.8+-blue.svg?style=flat" alt="Python version"></a>
+<a target="new" href="https://pypi.python.org/pypi/finlogic"><img border=0 src="https://img.shields.io/pypi/v/finlogic.svg?maxAge=60%" alt="PyPi version"></a>
+<a target="new" href="https://pypi.python.org/pypi/finlogic"><img border=0 src="https://img.shields.io/pypi/status/finlogic.svg?maxAge=60" alt="PyPi status"></a>
+<a target="new" href="https://pypi.python.org/pypi/finlogic"><img border=0 src="https://img.shields.io/pypi/dm/finlogic.svg?maxAge=2592000&label=installs&color=%2327B1FF" alt="PyPi downloads"></a>
+<a target="new" href="https://github.com/crdcj/FinLogic"><img border=0 src="https://img.shields.io/github/stars/crdcj/FinLogic.svg?style=social&label=Star&maxAge=60" alt="Star this repo"></a>
+<a target="new" href="https://twitter.com/CRCarvalhoJ"><img border=0 src="https://img.shields.io/twitter/follow/CRCarvalhoJ.svg?style=social&label=Follow&maxAge=60" alt="Follow me on twitter"></a>
+
+
+**FinLogic** offers a Pythonic/Pandas way to analyze financial data of listed companies in Brazil from information made publicly avaible by local securities market authority (CVM).
 
 ---
 
@@ -25,11 +29,7 @@ market authority (CVM).
 
 ### Create FinLogic local database
 
-The 'update_database' function is responsible for downloading raw financial
-files from CVM, processesing aprox. 18 millions rows of accounting values and
-storing it into a single Pandas DataFrame compressed file for local data
-analysis. The update process can take some minutes depending on CVM Server
-connection and local data processing power.
+The 'update_database' function is responsible for downloading raw financial files from CVM, processesing aprox. 18 millions rows of accounting values and storing it into a single Pandas DataFrame compressed file for local data analysis. The update process can take some minutes depending on CVM Server connection and local data processing power.
 
 ```python
 import finlogic as fi
@@ -46,8 +46,7 @@ fi.search_company('petro')
 
 ### The Company Class
 
-The Company Class allows you to easily access financial data from Brazilian
-companies. All values are in local currency (Real).
+The Company Class allows you to easily access financial data from Brazilian companies. All values are in local currency (Real).
 ```python
 
 import finlogic as fi
