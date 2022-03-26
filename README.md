@@ -82,7 +82,7 @@ petro.indicators(num_years=5)
 Install `finlogic` using `pip`:
 
 ``` {.sourceCode .bash}
-$ pip install finlogic --upgrade --no-cache-dir
+$ pip install finlogic
 ```
 
 ### Requirements

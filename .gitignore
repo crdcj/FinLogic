@@ -5,5 +5,5 @@
 dev/
 dist/
 build/
-FinLogic.egg-info/
+finlogic.egg-info/
 .venv/
