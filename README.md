@@ -13,7 +13,7 @@ FinLogic is **not** affiliated, endorsed, or vetted by the Securities and Exchan
 
 ---
 
-<a target="new" href="https://pypi.python.org/pypi/finlogic"><img border=0 src="https://img.shields.io/badge/python-3.8+-blue.svg?style=flat" alt="Python version"></a>
+<a target="new" href="https://pypi.python.org/pypi/finlogic"><img border=0 src="https://img.shields.io/badge/python-3.10+-blue.svg?style=flat" alt="Python version"></a>
 <a target="new" href="https://pypi.python.org/pypi/finlogic"><img border=0 src="https://img.shields.io/pypi/v/finlogic.svg?maxAge=60%" alt="PyPi version"></a>
 <a target="new" href="https://pypi.python.org/pypi/finlogic"><img border=0 src="https://img.shields.io/pypi/status/finlogic.svg?maxAge=60" alt="PyPi status"></a>
 <a target="new" href="https://pypi.python.org/pypi/finlogic"><img border=0 src="https://img.shields.io/pypi/dm/finlogic.svg?maxAge=2592000&label=installs&color=%2327B1FF" alt="PyPi downloads"></a>
@@ -151,7 +151,7 @@ $ pip install finlogic
 
 ### Requirements
 
--   [Python](https://www.python.org) \>= 3.8+
+-   [Python](https://www.python.org) \>= 3.10+
 -   [Pandas](https://github.com/pydata/pandas) (tested to work with \>= 1.4.0)
 -   [Numpy](http://www.numpy.org) (tested to work with \>= 1.18.5)
 -   [requests](http://docs.python-requests.org/en/master/) \>= 2.27.1
