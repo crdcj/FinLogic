@@ -44,29 +44,29 @@ FinLogic database updated ✅
 ## Show database info
 >>> fi.database_info()
 
-| Database Info                         |                |
-|:--------------------------------------|:---------------|
-| Number accounting rows in database    | 18.194.002     |
-| Number of unique accounting codes     | 2.006          |
-| Number of companies                   | 1.082          |
-| Number of Financial Statements        | 11.755         |
-| Main Data frame memory size in MB     | 469.0          |
-| First Financial Statement in database | 2009-01-31     |
-| Last Financial Statement in database  | 2022-03-31     |
+| Database Info                         |            |
+|:--------------------------------------|:-----------|
+| Number accounting rows in database    | 18,194,002 |
+| Number of unique accounting codes     | 2,006      |
+| Number of companies                   | 1,082      |
+| Number of Financial Statements        | 11,755     |
+| Main Data frame memory size in MB     | 469.0      |
+| First Financial Statement in database | 2009-01-31 |
+| Last Financial Statement in database  | 2022-03-31 |
 
 ## Search a company name in database
 >>> fi.search_company('petro')
 
-|    | co_name                                |   cvm_id | fiscal_id          |
-|---:|:---------------------------------------|---------:|:-------------------|
-|  0 | 3R PETROLEUM ÓLEO E GÁS S.A.           |    25291 | 12.091.809/0001-55 |
-|  1 | PETRO RIO S.A.                         |    22187 | 10.629.105/0001-68 |
-|  2 | PETROBRAS DISTRIBUIDORA S/A            |    24295 | 34.274.233/0001-02 |
-|  3 | PETROLEO BRASILEIRO S.A. PETROBRAS     |     9512 | 33.000.167/0001-01 |
-|  4 | PETROLEO LUB DO NORDESTE SA            |     9520 | 07.275.159/0001-68 |
-|  5 | PETRORECÔNCAVO S.A.                    |    25780 | 03.342.704/0001-30 |
-|  6 | PRONOR PETROQUIMICA SA                 |     9784 | 13.552.070/0001-02 |
-|  7 | REFINARIA DE PETROLEOS MANGUINHOS S.A. |     9989 | 33.412.081/0001-96 |
+|   | co_name                                | cvm_id | fiscal_id          |
+|--:|:---------------------------------------|-------:|:-------------------|
+| 0 | 3R PETROLEUM ÓLEO E GÁS S.A.           |  25291 | 12.091.809/0001-55 |
+| 1 | PETRO RIO S.A.                         |  22187 | 10.629.105/0001-68 |
+| 2 | PETROBRAS DISTRIBUIDORA S/A            |  24295 | 34.274.233/0001-02 |
+| 3 | PETROLEO BRASILEIRO S.A. PETROBRAS     |   9512 | 33.000.167/0001-01 |
+| 4 | PETROLEO LUB DO NORDESTE SA            |   9520 | 07.275.159/0001-68 |
+| 5 | PETRORECÔNCAVO S.A.                    |  25780 | 03.342.704/0001-30 |
+| 6 | PRONOR PETROQUIMICA SA                 |   9784 | 13.552.070/0001-02 |
+| 7 | REFINARIA DE PETROLEOS MANGUINHOS S.A. |   9989 | 33.412.081/0001-96 |
 ```
 
 ### The Company Class
@@ -79,10 +79,10 @@ The Company Class allows you to easily access financial data from Brazilian comp
 # Both CVM (regulator) ID or Fiscal ID can be used as an identifier.
 >>> petro = fi.Company(9512, acc_method='separate', acc_unit='million')
 
-# Change company accouting method back to 'consolidated' (default)
+# Change company accouting method back to default = 'consolidated'
 >>> petro.acc_method = 'consolidated'
 
-# Change company accouting unit from million to billion (default is 1)
+# Change company accouting unit to billion (default is 1)
 >>> petro.acc_unit = 'billion'
 
 # show company info
@@ -93,9 +93,9 @@ The Company Class allows you to easily access financial data from Brazilian comp
 | Company Name                  | PETROLEO BRASILEIRO S.A. PETROBRAS |
 | Company CVM ID                | 9512                               |
 | Company Fiscal ID (CNPJ)      | 33.000.167/0001-01                 |
-| Company total accounting rows | 39.292                             |
+| Company total accounting rows | 39,292                             |
 | Selected Accounting Method    | consolidated                       |
-| Selected Accounting Unit      | 1.000.000.000                      |
+| Selected Accounting Unit      | 1,000,000,000                      |
 | First Annual Report           | 2009-12-31                         |
 | Last Annual Report            | 2021-12-31                         |
 | Last Quarterly Report         | 2021-09-30                         |
@@ -106,16 +106,16 @@ The Company Class allows you to easily access financial data from Brazilian comp
 # show company liabilities with custom arguments
 >>> petro.report(report_type='debt', acc_level=4, num_years=3)
 
-|   | acc_name           | acc_code   | acc_fixed | 2019-12-31 | 2020-12-31 |  2021-12-31 |
-|--:|:-------------------|:-----------|:----------|-----------:|-----------:|------------:|
-| 0 | Empréstimos e F... | 2.01.04    | True      |     41.139 |     51.364 |      50.631 |
-| 1 | Empréstimos e F... | 2.01.04.01 | True      |     18.013 |     21.751 |      20.316 |
-| 2 | Debêntures         | 2.01.04.02 | True      |      0     |      0     |       0     |
-| 3 | Financiamento ...  | 2.01.04.03 | True      |     23.126 |     29.613 |      30.315 |
-| 4 | Empréstimos e F... | 2.02.01    | True      |    310.022 |    341.184 |     277.187 |
-| 5 | Empréstimos e F... | 2.02.01.01 | True      |    236.969 |    258.287 |     178.908 |
-| 6 | Debêntures         | 2.02.01.02 | True      |      0     |      0     |       0     |
-| 7 | Financiamento ...  | 2.02.01.03 | True      |     73.053 |     82.897 |      98.279 |
+|   | acc_name                       | acc_code   | 2019-12-31 | 2020-12-31 | 2021-12-31 |
+|--:|:-------------------------------|:-----------|-----------:|-----------:|-----------:|
+| 0 | Empréstimos e Financiamentos   | 2.01.04    |     41.139 |     51.364 |     50.631 |
+| 1 | Empréstimos e Financiamentos   | 2.01.04.01 |     18.013 |     21.751 |     20.316 |
+| 2 | Debêntures                     | 2.01.04.02 |      0     |      0     |      0     |
+| 3 | Financiamento por Arrendamento | 2.01.04.03 |     23.126 |     29.613 |     30.315 |
+| 4 | Empréstimos e Financiamentos   | 2.02.01    |    310.022 |    341.184 |    277.187 |
+| 5 | Empréstimos e Financiamentos   | 2.02.01.01 |    236.969 |    258.287 |    178.908 |
+| 6 | Debêntures                     | 2.02.01.02 |      0     |      0     |      0     |
+| 7 | Financiamento por Arrendamento | 2.02.01.03 |     73.053 |     82.897 |     98.279 |
 
 # show company main indicators
 >>> petro.indicators(num_years=3)
