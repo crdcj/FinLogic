@@ -44,7 +44,7 @@ setup(
         'Topic :: Office/Business :: Financial :: Investment',
         'Topic :: Software Development :: Libraries',
         'Topic :: Software Development :: Libraries :: Python Modules',
-        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.10',
     ],
     platforms=['any'],
     keywords='pandas, requests, cvm, finance, investment, accounting',
