@@ -312,12 +312,12 @@ def database_info() -> pd.DataFrame:
         'Number of Financial Statements':  len(
             df.drop_duplicates(subset=columns_duplicates).index),
         'Main Data frame memory size in MB': round(df.memory_usage(
-            index=True, deep=True).sum()/(1024 * 1024), 1),
+            index=True, deep=True).sum() / (1024 * 1024), 1),
         'First Financial Statement in database': (
             df['period_end'].astype('datetime64').min().strftime('%Y-%m-%d')),
         'Last Financial Statement in database': (
             df['period_end'].astype('datetime64').max().strftime('%Y-%m-%d'))
     }
     info_df = pd.DataFrame.from_dict(
-        info_dic, orient='index', columns=['Dataset Info'])
+        info_dic, orient='index', columns=['Database Info'])
     return info_df
