@@ -79,12 +79,11 @@ The Company Class allows you to easily access financial data from Brazilian comp
 # Both CVM (regulator) ID or Fiscal ID can be used as an identifier.
 >>> petro = fi.Company(9512, acc_method='separate', acc_unit='million')
 
-# Change company accouting method to 'separate' (default is 'consolidated')
+# Change company accouting method back to 'consolidated' (default)
 >>> petro.acc_method = 'consolidated'
 
-# Change company accouting unit to billion (default is 1)
+# Change company accouting unit from million to billion (default is 1)
 >>> petro.acc_unit = 'billion'
-...
 
 # show company info
 >>> petro.info()
@@ -103,9 +102,9 @@ The Company Class allows you to easily access financial data from Brazilian comp
 
 # show company assets in Brazilian currency 
 >>> petro.report(report_type='assets')
-
+...
 # show company liabilities with custom arguments
->>> petro.report(report_type='debt', acc_level=3, num_years=3)
+>>> petro.report(report_type='debt', acc_level=4, num_years=3)
 
 |   | acc_name           | acc_code   | acc_fixed | 2019-12-31 | 2020-12-31 |  2021-12-31 |
 |--:|:-------------------|:-----------|:----------|-----------:|-----------:|------------:|
