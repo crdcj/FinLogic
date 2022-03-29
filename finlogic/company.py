@@ -19,13 +19,13 @@ class Company():
         ID or Fiscal ID can be used. CVM ID (regulator ID) must be an integer.
         Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
     """
-    TAX_RATE = 0.34
 
     def __init__(
         self,
         identifier: Union[int, str],
         acc_method: Literal["consolidated", "separate"] = "consolidated",
         acc_unit: Union[float, str] = 1.0,
+        tax_rate: float = 0.34,
     ):
         """Initialize main variables.
 
@@ -46,6 +46,7 @@ class Company():
         self.set_id(identifier)
         self.acc_method = acc_method
         self.acc_unit = acc_unit
+        self.tax_rate = tax_rate
 
     def set_id(self, identifier: Union[int, str]):
         """
@@ -94,7 +95,7 @@ class Company():
 
         Parameters
         ----------
-        acc_method : {'consolidated', 'separate'}, default 'consolidated'
+        value : {'consolidated', 'separate'}, default 'consolidated'
             Accounting method used for registering investments in subsidiaries.
 
         Returns
@@ -104,7 +105,7 @@ class Company():
         Raises
         ------
         ValueError
-            * If passed ``acc_method`` is invalid.
+            * If passed ``value`` is invalid.
         """
         return self._acc_unit
 
@@ -122,7 +123,7 @@ class Company():
 
         Parameters
         ----------
-        acc_unit : float or str, default 1.0
+        value : float or str, default 1.0
             acc_unit is a constant that will divide company account values.
             The constant can be a number greater than zero or the strings
             {'thousand', 'million', 'billion'}.
@@ -134,7 +135,7 @@ class Company():
         Raises
         ------
         ValueError
-            * If passed ``acc_unit`` is invalid.
+            * If passed ``value`` is invalid.
         """
         return self._acc_unit
 
@@ -150,6 +151,35 @@ class Company():
             self._acc_unit = value
         else:
             raise ValueError("Accounting Unit is invalid")
+
+    @property
+    def tax_rate(self):
+        """
+        Get or set company 'tax_rate' attribute.
+
+        Parameters
+        ----------
+        value : float, default 0.34
+            'value' will be passed to 'tax_rate' object attribute if
+             0 <= value <= 1.
+
+        Returns
+        -------
+        float
+
+        Raises
+        ------
+        ValueError
+            * If passed ``value`` is invalid.
+        """
+        return self._tax_rate
+
+    @tax_rate.setter
+    def tax_rate(self, value: float):
+        if 0 <= value <= 1:
+            self._tax_rate = value
+        else:
+            raise ValueError("Company 'tax_rate' value is invalid")
 
     def _set_main_data(self) -> pd.DataFrame:
         self._COMP_DF = pd.read_pickle(MAIN_DF_PATH)
@@ -445,13 +475,13 @@ class Company():
         dfi.loc['working_capital'] = working_capital
         dfi.loc['invested_capital'] = invested_capital
         dfi.loc['return_on_assets'] = (
-            ebit * (1 - Company.TAX_RATE) / total_assets_p)
+            ebit * (1 - self._tax_rate) / total_assets_p)
         dfi.loc['return_on_capital'] = (
-            ebit * (1 - Company.TAX_RATE) / invested_capital_p)
+            ebit * (1 - self._tax_rate) / invested_capital_p)
         dfi.loc['return_on_equity'] = net_income / equity_p
         dfi.loc['gross_margin'] = gross_profit / revenues
         dfi.loc['ebitda_margin'] = ebitda / revenues
-        dfi.loc['operating_margin'] = ebit * (1 - Company.TAX_RATE) / revenues
+        dfi.loc['operating_margin'] = ebit * (1 - self._tax_rate) / revenues
         dfi.loc['net_margin'] = net_income / revenues
         # Show only the selected number of years
         if num_years > 0:
