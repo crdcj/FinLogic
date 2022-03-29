@@ -214,10 +214,11 @@ class Company():
     def info(self) -> pd.DataFrame:
         """Return dictionary with company info."""
         company_info = {
-            'Company Name': self._NAME,
-            'Company CVM ID': self._cvm_id,
-            'Company Fiscal ID (CNPJ)': self._fiscal_id,
-            'Company total accounting rows': len(self._COMP_DF.index),
+            'Name': self._NAME,
+            'CVM ID': self._cvm_id,
+            'Fiscal ID (CNPJ)': self._fiscal_id,
+            'Total Accounting Rows': len(self._COMP_DF.index),
+            'Selected Tax Rate': self._tax_rate,
             'Selected Accounting Method': self._acc_method,
             'Selected Accounting Unit': self._acc_unit,
             'First Annual Report': self._FIRST_ANNUAL.strftime('%Y-%m-%d'),
