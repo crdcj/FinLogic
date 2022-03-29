@@ -42,6 +42,10 @@ class Company():
             acc_unit is a constant that will divide company account values.
             The constant can be a number greater than zero or the strings
             {'thousand', 'million', 'billion'}.
+        tax_rate : float, default 0.34
+            The 'tax_rate' attribute will be used to calculate some of the
+            company indicators.
+
         """
         self.set_id(identifier)
         self.acc_method = acc_method
