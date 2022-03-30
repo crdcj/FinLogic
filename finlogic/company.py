@@ -1,6 +1,6 @@
 """Module containing the Company Class."""
 import os
-from typing import Union, Literal
+from typing import Literal
 import numpy as np
 import pandas as pd
 
@@ -22,9 +22,9 @@ class Company():
 
     def __init__(
         self,
-        identifier: Union[int, str],
+        identifier: int | str,
         acc_method: Literal["consolidated", "separate"] = "consolidated",
-        acc_unit: Union[float, str] = 1.0,
+        acc_unit: float | str = 1.0,
         tax_rate: float = 0.34,
     ):
         """Initialize main variables.
@@ -52,7 +52,7 @@ class Company():
         self.acc_unit = acc_unit
         self.tax_rate = tax_rate
 
-    def set_id(self, identifier: Union[int, str]):
+    def set_id(self, identifier: int | str):
         """
         Set a unique identifier to filter the company in as fi.
 
@@ -144,7 +144,7 @@ class Company():
         return self._acc_unit
 
     @acc_unit.setter
-    def acc_unit(self, value: Union[float, str]):
+    def acc_unit(self, value: float | str):
         if value == 'thousand':
             self._acc_unit = 1_000
         elif value == 'million':
@@ -236,7 +236,7 @@ class Company():
     def report(
         self,
         report_type: str,
-        acc_level: Union[int, None] = None,
+        acc_level: int | None = None,
         num_years: int = 0,
     ) -> pd.DataFrame:
         """
