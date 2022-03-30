@@ -1,9 +1,6 @@
-**/data
-**/backup
 **/__pycache__
+/data
 .vscode/
-dev/
 dist/
 build/
 finlogic.egg-info/
-.venv/
