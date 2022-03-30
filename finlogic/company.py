@@ -74,9 +74,10 @@ class Company():
             * If passed ``identifier`` not found in as fi.
         """
         # Create custom data frame for ID selection
-        df = pd.read_pickle(MAIN_DF_PATH)
-        df = df[['cvm_id', 'fiscal_id']].drop_duplicates()
-        df = df.astype({'cvm_id': int, 'fiscal_id': str})
+        df = (pd.read_pickle(MAIN_DF_PATH)
+                [['cvm_id', 'fiscal_id']]
+                .drop_duplicates()
+                .astype({'cvm_id': int, 'fiscal_id': str}))
         if identifier in df['cvm_id'].values:
             self._cvm_id = identifier
             self._fiscal_id = (
@@ -86,8 +87,7 @@ class Company():
             self._cvm_id = (
                 df.loc[df['fiscal_id'] == identifier, 'cvm_id'].item())
         else:
-            raise KeyError(
-                "'identifier' for the company not found in database")
+            raise KeyError("Company 'identifier' not found in database")
         # Only set company data after object identifier validation
         self._set_main_data()
 
@@ -186,27 +186,26 @@ class Company():
             raise ValueError("Company 'tax_rate' value is invalid")
 
     def _set_main_data(self) -> pd.DataFrame:
-        self._COMP_DF = pd.read_pickle(MAIN_DF_PATH)
-        self._COMP_DF.query('cvm_id == @self._cvm_id', inplace=True)
-        self._COMP_DF = self._COMP_DF.astype({
-            'co_name': str,
-            'cvm_id': np.uint32,
-            'fiscal_id': str,
-            'report_type': str,
-            'report_version': str,
-            'period_reference': 'datetime64',
-            'period_begin': 'datetime64',
-            'period_end': 'datetime64',
-            'period_order': np.int8,
-            'acc_code': str,
-            'acc_name': str,
-            'acc_method': str,
-            'acc_fixed': bool,
-            'acc_value': float,
-            'equity_statement_column': str,
-        })
-        self._COMP_DF.sort_values(
-            by='acc_code', ignore_index=True, inplace=True)
+        self._COMP_DF = (pd
+            .read_pickle(MAIN_DF_PATH)
+            .query('cvm_id == @self._cvm_id')
+            .astype({
+                'co_name': str,
+                'cvm_id': np.uint32,
+                'fiscal_id': str,
+                'report_type': str,
+                'report_version': str,
+                'period_reference': 'datetime64',
+                'period_begin': 'datetime64',
+                'period_end': 'datetime64',
+                'period_order': np.int8,
+                'acc_code': str,
+                'acc_name': str,
+                'acc_method': str,
+                'acc_fixed': bool,
+                'acc_value': float,
+                'equity_statement_column': str})
+            .sort_values(by='acc_code', ignore_index=True))
         self._NAME = self._COMP_DF['co_name'].unique()[0]
         self._FIRST_ANNUAL = self._COMP_DF.query(
             'report_type == "annual"')['period_end'].min()
