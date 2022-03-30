@@ -1,6 +1,6 @@
-**/__pycache__
-/data
-.vscode/
+__pycache__/
 dist/
 build/
+.vscode/
+data/
 finlogic.egg-info/
