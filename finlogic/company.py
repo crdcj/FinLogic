@@ -346,19 +346,18 @@ class Company():
             report_df = report_df[cols]
         return report_df
 
-    def _calculate_ttm(self, df_flow: pd.DataFrame) -> pd.DataFrame:
+    def _calculate_ttm(self, input_df: pd.DataFrame) -> pd.DataFrame:
         if self._LAST_ANNUAL > self._LAST_QUARTERLY:
-            df_flow.query('report_type == "annual"', inplace=True)
-            return df_flow
+            return input_df.query('report_type == "annual"').copy()
 
-        df1 = df_flow.query('period_end == @self._LAST_QUARTERLY').copy()
+        df1 = input_df.query('period_end == @self._LAST_QUARTERLY').copy()
         df1.query('period_begin == period_begin.min()', inplace=True)
 
-        df2 = df_flow.query('period_reference == @self._LAST_QUARTERLY').copy()
+        df2 = input_df.query('period_reference == @self._LAST_QUARTERLY').copy()
         df2.query('period_begin == period_begin.min()', inplace=True)
-        df2['acc_value'] = -df2['acc_value']
+        df2['acc_value'] = - df2['acc_value']
 
-        df3 = df_flow.query('period_end == @self._LAST_ANNUAL').copy()
+        df3 = input_df.query('period_end == @self._LAST_ANNUAL').copy()
 
         df_ttm = pd.concat([df1, df2, df3], ignore_index=True)
         df_ttm = df_ttm[['acc_code', 'acc_value']]
@@ -368,9 +367,9 @@ class Company():
         df_ttm['report_type'] = 'quarterly'
         df_ttm['period_begin'] = self._LAST_QUARTERLY - pd.DateOffset(years=1)
 
-        df_flow.query('report_type == "annual"', inplace=True)
-        df_flow_ttm = pd.concat([df_flow, df_ttm], ignore_index=True)
-        return df_flow_ttm
+        df_annual = input_df.query('report_type == "annual"').copy()
+
+        return pd.concat([df_annual, df_ttm], ignore_index=True)
 
     def custom_report(
         self,
