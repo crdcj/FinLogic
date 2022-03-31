@@ -1,4 +1,9 @@
-"""Module containing the Company Class."""
+"""
+Module containing the Company Class.
+Abreviations used in code:
+    dfi = input dataframe
+    dfo = output dataframe
+"""
 import os
 from typing import Literal
 import numpy as np
@@ -346,28 +351,30 @@ class Company():
             report_df = report_df[cols]
         return report_df
 
-    def _calculate_ttm(self, input_df: pd.DataFrame) -> pd.DataFrame:
+    def _calculate_ttm(self, dfi: pd.DataFrame) -> pd.DataFrame:
         if self._LAST_ANNUAL > self._LAST_QUARTERLY:
-            return input_df.query('report_type == "annual"').copy()
+            return dfi.query('report_type == "annual"').copy()
 
-        df1 = input_df.query('period_end == @self._LAST_QUARTERLY').copy()
+        df1 = dfi.query('period_end == @self._LAST_QUARTERLY').copy()
         df1.query('period_begin == period_begin.min()', inplace=True)
 
-        df2 = input_df.query('period_reference == @self._LAST_QUARTERLY').copy()
+        df2 = dfi.query('period_reference == @self._LAST_QUARTERLY').copy()
         df2.query('period_begin == period_begin.min()', inplace=True)
         df2['acc_value'] = - df2['acc_value']
 
-        df3 = input_df.query('period_end == @self._LAST_ANNUAL').copy()
+        df3 = dfi.query('period_end == @self._LAST_ANNUAL').copy()
 
-        df_ttm = pd.concat([df1, df2, df3], ignore_index=True)
-        df_ttm = df_ttm[['acc_code', 'acc_value']]
-        df_ttm = df_ttm.groupby(by='acc_code').sum().reset_index()
+        df_ttm = (pd.concat([df1, df2, df3], ignore_index=True)
+                    [['acc_code', 'acc_value']]
+                    .groupby(by='acc_code')
+                    .sum()
+                    .reset_index())
         df1.drop(columns='acc_value', inplace=True)
         df_ttm = pd.merge(df1, df_ttm)
         df_ttm['report_type'] = 'quarterly'
         df_ttm['period_begin'] = self._LAST_QUARTERLY - pd.DateOffset(years=1)
 
-        df_annual = input_df.query('report_type == "annual"').copy()
+        df_annual = dfi.query('report_type == "annual"').copy()
 
         return pd.concat([df_annual, df_ttm], ignore_index=True)
 
@@ -397,15 +404,15 @@ class Company():
         df_le = self.report('liabilities_and_equity')
         df_is = self.report('income')
         df_cf = self.report('cash_flow')
-        df = pd.concat([df_as, df_le, df_is, df_cf], ignore_index=True)
-        df.query('acc_code == @acc_list', inplace=True)
-        df.reset_index(drop=True, inplace=True)
+        dfo = (pd.concat([df_as, df_le, df_is, df_cf], ignore_index=True)
+                 .query('acc_code == @acc_list')
+                 .reset_index(drop=True))
         # Show only the selected number of years
         if num_years > 0:
-            cols = df.columns.to_list()
+            cols = dfo.columns.to_list()
             cols = cols[0:3] + cols[-num_years:]
-            df = df[cols]
-        return df
+            dfo = dfo[cols]
+        return dfo
 
     @staticmethod
     def _prior_values(s: pd.Series, is_prior: bool) -> pd.Series:
@@ -443,15 +450,15 @@ class Company():
         .. [1]  Aswath Damodaran, "Return on Capital (ROC), Return on Invested
                 Capital (ROIC) and Return on Equity (ROE): Measurement and
                 Implications.", 2007,
-                https://people.stern.nyu.edu/adamodar/pdfiles/papers/returnmeasures.pdf
+                https://people.stern.nyu.edu/adamodar/pdfoles/papers/returnmeasures.pdf
         """
         df_as = self.report('assets')
         df_le = self.report('liabilities_and_equity')
         df_in = self.report('income')
         df_cf = self.report('cash_flow')
-        df = pd.concat([df_as, df_le, df_in, df_cf], ignore_index=True)
-        df.set_index(keys='acc_code', drop=True, inplace=True)
-        df.drop(columns=['acc_fixed', 'acc_name'], inplace=True)
+        df = (pd.concat([df_as, df_le, df_in, df_cf], ignore_index=True)
+                .set_index(keys='acc_code', drop=True)
+                .drop(columns=['acc_fixed', 'acc_name']))
         # Calculate indicators series
         revenues = df.loc['3.01']
         gross_profit = df.loc['3.03']
@@ -472,77 +479,68 @@ class Company():
         net_debt = total_debt - total_cash
         invested_capital = total_debt + equity - total_cash
         invested_capital_p = self._prior_values(invested_capital, is_prior)
-        # dfi: dataframe with indicators
-        dfi = pd.DataFrame(columns=df.columns)
-        dfi.loc['revenues'] = revenues
-        dfi.loc['operating_cash_flow'] = operating_cash_flow
-        dfi.loc['ebitda'] = ebitda
-        dfi.loc['ebit'] = ebit
-        dfi.loc['net_income'] = net_income
-        dfi.loc['total_cash'] = total_cash
-        dfi.loc['total_debt'] = total_debt
-        dfi.loc['net_debt'] = net_debt
-        dfi.loc['working_capital'] = working_capital
-        dfi.loc['invested_capital'] = invested_capital
-        dfi.loc['return_on_assets'] = (
+        # dfo: dataframe with indicators
+        dfo = pd.DataFrame(columns=df.columns)
+        dfo.loc['revenues'] = revenues
+        dfo.loc['operating_cash_flow'] = operating_cash_flow
+        dfo.loc['ebitda'] = ebitda
+        dfo.loc['ebit'] = ebit
+        dfo.loc['net_income'] = net_income
+        dfo.loc['total_cash'] = total_cash
+        dfo.loc['total_debt'] = total_debt
+        dfo.loc['net_debt'] = net_debt
+        dfo.loc['working_capital'] = working_capital
+        dfo.loc['invested_capital'] = invested_capital
+        dfo.loc['return_on_assets'] = (
             ebit * (1 - self._tax_rate) / total_assets_p)
-        dfi.loc['return_on_capital'] = (
+        dfo.loc['return_on_capital'] = (
             ebit * (1 - self._tax_rate) / invested_capital_p)
-        dfi.loc['return_on_equity'] = net_income / equity_p
-        dfi.loc['gross_margin'] = gross_profit / revenues
-        dfi.loc['ebitda_margin'] = ebitda / revenues
-        dfi.loc['operating_margin'] = ebit * (1 - self._tax_rate) / revenues
-        dfi.loc['net_margin'] = net_income / revenues
+        dfo.loc['return_on_equity'] = net_income / equity_p
+        dfo.loc['gross_margin'] = gross_profit / revenues
+        dfo.loc['ebitda_margin'] = ebitda / revenues
+        dfo.loc['operating_margin'] = ebit * (1 - self._tax_rate) / revenues
+        dfo.loc['net_margin'] = net_income / revenues
         # Show only the selected number of years
         if num_years > 0:
-            dfi = dfi[dfi.columns[-num_years:]]
-        return dfi
+            dfo = dfo[dfo.columns[-num_years:]]
+        return dfo
 
-    def _make_report(self, df: pd.DataFrame) -> pd.DataFrame:
+    def _make_report(self, dfi: pd.DataFrame) -> pd.DataFrame:
         # keep only last quarterly fs
         if self._LAST_ANNUAL > self._LAST_QUARTERLY:
-            expression = '''
-                report_type == "annual"
-                and (
-                    period_order == -1
-                    or period_end == @self._LAST_ANNUAL
-                    )
-            '''
-            expression = expression.replace('\n', '')
-            df.query(expression, inplace=True)
+            df = dfi.query(
+                'report_type == "annual"').copy()
+            df.query(
+                'period_order == -1 or \
+                 period_end == @self._LAST_ANNUAL',
+                inplace=True)
         else:
-            expression = '''
-                (
-                    report_type == 'annual'
-                    or period_end == @self._LAST_QUARTERLY
-                )
-                and (
-                    period_order == -1
-                    or period_end == @self._LAST_QUARTERLY
-                    or period_end == @self._LAST_ANNUAL
-                    )
-            '''
-            expression = expression.replace('\n', '')
-            df.query(expression, inplace=True)
-        # Create Index
-        df_report = (df
-            .sort_values(by='period_end', ascending=True)
-            [['acc_name', 'acc_code', 'acc_fixed']]
-            .drop_duplicates(subset='acc_code', ignore_index=True, keep='last')
-        )
+            df = dfi.query(
+                'report_type == "annual" or \
+                 period_end == @self._LAST_QUARTERLY').copy()
+            df.query(
+                'period_order == -1 or \
+                 period_end == @self._LAST_QUARTERLY or \
+                 period_end == @self._LAST_ANNUAL',
+                inplace=True)
+
+        # Create output dataframe with only the index
+        dfo = (df.sort_values(by='period_end', ascending=True)
+                 [['acc_name', 'acc_code', 'acc_fixed']]
+                 .drop_duplicates(subset='acc_code',
+                                  ignore_index=True,
+                                  keep='last'))
+
         periods = list(df['period_end'].sort_values().unique())
+
         for period in periods:
-            df_year = (df
-                .query('period_end == @period')
-                [['acc_value', 'acc_code']]
-                .copy()
-            )
+            df_year = (df.query('period_end == @period')
+                         [['acc_value', 'acc_code']]
+                         .copy())
             period_str = np.datetime_as_string(period, unit='D')
             if period == self._LAST_QUARTERLY:
                 period_str += ' (ttm)'
             df_year.rename(columns={'acc_value': period_str}, inplace=True)
-            df_report = pd.merge(
-                df_report, df_year, how='left', on=['acc_code']
-            )
-        df_report.sort_values('acc_code', ignore_index=True, inplace=True)
-        return df_report
+            dfo = pd.merge(dfo, df_year, how='left', on=['acc_code'])
+        
+        return dfo.sort_values('acc_code', ignore_index=True)
