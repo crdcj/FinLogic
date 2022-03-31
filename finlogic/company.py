@@ -1,4 +1,9 @@
-"""Module containing the Company Class."""
+"""
+Module containing the Company Class.
+Abreviations used in code:
+    dfi = input dataframe
+    dfo = output dataframe
+"""
 import os
 from typing import Literal
 import numpy as np
@@ -74,9 +79,10 @@ class Company():
             * If passed ``identifier`` not found in as fi.
         """
         # Create custom data frame for ID selection
-        df = pd.read_pickle(MAIN_DF_PATH)
-        df = df[['cvm_id', 'fiscal_id']].drop_duplicates()
-        df = df.astype({'cvm_id': int, 'fiscal_id': str})
+        df = (pd.read_pickle(MAIN_DF_PATH)
+                [['cvm_id', 'fiscal_id']]
+                .drop_duplicates()
+                .astype({'cvm_id': int, 'fiscal_id': str}))
         if identifier in df['cvm_id'].values:
             self._cvm_id = identifier
             self._fiscal_id = (
@@ -86,8 +92,7 @@ class Company():
             self._cvm_id = (
                 df.loc[df['fiscal_id'] == identifier, 'cvm_id'].item())
         else:
-            raise KeyError(
-                "'identifier' for the company not found in database")
+            raise KeyError("Company 'identifier' not found in database")
         # Only set company data after object identifier validation
         self._set_main_data()
 
@@ -186,34 +191,42 @@ class Company():
             raise ValueError("Company 'tax_rate' value is invalid")
 
     def _set_main_data(self) -> pd.DataFrame:
-        self._COMP_DF = pd.read_pickle(MAIN_DF_PATH)
-        self._COMP_DF.query('cvm_id == @self._cvm_id', inplace=True)
-        self._COMP_DF = self._COMP_DF.astype({
-            'co_name': str,
-            'cvm_id': np.uint32,
-            'fiscal_id': str,
-            'report_type': str,
-            'report_version': str,
-            'period_reference': 'datetime64',
-            'period_begin': 'datetime64',
-            'period_end': 'datetime64',
-            'period_order': np.int8,
-            'acc_code': str,
-            'acc_name': str,
-            'acc_method': str,
-            'acc_fixed': bool,
-            'acc_value': float,
-            'equity_statement_column': str,
-        })
-        self._COMP_DF.sort_values(
-            by='acc_code', ignore_index=True, inplace=True)
-        self._NAME = self._COMP_DF['co_name'].unique()[0]
-        self._FIRST_ANNUAL = self._COMP_DF.query(
-            'report_type == "annual"')['period_end'].min()
-        self._LAST_ANNUAL = self._COMP_DF.query(
-            'report_type == "annual"')['period_end'].max()
-        self._LAST_QUARTERLY = self._COMP_DF.query(
-            'report_type == "quarterly"')['period_end'].max()
+        self._COMP_DF = (pd
+            .read_pickle(MAIN_DF_PATH)
+            .query('cvm_id == @self._cvm_id')
+            .astype({
+                'co_name': str,
+                'cvm_id': np.uint32,
+                'fiscal_id': str,
+                'report_type': str,
+                'report_version': str,
+                'period_reference': 'datetime64',
+                'period_begin': 'datetime64',
+                'period_end': 'datetime64',
+                'period_order': np.int8,
+                'acc_code': str,
+                'acc_name': str,
+                'acc_method': str,
+                'acc_fixed': bool,
+                'acc_value': float,
+                'equity_statement_column': str})
+            .sort_values(by='acc_code', ignore_index=True))
+        self._NAME = self._COMP_DF['co_name'].iloc[0]
+        self._FIRST_ANNUAL = (self._COMP_DF
+            .query('report_type == "annual"')
+            ['period_end']
+            .min()
+        )
+        self._LAST_ANNUAL = (self._COMP_DF
+            .query('report_type == "annual"')
+            ['period_end']
+            .max()
+        )
+        self._LAST_QUARTERLY = (self._COMP_DF
+            .query('report_type == "quarterly"')
+            ['period_end']
+            .max()
+        )
 
     def info(self) -> pd.DataFrame:
         """Return dictionary with company info."""
@@ -275,8 +288,7 @@ class Company():
             raise ValueError(
                 "acc_level expects None, 2, 3 or 4")
 
-        expression = 'acc_method == @self._acc_method'
-        df = self._COMP_DF.query(expression).copy()
+        df = self._COMP_DF.query('acc_method == @self._acc_method').copy()
         # Change acc_unit only for accounts different from 3.99
         df['acc_value'] = np.where(
             df['acc_code'].str.startswith('3.99'),
@@ -286,8 +298,7 @@ class Company():
         # Filter dataframe for selected acc_level
         if acc_level:
             acc_code_limit = acc_level * 3 - 2 # noqa
-            expression = 'acc_code.str.len() <= @acc_code_limit'
-            df.query(expression, inplace=True)
+            df.query('acc_code.str.len() <= @acc_code_limit', inplace=True)
         """
         Filter dataframe for selected report_type (report type)
         df['acc_code'].str[0].unique() -> [1, 2, 3, 4, 5, 6, 7]
@@ -340,31 +351,32 @@ class Company():
             report_df = report_df[cols]
         return report_df
 
-    def _calculate_ttm(self, df_flow: pd.DataFrame) -> pd.DataFrame:
+    def _calculate_ttm(self, dfi: pd.DataFrame) -> pd.DataFrame:
         if self._LAST_ANNUAL > self._LAST_QUARTERLY:
-            df_flow.query('report_type == "annual"', inplace=True)
-            return df_flow
+            return dfi.query('report_type == "annual"').copy()
 
-        df1 = df_flow.query('period_end == @self._LAST_QUARTERLY').copy()
+        df1 = dfi.query('period_end == @self._LAST_QUARTERLY').copy()
         df1.query('period_begin == period_begin.min()', inplace=True)
 
-        df2 = df_flow.query('period_reference == @self._LAST_QUARTERLY').copy()
+        df2 = dfi.query('period_reference == @self._LAST_QUARTERLY').copy()
         df2.query('period_begin == period_begin.min()', inplace=True)
-        df2['acc_value'] = -df2['acc_value']
+        df2['acc_value'] = - df2['acc_value']
 
-        df3 = df_flow.query('period_end == @self._LAST_ANNUAL').copy()
+        df3 = dfi.query('period_end == @self._LAST_ANNUAL').copy()
 
-        df_ttm = pd.concat([df1, df2, df3], ignore_index=True)
-        df_ttm = df_ttm[['acc_code', 'acc_value']]
-        df_ttm = df_ttm.groupby(by='acc_code').sum().reset_index()
+        df_ttm = (pd.concat([df1, df2, df3], ignore_index=True)
+                    [['acc_code', 'acc_value']]
+                    .groupby(by='acc_code')
+                    .sum()
+                    .reset_index())
         df1.drop(columns='acc_value', inplace=True)
         df_ttm = pd.merge(df1, df_ttm)
         df_ttm['report_type'] = 'quarterly'
         df_ttm['period_begin'] = self._LAST_QUARTERLY - pd.DateOffset(years=1)
 
-        df_flow.query('report_type == "annual"', inplace=True)
-        df_flow_ttm = pd.concat([df_flow, df_ttm], ignore_index=True)
-        return df_flow_ttm
+        df_annual = dfi.query('report_type == "annual"').copy()
+
+        return pd.concat([df_annual, df_ttm], ignore_index=True)
 
     def custom_report(
         self,
@@ -392,15 +404,15 @@ class Company():
         df_le = self.report('liabilities_and_equity')
         df_is = self.report('income')
         df_cf = self.report('cash_flow')
-        df = pd.concat([df_as, df_le, df_is, df_cf], ignore_index=True)
-        df.query('acc_code == @acc_list', inplace=True)
-        df.reset_index(drop=True, inplace=True)
+        dfo = (pd.concat([df_as, df_le, df_is, df_cf], ignore_index=True)
+                 .query('acc_code == @acc_list')
+                 .reset_index(drop=True))
         # Show only the selected number of years
         if num_years > 0:
-            cols = df.columns.to_list()
+            cols = dfo.columns.to_list()
             cols = cols[0:3] + cols[-num_years:]
-            df = df[cols]
-        return df
+            dfo = dfo[cols]
+        return dfo
 
     @staticmethod
     def _prior_values(s: pd.Series, is_prior: bool) -> pd.Series:
@@ -438,15 +450,15 @@ class Company():
         .. [1]  Aswath Damodaran, "Return on Capital (ROC), Return on Invested
                 Capital (ROIC) and Return on Equity (ROE): Measurement and
                 Implications.", 2007,
-                https://people.stern.nyu.edu/adamodar/pdfiles/papers/returnmeasures.pdf
+                https://people.stern.nyu.edu/adamodar/pdfoles/papers/returnmeasures.pdf
         """
         df_as = self.report('assets')
         df_le = self.report('liabilities_and_equity')
         df_in = self.report('income')
         df_cf = self.report('cash_flow')
-        df = pd.concat([df_as, df_le, df_in, df_cf], ignore_index=True)
-        df.set_index(keys='acc_code', drop=True, inplace=True)
-        df.drop(columns=['acc_fixed', 'acc_name'], inplace=True)
+        df = (pd.concat([df_as, df_le, df_in, df_cf], ignore_index=True)
+                .set_index(keys='acc_code', drop=True)
+                .drop(columns=['acc_fixed', 'acc_name']))
         # Calculate indicators series
         revenues = df.loc['3.01']
         gross_profit = df.loc['3.03']
@@ -467,71 +479,68 @@ class Company():
         net_debt = total_debt - total_cash
         invested_capital = total_debt + equity - total_cash
         invested_capital_p = self._prior_values(invested_capital, is_prior)
-        # dfi: dataframe with indicators
-        dfi = pd.DataFrame(columns=df.columns)
-        dfi.loc['revenues'] = revenues
-        dfi.loc['operating_cash_flow'] = operating_cash_flow
-        dfi.loc['ebitda'] = ebitda
-        dfi.loc['ebit'] = ebit
-        dfi.loc['net_income'] = net_income
-        dfi.loc['total_cash'] = total_cash
-        dfi.loc['total_debt'] = total_debt
-        dfi.loc['net_debt'] = net_debt
-        dfi.loc['working_capital'] = working_capital
-        dfi.loc['invested_capital'] = invested_capital
-        dfi.loc['return_on_assets'] = (
+        # dfo: dataframe with indicators
+        dfo = pd.DataFrame(columns=df.columns)
+        dfo.loc['revenues'] = revenues
+        dfo.loc['operating_cash_flow'] = operating_cash_flow
+        dfo.loc['ebitda'] = ebitda
+        dfo.loc['ebit'] = ebit
+        dfo.loc['net_income'] = net_income
+        dfo.loc['total_cash'] = total_cash
+        dfo.loc['total_debt'] = total_debt
+        dfo.loc['net_debt'] = net_debt
+        dfo.loc['working_capital'] = working_capital
+        dfo.loc['invested_capital'] = invested_capital
+        dfo.loc['return_on_assets'] = (
             ebit * (1 - self._tax_rate) / total_assets_p)
-        dfi.loc['return_on_capital'] = (
+        dfo.loc['return_on_capital'] = (
             ebit * (1 - self._tax_rate) / invested_capital_p)
-        dfi.loc['return_on_equity'] = net_income / equity_p
-        dfi.loc['gross_margin'] = gross_profit / revenues
-        dfi.loc['ebitda_margin'] = ebitda / revenues
-        dfi.loc['operating_margin'] = ebit * (1 - self._tax_rate) / revenues
-        dfi.loc['net_margin'] = net_income / revenues
+        dfo.loc['return_on_equity'] = net_income / equity_p
+        dfo.loc['gross_margin'] = gross_profit / revenues
+        dfo.loc['ebitda_margin'] = ebitda / revenues
+        dfo.loc['operating_margin'] = ebit * (1 - self._tax_rate) / revenues
+        dfo.loc['net_margin'] = net_income / revenues
         # Show only the selected number of years
         if num_years > 0:
-            dfi = dfi[dfi.columns[-num_years:]]
-        return dfi
+            dfo = dfo[dfo.columns[-num_years:]]
+        return dfo
 
-    def _make_report(self, df: pd.DataFrame) -> pd.DataFrame:
+    def _make_report(self, dfi: pd.DataFrame) -> pd.DataFrame:
         # keep only last quarterly fs
         if self._LAST_ANNUAL > self._LAST_QUARTERLY:
-            df.query('report_type == "annual"', inplace=True)
-            expression = '''
-                period_order == -1 or \
-                period_end == @self._LAST_ANNUAL
-            '''
-            df.query(expression, inplace=True)
+            df = dfi.query(
+                'report_type == "annual"').copy()
+            df.query(
+                'period_order == -1 or \
+                 period_end == @self._LAST_ANNUAL',
+                inplace=True)
         else:
-            expression = '''
-                report_type == 'annual' or \
-                period_end == @self._LAST_QUARTERLY
-            '''
-            df.query(expression, inplace=True)
-            expression = '''
-                period_order == -1 or \
-                period_end == @self._LAST_QUARTERLY or \
-                period_end == @self._LAST_ANNUAL
-            '''
-            df.query(expression, inplace=True)
-        # Create Index
-        df.sort_values(by='period_end', inplace=True, ascending=True)
-        base_columns = ['acc_name', 'acc_code', 'acc_fixed']
-        df_report = df.loc[:, base_columns]
-        df_report.drop_duplicates(
-            subset='acc_code', ignore_index=True, inplace=True, keep='last'
-        )
-        periods = list(df.period_end.unique())
-        periods.sort()
+            df = dfi.query(
+                'report_type == "annual" or \
+                 period_end == @self._LAST_QUARTERLY').copy()
+            df.query(
+                'period_order == -1 or \
+                 period_end == @self._LAST_QUARTERLY or \
+                 period_end == @self._LAST_ANNUAL',
+                inplace=True)
+
+        # Create output dataframe with only the index
+        dfo = (df.sort_values(by='period_end', ascending=True)
+                 [['acc_name', 'acc_code', 'acc_fixed']]
+                 .drop_duplicates(subset='acc_code',
+                                  ignore_index=True,
+                                  keep='last'))
+
+        periods = list(df['period_end'].sort_values().unique())
+
         for period in periods:
-            df_year = df.query('period_end == @period').copy()
-            df_year = df_year[['acc_value', 'acc_code']]
+            df_year = (df.query('period_end == @period')
+                         [['acc_value', 'acc_code']]
+                         .copy())
             period_str = np.datetime_as_string(period, unit='D')
             if period == self._LAST_QUARTERLY:
                 period_str += ' (ttm)'
             df_year.rename(columns={'acc_value': period_str}, inplace=True)
-            df_report = pd.merge(
-                df_report, df_year, how='left', on=['acc_code']
-            )
-        df_report.sort_values('acc_code', ignore_index=True, inplace=True)
-        return df_report
+            dfo = pd.merge(dfo, df_year, how='left', on=['acc_code'])
+        
+        return dfo.sort_values('acc_code', ignore_index=True)
