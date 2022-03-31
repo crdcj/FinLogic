@@ -206,13 +206,22 @@ class Company():
                 'acc_value': float,
                 'equity_statement_column': str})
             .sort_values(by='acc_code', ignore_index=True))
-        self._NAME = self._COMP_DF['co_name'].unique()[0]
-        self._FIRST_ANNUAL = self._COMP_DF.query(
-            'report_type == "annual"')['period_end'].min()
-        self._LAST_ANNUAL = self._COMP_DF.query(
-            'report_type == "annual"')['period_end'].max()
-        self._LAST_QUARTERLY = self._COMP_DF.query(
-            'report_type == "quarterly"')['period_end'].max()
+        self._NAME = self._COMP_DF['co_name'].iloc[0]
+        self._FIRST_ANNUAL = (self._COMP_DF
+            .query('report_type == "annual"')
+            ['period_end']
+            .min()
+        )
+        self._LAST_ANNUAL = (self._COMP_DF
+            .query('report_type == "annual"')
+            ['period_end']
+            .max()
+        )
+        self._LAST_QUARTERLY = (self._COMP_DF
+            .query('report_type == "quarterly"')
+            ['period_end']
+            .max()
+        )
 
     def info(self) -> pd.DataFrame:
         """Return dictionary with company info."""
@@ -274,8 +283,7 @@ class Company():
             raise ValueError(
                 "acc_level expects None, 2, 3 or 4")
 
-        expression = 'acc_method == @self._acc_method'
-        df = self._COMP_DF.query(expression).copy()
+        df = self._COMP_DF.query('acc_method == @self._acc_method').copy()
         # Change acc_unit only for accounts different from 3.99
         df['acc_value'] = np.where(
             df['acc_code'].str.startswith('3.99'),
@@ -285,8 +293,7 @@ class Company():
         # Filter dataframe for selected acc_level
         if acc_level:
             acc_code_limit = acc_level * 3 - 2 # noqa
-            expression = 'acc_code.str.len() <= @acc_code_limit'
-            df.query(expression, inplace=True)
+            df.query('acc_code.str.len() <= @acc_code_limit', inplace=True)
         """
         Filter dataframe for selected report_type (report type)
         df['acc_code'].str[0].unique() -> [1, 2, 3, 4, 5, 6, 7]
@@ -495,36 +502,42 @@ class Company():
     def _make_report(self, df: pd.DataFrame) -> pd.DataFrame:
         # keep only last quarterly fs
         if self._LAST_ANNUAL > self._LAST_QUARTERLY:
-            df.query('report_type == "annual"', inplace=True)
             expression = '''
-                period_order == -1 or \
-                period_end == @self._LAST_ANNUAL
+                report_type == "annual"
+                and (
+                    period_order == -1
+                    or period_end == @self._LAST_ANNUAL
+                    )
             '''
+            expression = expression.replace('\n', '')
             df.query(expression, inplace=True)
         else:
             expression = '''
-                report_type == 'annual' or \
-                period_end == @self._LAST_QUARTERLY
+                (
+                    report_type == 'annual'
+                    or period_end == @self._LAST_QUARTERLY
+                )
+                and (
+                    period_order == -1
+                    or period_end == @self._LAST_QUARTERLY
+                    or period_end == @self._LAST_ANNUAL
+                    )
             '''
-            df.query(expression, inplace=True)
-            expression = '''
-                period_order == -1 or \
-                period_end == @self._LAST_QUARTERLY or \
-                period_end == @self._LAST_ANNUAL
-            '''
+            expression = expression.replace('\n', '')
             df.query(expression, inplace=True)
         # Create Index
-        df.sort_values(by='period_end', inplace=True, ascending=True)
-        base_columns = ['acc_name', 'acc_code', 'acc_fixed']
-        df_report = df.loc[:, base_columns]
-        df_report.drop_duplicates(
-            subset='acc_code', ignore_index=True, inplace=True, keep='last'
+        df_report = (df
+            .sort_values(by='period_end', ascending=True)
+            [['acc_name', 'acc_code', 'acc_fixed']]
+            .drop_duplicates(subset='acc_code', ignore_index=True, keep='last')
         )
-        periods = list(df.period_end.unique())
-        periods.sort()
+        periods = list(df['period_end'].sort_values().unique())
         for period in periods:
-            df_year = df.query('period_end == @period').copy()
-            df_year = df_year[['acc_value', 'acc_code']]
+            df_year = (df
+                .query('period_end == @period')
+                [['acc_value', 'acc_code']]
+                .copy()
+            )
             period_str = np.datetime_as_string(period, unit='D')
             if period == self._LAST_QUARTERLY:
                 period_str += ' (ttm)'
