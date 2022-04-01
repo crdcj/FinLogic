@@ -253,24 +253,25 @@ def update_main_df(workers, filenames):
     print(len(main_df.index))
     cols = [
         'cvm_id',
-        'report_type'
+        'report_type',
         'period_reference',
         'report_version',
         'period_order',
         'acc_method',
         'acc_code',
     ]
+    # Most values in columns are repeated
+    main_df = main_df.astype('category')
+
     main_df.sort_values(by=cols, ignore_index=True, inplace=True)
     cols = list(main_df.columns)
     cols_remove = ['report_version', 'acc_value',  'acc_fixed']
     [cols.remove(col) for col in cols_remove]
-    tmp = main_df[main_df.duplicated(cols, keep=False)]
+    # tmp = main_df[main_df.duplicated(cols, keep=False)]
     # Ascending order --> last is the newest report_version 
     main_df.drop_duplicates(cols, keep='last', inplace=True)
     print(len(main_df.index))
-
-    # Most values in columns are repeated
-    main_df = main_df.astype('category')
+    main_df.to_pickle(MAIN_DF_PATH)
 
 def update_database(
     cpu_usage = 0.75
