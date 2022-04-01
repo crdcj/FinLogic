@@ -202,7 +202,6 @@ def process_raw_df(df: pd.DataFrame) -> pd.DataFrame:
     ]
     df = df[columns_order]
 
-
     return df
 
 
@@ -249,8 +248,11 @@ def update_main_df(workers, filenames):
         main_df = pd.DataFrame()
     main_df = pd.concat([main_df, df], ignore_index=True)
 
+    # Most values in columns are repeated
+    main_df = main_df.astype('category')
+
     # Keep only the newest 'report_version' in df if values are repeated
-    print(len(main_df.index))
+    # print(len(main_df.index))
     cols = [
         'cvm_id',
         'report_type',
@@ -260,9 +262,6 @@ def update_main_df(workers, filenames):
         'acc_method',
         'acc_code',
     ]
-    # Most values in columns are repeated
-    main_df = main_df.astype('category')
-
     main_df.sort_values(by=cols, ignore_index=True, inplace=True)
     cols = list(main_df.columns)
     cols_remove = ['report_version', 'acc_value',  'acc_fixed']
@@ -270,7 +269,7 @@ def update_main_df(workers, filenames):
     # tmp = main_df[main_df.duplicated(cols, keep=False)]
     # Ascending order --> last is the newest report_version 
     main_df.drop_duplicates(cols, keep='last', inplace=True)
-    print(len(main_df.index))
+    # print(len(main_df.index))
     main_df.to_pickle(MAIN_DF_PATH)
 
 def update_database(
