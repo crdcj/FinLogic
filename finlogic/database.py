@@ -1,7 +1,8 @@
 """Module containing local database functions."""
 import os
+import math
 import zipfile as zf
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 import requests
 import pandas as pd
 import numpy as np
@@ -14,26 +15,26 @@ RAW_DIR = DATA_DIR + '/raw/'
 MAIN_DF_PATH = DATA_DIR + 'main_df.pkl.zst'
 
 
-def update_raw_file(url: str) -> bool:
+def update_raw_file(url: str) -> str:
     """Update file from CVM portal. Return True if file is updated."""
-    file_name = url[-23:]  # nome do arquivo = final da url
-    cam_arq = RAW_DIR + file_name
+    filename = url[-23:]  # nome do arquivo = final da url
+    file_path = RAW_DIR + filename
     with requests.Session() as s:
         r = s.get(url, stream=True)
         if r.status_code != requests.codes.ok:
-            # print(f'{file_name} not found -> continue', flush=True)
-            return False
+            # print(f'{filename} not found -> continue', flush=True)
+            return None
         tam_arq_arm = 0
-        if os.path.isfile(cam_arq):
-            tam_arq_arm = os.path.getsize(cam_arq)
+        if os.path.isfile(file_path):
+            tam_arq_arm = os.path.getsize(file_path)
         tam_arq_url = int(r.headers['Content-Length'])
         if(tam_arq_arm == tam_arq_url):
-            # print(f'{file_name} already updated -> continue', flush=True)
-            return False
-        # print(f'{file_name} new/outdated -> download file', flush=True)
-        with open(cam_arq, 'wb') as f:
+            # print(f'{filename} already updated -> continue', flush=True)
+            return None
+        # print(f'{filename} new/outdated -> download file', flush=True)
+        with open(file_path, 'wb') as f:
             f.write(r.content)
-        return True
+        return filename
 
 
 def list_urls() -> list:
@@ -71,16 +72,11 @@ def list_urls() -> list:
 def update_raw_files():
     """Update local CVM raw files in parallel."""
     urls = list_urls()
-    with ProcessPoolExecutor() as executor:
+    with ThreadPoolExecutor() as executor:
         results = executor.map(update_raw_file, urls)
 
-    was_updated = []
-    [was_updated.append(r) for r in results]
-    updated_urls = []
-    for t in zip(was_updated, urls):
-        if t[0]:
-            updated_urls.append(t[1])
-    return updated_urls
+    files_updated = [r for r in results if r != None]
+    return files_updated
 
 
 def process_raw_df(df: pd.DataFrame) -> pd.DataFrame:
@@ -175,9 +171,17 @@ def process_raw_df(df: pd.DataFrame) -> pd.DataFrame:
     df['acc_method'] = df['GRUPO_DFP'].str[3:6].map({
         'Con': 'consolidated',
         'Ind': 'separate'})
-    df['acc_method'] = df['acc_method'].astype('category')
+
     # 'GRUPO_DFP' data can be inferred from 'acc_method' and report_type
     df.drop(columns=['GRUPO_DFP'], inplace=True)
+
+    # Correct/harmonize some account texts.
+    df.replace(to_replace=['\xa0ON\xa0', 'On'], value='ON', inplace=True)
+
+    # Remove duplicated accounts
+    cols = list(df.columns)
+    cols.remove('acc_value')
+    df.drop_duplicates(cols, keep='last', inplace=True)
 
     columns_order = [
         'co_name',
@@ -225,47 +229,77 @@ def process_yearly_raw_files(parent_filename):
     return df
 
 
-def update_main_df():
-    """Update as fi."""
-    filenames = sorted(os.listdir(RAW_DIR))
-    with ProcessPoolExecutor() as executor:
+def update_main_df(workers, filenames):
+    """Update as main dataframe."""
+
+    with ProcessPoolExecutor(max_workers=workers) as executor:
         results = executor.map(process_yearly_raw_files, filenames)
 
-    lista_dfs = []
-    [lista_dfs.append(df) for df in results]
+    lista_dfs = [df for df in results]
     print('Concatenate data frames ...')
+
+    if not lista_dfs:
+        return
+
     df = pd.concat(lista_dfs, ignore_index=True)
+    if os.path.isfile(MAIN_DF_PATH):
+        main_df = pd.read_pickle(MAIN_DF_PATH)
+    else:
+        main_df = pd.DataFrame()
+    main_df = pd.concat([main_df, df], ignore_index=True)
 
-    # Correct/harmonize some account texts.
-    df.replace(to_replace=['\xa0ON\xa0', 'On'], value='ON', inplace=True)
+    # Most values in columns are repeated
+    main_df = main_df.astype('category')
 
-    sort_by = [
+    # Keep only the newest 'report_version' in df if values are repeated
+    # print(len(main_df.index))
+    cols = [
         'cvm_id',
+        'report_type',
         'period_reference',
         'report_version',
         'period_order',
         'acc_method',
         'acc_code',
     ]
-    df.sort_values(by=sort_by, ignore_index=True, inplace=True)
+    main_df.sort_values(by=cols, ignore_index=True, inplace=True)
+    cols = list(main_df.columns)
+    cols_remove = ['report_version', 'acc_value',  'acc_fixed']
+    [cols.remove(col) for col in cols_remove]
+    # tmp = main_df[main_df.duplicated(cols, keep=False)]
+    # Ascending order --> last is the newest report_version 
+    main_df.drop_duplicates(cols, keep='last', inplace=True)
+    # print(len(main_df.index))
+    main_df.to_pickle(MAIN_DF_PATH)
 
-    df = df.astype('category')
-    print('Columns data type changed to category')
+def update_database(
+    cpu_usage = 0.75
+):
+    """
+    Create/Update all local data files and process them
 
-    df.to_pickle(MAIN_DF_PATH)
+    Parameters
+    ----------
+    cpu_usage: float, default 0.75
+        A number between 0 and 1, where 1 represents 100% CPU usage. This
+        argument will define the number of cpu cores used in data processing.
 
-
-def update_database():
-    "Create/Update all local data files and process them"
+    Returns
+    -------
+    None
+    """
+    workers = math.trunc(os.cpu_count() * cpu_usage)
+    if workers < 1:
+        workers = 1
+    
     # create data folders if they do not exist
     if not os.path.isdir(RAW_DIR):
         os.makedirs(RAW_DIR)
-    urls = list_urls()
     print('Updating CVM raw files...')
-    urls = update_raw_files()
-    print(f'Number of CVM files updated = {len(urls)}')
+    filenames = update_raw_files()
+    print(f'Number of CVM files updated = {len(filenames)}')
     print('Processing CVM raw files...')
-    update_main_df()
+    update_main_df(workers, filenames)
     print('Main data frame saved ')
     print('FinLogic database updated \u2705')
 
@@ -276,7 +310,7 @@ def search_company(expression: str) -> pd.DataFrame:
 
     Parameters
     ----------
-    expression: str
+    expression : str
         A expression to search in as fi column 'co_name'.
 
     Returns
@@ -295,7 +329,7 @@ def search_company(expression: str) -> pd.DataFrame:
 
 def database_info() -> pd.DataFrame:
     """
-    Return information about the as fi
+    Return information about FinLogic database
 
     Returns
     -------

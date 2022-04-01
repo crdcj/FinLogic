@@ -29,7 +29,9 @@ FinLogic is **not** affiliated, endorsed, or vetted by the Securities and Exchan
 
 ### Create FinLogic local database
 
-The 'update_database' function is responsible for downloading raw financial files from CVM, processesing aprox. 18 millions rows of accounting values and storing it into a single Pandas DataFrame compressed file for local data analysis. The update process can take some minutes depending on CVM Server connection and local data processing power.
+The 'update_database' function is responsible for downloading raw financial files from CVM, processesing aprox. 18 millions rows of accounting values and storing it into a single Pandas DataFrame compressed file for local data analysis.
+In the firt run, the update process can take some minutes depending on CVM Server connection and local CPU power. The database generation needs at least 8 GB of free memory and a quad core processor is recommended.
+For subsequent updates, only updated CVM files will be processed and inserted into the database, which will consume less CPU power.
 
 ```python
 >>> import finlogic as fi
