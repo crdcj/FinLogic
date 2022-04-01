@@ -171,9 +171,17 @@ def process_raw_df(df: pd.DataFrame) -> pd.DataFrame:
     df['acc_method'] = df['GRUPO_DFP'].str[3:6].map({
         'Con': 'consolidated',
         'Ind': 'separate'})
-    df['acc_method'] = df['acc_method'].astype('category')
+
     # 'GRUPO_DFP' data can be inferred from 'acc_method' and report_type
     df.drop(columns=['GRUPO_DFP'], inplace=True)
+
+    # Correct/harmonize some account texts.
+    df.replace(to_replace=['\xa0ON\xa0', 'On'], value='ON', inplace=True)
+
+    # Remove duplicated accounts
+    cols = list(df.columns)
+    cols.remove('acc_value')
+    df.drop_duplicates(cols, keep='last', inplace=True)
 
     columns_order = [
         'co_name',
@@ -193,6 +201,7 @@ def process_raw_df(df: pd.DataFrame) -> pd.DataFrame:
         'equity_statement_column',
     ]
     df = df[columns_order]
+
 
     return df
 
@@ -229,38 +238,39 @@ def update_main_df(workers, filenames):
 
     lista_dfs = [df for df in results]
     print('Concatenate data frames ...')
-    if lista_dfs:
-        df = pd.concat(lista_dfs, ignore_index=True)
-        # Correct/harmonize some account texts.
-        df.replace(to_replace=['\xa0ON\xa0', 'On'], value='ON', inplace=True)
 
-        cols = [
-            'cvm_id',
-            'report_type'
-            'period_reference',
-            'report_version',
-            'period_order',
-            'acc_method',
-            'acc_code',
-        ]
-        df.sort_values(by=cols, ignore_index=True, inplace=True)
-    else:
-        df = pd.DataFrame()
+    if not lista_dfs:
+        return
 
+    df = pd.concat(lista_dfs, ignore_index=True)
     if os.path.isfile(MAIN_DF_PATH):
         main_df = pd.read_pickle(MAIN_DF_PATH)
     else:
         main_df = pd.DataFrame()
-    
     main_df = pd.concat([main_df, df], ignore_index=True)
+
+    # Keep only the newest 'report_version' in df if values are repeated
     print(len(main_df.index))
+    cols = [
+        'cvm_id',
+        'report_type'
+        'period_reference',
+        'report_version',
+        'period_order',
+        'acc_method',
+        'acc_code',
+    ]
+    main_df.sort_values(by=cols, ignore_index=True, inplace=True)
     cols = list(main_df.columns)
-    cols.remove('report_type')
+    cols_remove = ['report_version', 'acc_value',  'acc_fixed']
+    [cols.remove(col) for col in cols_remove]
+    tmp = main_df[main_df.duplicated(cols, keep=False)]
+    # Ascending order --> last is the newest report_version 
     main_df.drop_duplicates(cols, keep='last', inplace=True)
+    print(len(main_df.index))
 
     # Most values in columns are repeated
     main_df = main_df.astype('category')
-    print(len(main_df.index))
 
 def update_database(
     cpu_usage = 0.75
