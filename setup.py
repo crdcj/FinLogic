@@ -31,7 +31,7 @@ setup(
     long_description_content_type='text/markdown',
     url='https://github.com/crdcj/FinLogic',
     author='Carlos Carvalho',
-    author_email='carlos.r.carvalho@outlook.com.br',
+    author_email='cr.cj@outlook.com',
     license='MIT',
     classifiers=[
         # 'Development Status :: 3 - Alpha',
