@@ -273,7 +273,7 @@ def update_main_df(workers, filenames):
     main_df.to_pickle(MAIN_DF_PATH)
 
 def update_database(
-    cpu_usage = 0.75
+    cpu_usage: float = 0.75,
 ):
     """
     Create/Update all local data files and process them
