@@ -10,15 +10,15 @@ import numpy as np
 URL_DFP = 'http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/'
 URL_ITR = 'http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/'
 script_dir = os.path.dirname(__file__)
-DATA_DIR = script_dir + '/data/'
-RAW_DIR = DATA_DIR + '/raw/'
-MAIN_DF_PATH = DATA_DIR + 'main_df.pkl.zst'
+DIR_RAW = script_dir + '/data/raw/'
+DIR_PROCESSED = script_dir + '/data/processed/'
+MAIN_DF_PATH = script_dir + '/data/main_df.pkl.zst'
 
 
 def update_raw_file(url: str) -> str:
     """Update file from CVM portal. Return True if file is updated."""
     filename = url[-23:]  # nome do arquivo = final da url
-    file_path = RAW_DIR + filename
+    file_path = DIR_RAW + filename
     with requests.Session() as s:
         r = s.get(url, stream=True)
         if r.status_code != requests.codes.ok:
@@ -210,9 +210,10 @@ def process_yearly_raw_files(parent_filename):
     frame.
     """
     df = pd.DataFrame()
-    parent_path = RAW_DIR + parent_filename
+    parent_path = DIR_RAW + parent_filename
     parent_file = zf.ZipFile(parent_path)
     child_filenames = parent_file.namelist()
+
     for child_filename in child_filenames[1:]:
         child_file = parent_file.open(child_filename)
         df_child = pd.read_csv(
@@ -225,28 +226,27 @@ def process_yearly_raw_files(parent_filename):
 
         df_child = process_raw_df(df_child)
         df = pd.concat([df, df_child], ignore_index=True)
+
+    # Most values in columns are repeated
+    df = df.astype('category')
+    df_path = DIR_PROCESSED + parent_filename[0:-4] + '.pkl.zst'
+    df.to_pickle(df_path)
     # print(parent_filename, 'processed')
-    return df
 
 
-def update_main_df(workers, filenames):
-    """Update as main dataframe."""
+def process_yearly_files(workers, filenames):
+    """Update main dataframe."""
 
     with ProcessPoolExecutor(max_workers=workers) as executor:
-        results = executor.map(process_yearly_raw_files, filenames)
+        executor.map(process_yearly_raw_files, filenames)
 
-    lista_dfs = [df for df in results]
-    print('Concatenate data frames ...')
-
-    if not lista_dfs:
-        return
-
-    df = pd.concat(lista_dfs, ignore_index=True)
-    if os.path.isfile(MAIN_DF_PATH):
-        main_df = pd.read_pickle(MAIN_DF_PATH)
-    else:
-        main_df = pd.DataFrame()
-    main_df = pd.concat([main_df, df], ignore_index=True)
+def consolidate_main_df():
+    filenames = os.listdir(DIR_PROCESSED)
+    main_df = pd.DataFrame()
+    for filename in filenames:
+        file_path = DIR_PROCESSED + filename
+        main_df = pd.concat(
+            [main_df, pd.read_pickle(file_path)], ignore_index=True)
 
     # Most values in columns are repeated
     main_df = main_df.astype('category')
@@ -288,18 +288,23 @@ def update_database(
     -------
     None
     """
+    # Define the number of processes that will be used
     workers = math.trunc(os.cpu_count() * cpu_usage)
     if workers < 1:
         workers = 1
-    
+    print('workers=',workers)
     # create data folders if they do not exist
-    if not os.path.isdir(RAW_DIR):
-        os.makedirs(RAW_DIR)
+    if not os.path.isdir(DIR_RAW):
+        os.makedirs(DIR_RAW)
+    if not os.path.isdir(DIR_PROCESSED):
+        os.makedirs(DIR_PROCESSED)
+
     print('Updating CVM raw files...')
     filenames = update_raw_files()
     print(f'Number of CVM files updated = {len(filenames)}')
     print('Processing CVM raw files...')
-    update_main_df(workers, filenames)
+    process_yearly_files(workers, filenames)
+    consolidate_main_df()
     print('Main data frame saved ')
     print('FinLogic database updated \u2705')
 
