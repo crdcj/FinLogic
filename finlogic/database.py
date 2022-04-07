@@ -295,7 +295,7 @@ def update_database(
     -------
     None
     """
-    # Parameter 'reset_data' for database recompilation
+    # Parameter 'reset_data'-> delete all data for database recompilation
     if reset_data:
         data_path =  script_dir + '/data'
         shutil.rmtree(data_path)
