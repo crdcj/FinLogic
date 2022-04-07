@@ -243,10 +243,11 @@ def consolidate_main_df():
     main_df = pd.DataFrame()
     for filename in filenames:
         file_path = DIR_PROCESSED + filename
-        main_df = pd.concat([main_df, pd.read_pickle(file_path)], ignore_index=True)
-    # Most values in columns are repeated
+        main_df = pd.concat(
+            [main_df, pd.read_pickle(file_path)],
+            ignore_index=True
+        )
     main_df = main_df.astype("category")
-
     # Keep only the newest 'report_version' in df if values are repeated
     # print(len(main_df.index))
     cols = [
