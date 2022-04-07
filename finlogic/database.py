@@ -1,5 +1,6 @@
 """Module containing local database functions."""
 import os
+import shutil
 import math
 import zipfile as zf
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
@@ -73,8 +74,8 @@ def update_raw_files(urls: str) -> list:
     """Update local CVM raw files asynchronously."""
     with ThreadPoolExecutor() as executor:
         results = executor.map(update_raw_file, urls)
-    files_updated = [r for r in results if r != None]
-    return files_updated
+    raw_filenames = [r for r in results if r != None]
+    return raw_filenames
 
 
 def process_raw_df(df: pd.DataFrame) -> pd.DataFrame:
@@ -227,26 +228,31 @@ def process_yearly_raw_files(parent_filename):
 
     # Most values in columns are repeated
     df = df.astype("category")
-    df_path = DIR_PROCESSED + parent_filename[0:-4] + ".pkl.zst"
-    df.to_pickle(df_path)
+    processed_filename = parent_filename[0:-4] + ".pkl.zst"
+    df.to_pickle(DIR_PROCESSED + processed_filename)
+    return processed_filename
 
 
 def process_yearly_files(workers, filenames):
     """Update main dataframe."""
 
     with ProcessPoolExecutor(max_workers=workers) as executor:
-        executor.map(process_yearly_raw_files, filenames)
+        results = executor.map(process_yearly_raw_files, filenames)
+        return [processed_filename for processed_filename in results]
 
 
-def consolidate_main_df():
-    filenames = sorted(os.listdir(DIR_PROCESSED))
-    main_df = pd.DataFrame()
-    for filename in filenames:
-        file_path = DIR_PROCESSED + filename
-        main_df = pd.concat(
-            [main_df, pd.read_pickle(file_path)],
-            ignore_index=True
-        )
+def consolidate_main_df(processed_filenames: str):
+    # Guard clause: if no raw file was update, there is nothing to consolidate
+    if not processed_filenames:
+        return
+    # In the first database run, there is no main dataframe yet
+    if os.path.isfile(MAIN_DF_PATH):
+        main_df = pd.read_pickle(MAIN_DF_PATH)
+    else:
+        main_df = pd.DataFrame()
+    for filename in processed_filenames:
+        updated_df = pd.read_pickle(DIR_PROCESSED + filename)
+        main_df = pd.concat([main_df, updated_df], ignore_index=True)
     main_df = main_df.astype("category")
     # Keep only the newest 'report_version' in df if values are repeated
     # print(len(main_df.index))
@@ -272,21 +278,28 @@ def consolidate_main_df():
 
 def update_database(
     cpu_usage: float = 0.75,
+    reset_data: bool = False
 ):
     """
-    Create/Update all local data files and process them
+    Create/Update all remote files (raw files) and process them for local data
+    access.
 
     Parameters
     ----------
     cpu_usage: float, default 0.75
         A number between 0 and 1, where 1 represents 100% CPU usage. This
-        argument will define the number of cpu cores used in data processing.
-
+        argument will define the number of cpu cores used for data processing.
+    reset_data: bool, default True
+        Delete all raw files and force database recompilation
     Returns
     -------
     None
     """
-    # Define the number of processes that will be used
+    # Parameter 'reset_data' for database recompilation
+    if reset_data:
+        data_path =  script_dir + '/data'
+        shutil.rmtree(data_path)
+    # Define the number of cpu cores for parallel data processing
     workers = math.trunc(os.cpu_count() * cpu_usage)
     if workers < 1:
         workers = 1
@@ -299,12 +312,12 @@ def update_database(
 
     print("Updating CVM raw files...")
     urls = list_urls()
-    filenames = update_raw_files(urls)
-    print(f"Number of CVM files updated = {len(filenames)}")
+    raw_filenames = update_raw_files(urls)
+    print(f"Number of CVM files updated = {len(raw_filenames)}")
     print("Processing CVM raw files...")
-    process_yearly_files(workers, filenames)
+    processed_filenames = process_yearly_files(workers, raw_filenames)
     print("Consolidating processed files...")
-    consolidate_main_df()
+    consolidate_main_df(processed_filenames)
     print("FinLogic database updated \u2705")
 
 
