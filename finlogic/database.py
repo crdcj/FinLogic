@@ -169,10 +169,8 @@ def process_raw_df(df: pd.DataFrame) -> pd.DataFrame:
     if == 'Ind' -> separate statement
     """
     df["acc_method"] = (
-        df["GRUPO_DFP"].str[3:6]
-                       .map({"Con": "consolidated", "Ind": "separate"})
+        df["GRUPO_DFP"].str[3:6].map({"Con": "consolidated", "Ind": "separate"})
     )
-
     # 'GRUPO_DFP' data can be inferred from 'acc_method' and report_type
     df.drop(columns=["GRUPO_DFP"], inplace=True)
 
@@ -217,12 +215,7 @@ def process_yearly_raw_files(parent_filename):
 
     for child_filename in child_filenames[1:]:
         child_file = parent_file.open(child_filename)
-        df_child = pd.read_csv(
-            child_file,
-            sep=";",
-            encoding="iso-8859-1",
-            dtype=str
-        )
+        df_child = pd.read_csv(child_file, sep=";", encoding="iso-8859-1", dtype=str)
         # There are two types of CVM files: DFP(annual) and ITR(quarterly).
         if parent_filename[0:3] == "dfp":
             df_child["report_type"] = "annual"
@@ -282,10 +275,7 @@ def consolidate_main_df(processed_filenames: str):
     main_df.to_pickle(MAIN_DF_PATH)
 
 
-def update_database(
-    cpu_usage: float = 0.75,
-    reset_data: bool = False
-):
+def update_database(cpu_usage: float = 0.75, reset_data: bool = False):
     """
     Create/Update all remote files (raw files) and process them for local data
     access.
@@ -303,7 +293,7 @@ def update_database(
     """
     # Parameter 'reset_data'-> delete all data for database recompilation
     if reset_data:
-        data_path = script_dir + '/data'
+        data_path = script_dir + "/data"
         shutil.rmtree(data_path)
     # Define the number of cpu cores for parallel data processing
     workers = math.trunc(os.cpu_count() * cpu_usage)
@@ -343,10 +333,11 @@ def search_company(expression: str) -> pd.DataFrame:
     expression = expression.upper()
     df = (
         pd.read_pickle(MAIN_DF_PATH)
-        .query('co_name.str.contains(@expression)')
+        .query("co_name.str.contains(@expression)")
         .sort_values(by="co_name")
-        .drop_duplicates(subset="cvm_id", ignore_index=True)
-        [["co_name", "cvm_id", "fiscal_id"]]
+        .drop_duplicates(subset="cvm_id", ignore_index=True)[
+            ["co_name", "cvm_id", "fiscal_id"]
+        ]
     )
     return df
 
@@ -360,12 +351,7 @@ def database_info() -> pd.DataFrame:
     pd.DataFrame
     """
     df = pd.read_pickle(MAIN_DF_PATH)
-    columns_duplicates = [
-        "cvm_id",
-        "report_version",
-        "report_type",
-        "period_reference"
-    ]
+    columns_duplicates = ["cvm_id", "report_version", "report_type", "period_reference"]
     info_dic = {
         "Number accounting rows in database": len(df.index),
         "Number of unique accounting codes": df["acc_code"].nunique(),
