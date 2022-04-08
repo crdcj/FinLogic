@@ -74,7 +74,7 @@ def update_raw_files(urls: str) -> list:
     """Update local CVM raw files asynchronously."""
     with ThreadPoolExecutor() as executor:
         results = executor.map(update_raw_file, urls)
-    raw_filenames = [r for r in results if r != None]
+    raw_filenames = [r for r in results if r is not None]
     return raw_filenames
 
 
@@ -169,7 +169,8 @@ def process_raw_df(df: pd.DataFrame) -> pd.DataFrame:
     if == 'Ind' -> separate statement
     """
     df["acc_method"] = (
-        df["GRUPO_DFP"].str[3:6].map({"Con": "consolidated", "Ind": "separate"})
+        df["GRUPO_DFP"].str[3:6]
+                       .map({"Con": "consolidated", "Ind": "separate"})
     )
 
     # 'GRUPO_DFP' data can be inferred from 'acc_method' and report_type
@@ -216,7 +217,12 @@ def process_yearly_raw_files(parent_filename):
 
     for child_filename in child_filenames[1:]:
         child_file = parent_file.open(child_filename)
-        df_child = pd.read_csv(child_file, sep=";", encoding="iso-8859-1", dtype=str)
+        df_child = pd.read_csv(
+            child_file,
+            sep=";",
+            encoding="iso-8859-1",
+            dtype=str
+        )
         # There are two types of CVM files: DFP(annual) and ITR(quarterly).
         if parent_filename[0:3] == "dfp":
             df_child["report_type"] = "annual"
@@ -290,14 +296,14 @@ def update_database(
         A number between 0 and 1, where 1 represents 100% CPU usage. This
         argument will define the number of cpu cores used for data processing.
     reset_data: bool, default True
-        Delete all raw files and force database recompilation
+        Delete all raw files and force a full database recompilation
     Returns
     -------
     None
     """
     # Parameter 'reset_data'-> delete all data for database recompilation
     if reset_data:
-        data_path =  script_dir + '/data'
+        data_path = script_dir + '/data'
         shutil.rmtree(data_path)
     # Define the number of cpu cores for parallel data processing
     workers = math.trunc(os.cpu_count() * cpu_usage)
@@ -313,7 +319,7 @@ def update_database(
     print("Updating CVM raw files...")
     urls = list_urls()
     raw_filenames = update_raw_files(urls)
-    print(f"Number of CVM files updated = {len(raw_filenames)}")
+    print(f"Number of CVM raw files updated = {len(raw_filenames)}")
     print("Processing CVM raw files...")
     processed_filenames = process_yearly_files(workers, raw_filenames)
     print("Consolidating processed files...")
@@ -323,7 +329,7 @@ def update_database(
 
 def search_company(expression: str) -> pd.DataFrame:
     """
-    Search companies names in as fi that contains ```expression```
+    Search companies names in database that contains the ```expression```
 
     Parameters
     ----------
@@ -335,13 +341,14 @@ def search_company(expression: str) -> pd.DataFrame:
     pd.DataFrame with search results
     """
     expression = expression.upper()
-    df = pd.read_pickle(MAIN_DF_PATH)
-    mask = df["co_name"].str.contains(expression)
-    df = df[mask].copy()
-    df.sort_values(by="co_name", inplace=True)
-    df.drop_duplicates(subset="cvm_id", inplace=True, ignore_index=True)
-    columns = ["co_name", "cvm_id", "fiscal_id"]
-    return df[columns]
+    df = (
+        pd.read_pickle(MAIN_DF_PATH)
+        .query('co_name.str.contains(@expression)')
+        .sort_values(by="co_name")
+        .drop_duplicates(subset="cvm_id", ignore_index=True)
+        [["co_name", "cvm_id", "fiscal_id"]]
+    )
+    return df
 
 
 def database_info() -> pd.DataFrame:
@@ -353,7 +360,12 @@ def database_info() -> pd.DataFrame:
     pd.DataFrame
     """
     df = pd.read_pickle(MAIN_DF_PATH)
-    columns_duplicates = ["cvm_id", "report_version", "report_type", "period_reference"]
+    columns_duplicates = [
+        "cvm_id",
+        "report_version",
+        "report_type",
+        "period_reference"
+    ]
     info_dic = {
         "Number accounting rows in database": len(df.index),
         "Number of unique accounting codes": df["acc_code"].nunique(),

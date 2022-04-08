@@ -79,10 +79,11 @@ class Company():
             * If passed ``identifier`` not found in as fi.
         """
         # Create custom data frame for ID selection
-        df = (pd.read_pickle(MAIN_DF_PATH)
-                [['cvm_id', 'fiscal_id']]
-                .drop_duplicates()
-                .astype({'cvm_id': int, 'fiscal_id': str}))
+        df = (
+            pd.read_pickle(MAIN_DF_PATH)
+            [['cvm_id', 'fiscal_id']]
+            .drop_duplicates()
+            .astype({'cvm_id': int, 'fiscal_id': str}))
         if identifier in df['cvm_id'].values:
             self._cvm_id = identifier
             self._fiscal_id = (
@@ -191,8 +192,8 @@ class Company():
             raise ValueError("Company 'tax_rate' value is invalid")
 
     def _set_main_data(self) -> pd.DataFrame:
-        self._COMP_DF = (pd
-            .read_pickle(MAIN_DF_PATH)
+        self._COMP_DF = (
+            pd.read_pickle(MAIN_DF_PATH)
             .query('cvm_id == @self._cvm_id')
             .astype({
                 'co_name': str,
@@ -212,17 +213,20 @@ class Company():
                 'equity_statement_column': str})
             .sort_values(by='acc_code', ignore_index=True))
         self._NAME = self._COMP_DF['co_name'].iloc[0]
-        self._FIRST_ANNUAL = (self._COMP_DF
+        self._FIRST_ANNUAL = (
+            self._COMP_DF
             .query('report_type == "annual"')
             ['period_end']
             .min()
         )
-        self._LAST_ANNUAL = (self._COMP_DF
+        self._LAST_ANNUAL = (
+            self._COMP_DF
             .query('report_type == "annual"')
             ['period_end']
             .max()
         )
-        self._LAST_QUARTERLY = (self._COMP_DF
+        self._LAST_QUARTERLY = (
+            self._COMP_DF
             .query('report_type == "quarterly"')
             ['period_end']
             .max()
@@ -364,11 +368,12 @@ class Company():
 
         df3 = dfi.query('period_end == @self._LAST_ANNUAL').copy()
 
-        df_ttm = (pd.concat([df1, df2, df3], ignore_index=True)
-                    [['acc_code', 'acc_value']]
-                    .groupby(by='acc_code')
-                    .sum()
-                    .reset_index())
+        df_ttm = (
+            pd.concat([df1, df2, df3], ignore_index=True)
+            [['acc_code', 'acc_value']]
+            .groupby(by='acc_code')
+            .sum()
+            .reset_index())
         df1.drop(columns='acc_value', inplace=True)
         df_ttm = pd.merge(df1, df_ttm)
         df_ttm['report_type'] = 'quarterly'
@@ -525,22 +530,25 @@ class Company():
                 inplace=True)
 
         # Create output dataframe with only the index
-        dfo = (df.sort_values(by='period_end', ascending=True)
-                 [['acc_name', 'acc_code', 'acc_fixed']]
-                 .drop_duplicates(subset='acc_code',
-                                  ignore_index=True,
-                                  keep='last'))
+        dfo = (
+            df.sort_values(by='period_end', ascending=True)
+            [['acc_name', 'acc_code', 'acc_fixed']]
+            .drop_duplicates(subset='acc_code', ignore_index=True, keep='last')
+        )
 
         periods = list(df['period_end'].sort_values().unique())
 
         for period in periods:
-            df_year = (df.query('period_end == @period')
-                         [['acc_value', 'acc_code']]
-                         .copy())
+            df_year = (
+                df
+                .query('period_end == @period')
+                [['acc_value', 'acc_code']]
+                .copy()
+            )
             period_str = np.datetime_as_string(period, unit='D')
             if period == self._LAST_QUARTERLY:
                 period_str += ' (ttm)'
             df_year.rename(columns={'acc_value': period_str}, inplace=True)
             dfo = pd.merge(dfo, df_year, how='left', on=['acc_code'])
-        
+
         return dfo.sort_values('acc_code', ignore_index=True)
