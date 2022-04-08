@@ -14,12 +14,16 @@ FinLogic is **not** affiliated, endorsed, or vetted by the Securities and Exchan
 ---
 
 <a target="new" href="https://pypi.python.org/pypi/finlogic"><img border=0 src="https://img.shields.io/badge/python-3.10+-blue.svg?style=flat" alt="Python version"></a>
+[![GitHub license](https://badgen.net/github/license/Naereen/Strapdown.js)](https://github.com/Naereen/StrapDown.js/blob/master/LICENSE)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 <a target="new" href="https://pypi.python.org/pypi/finlogic"><img border=0 src="https://img.shields.io/pypi/v/finlogic.svg?maxAge=60%" alt="PyPi version"></a>
 <a target="new" href="https://pypi.python.org/pypi/finlogic"><img border=0 src="https://img.shields.io/pypi/status/finlogic.svg?maxAge=60" alt="PyPi status"></a>
 <a target="new" href="https://pypi.python.org/pypi/finlogic"><img border=0 src="https://img.shields.io/pypi/dm/finlogic.svg?maxAge=2592000&label=installs&color=%2327B1FF" alt="PyPi downloads"></a>
 <a target="new" href="https://github.com/crdcj/FinLogic"><img border=0 src="https://img.shields.io/github/stars/crdcj/FinLogic.svg?style=social&label=Star&maxAge=60" alt="Star this repo"></a>
 <a target="new" href="https://twitter.com/CRCarvalhoJ"><img border=0 src="https://img.shields.io/twitter/follow/CRCarvalhoJ.svg?style=social&label=Follow&maxAge=60" alt="Follow me on twitter"></a>
 
+
+![Pandas](https://img.shields.io/badge/pandas-%23150458.svg?style=for-the-badge&logo=pandas&logoColor=white)
 
 **FinLogic** offers a Pythonic/Pandas way to analyze financial data of listed companies in Brazil from information made publicly avaible by local securities market authority (CVM).
 
@@ -34,17 +38,17 @@ In the firt run, the update process can take some minutes depending on CVM Serve
 For subsequent updates, only updated CVM files will be processed and inserted into the database, which will consume less CPU power.
 
 ```python
->>> import finlogic as fi
+>>> import finlogic as fl
 
 ### Starting FinLogic for the first time
->>> fi.update_database()
+>>> fl.update_database()
 
 Updating CVM raw files...
 ...
 FinLogic database updated ✅
 
 ## Show database info
->>> fi.database_info()
+>>> fl.database_info()
 
 | Database Info                         |            |
 |:--------------------------------------|:-----------|
@@ -57,7 +61,7 @@ FinLogic database updated ✅
 | Last Financial Statement in database  | 2022-03-31 |
 
 ## Search a company name in database
->>> fi.search_company('petro')
+>>> fl.search_company('petro')
 
 |   | co_name                                | cvm_id | fiscal_id          |
 |--:|:---------------------------------------|-------:|:-------------------|
@@ -76,10 +80,10 @@ FinLogic database updated ✅
 The Company Class allows you to easily access financial data from Brazilian companies. All values are in local currency (Real).
 ```python
 
->>> import finlogic as fi
+>>> import finlogic as fl
 # Create a Company object to acces its fiancial data.
 # Both CVM (regulator) ID or Fiscal ID can be used as an identifier.
->>> petro = fi.Company(9512, acc_method='separate', acc_unit='million')
+>>> petro = fl.Company(9512, acc_method='separate', acc_unit='million')
 
 # Change company accouting method back to default = 'consolidated'
 >>> petro.acc_method = 'consolidated'
