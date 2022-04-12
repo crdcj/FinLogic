@@ -353,14 +353,14 @@ def database_info() -> pd.DataFrame:
     df = pd.read_pickle(MAIN_DF_PATH)
     columns_duplicates = ["cvm_id", "report_version", "report_type", "period_reference"]
     info_dic = {
-        "Number accounting rows in database": len(df.index),
-        "Number of unique accounting codes": df["acc_code"].nunique(),
-        "Number of companies": df["cvm_id"].nunique(),
-        "Number of Financial Statements": len(
-            df.drop_duplicates(subset=columns_duplicates).index
-        ),
-        "Main Data frame memory size in MB": round(
+        "Database size in memory (MB)": round(
             df.memory_usage(index=True, deep=True).sum() / (1024 * 1024), 1
+        ),
+        "Accounting rows": len(df.index),
+        "Unique accounting codes": df["acc_code"].nunique(),
+        "Companies": df["cvm_id"].nunique(),
+        "Financial Statements": len(
+            df.drop_duplicates(subset=columns_duplicates).index
         ),
         "First Financial Statement in database": (
             df["period_end"].astype("datetime64").min().strftime("%Y-%m-%d")
@@ -370,6 +370,6 @@ def database_info() -> pd.DataFrame:
         ),
     }
     info_df = pd.DataFrame.from_dict(
-        info_dic, orient="index", columns=["Database Info"]
+        info_dic, orient="index", columns=["FinLogic Database Info"]
     )
     return info_df
