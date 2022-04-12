@@ -237,7 +237,7 @@ def process_yearly_files(workers, filenames):
 
     with ProcessPoolExecutor(max_workers=workers) as executor:
         results = executor.map(process_yearly_raw_files, filenames)
-        return [processed_filename for processed_filename in results]
+    return list(results)
 
 
 def consolidate_main_df(processed_filenames: str):
