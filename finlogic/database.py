@@ -204,8 +204,11 @@ def process_raw_df(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def process_yearly_raw_files(parent_filename):
-    """Read yearly raw file, process it and save the result."""
+def process_yearly_raw_files(parent_filename) -> str:
+    """
+    Read yearly raw file, process it, save the result and return saved
+    filename.
+    """
     df = pd.DataFrame()
     parent_path = DIR_RAW + parent_filename
     parent_file = zf.ZipFile(parent_path)
@@ -230,8 +233,11 @@ def process_yearly_raw_files(parent_filename):
     return processed_filename
 
 
-def process_yearly_files(workers, filenames):
-    """Execute function 'process_yearly_raw_files' asynchronously."""
+def process_yearly_files(workers, filenames) -> list:
+    """
+    Execute function 'process_yearly_raw_files' asynchronously and return
+    a list with filenames for the processed files.
+    """
     with ProcessPoolExecutor(max_workers=workers) as executor:
         results = executor.map(process_yearly_raw_files, filenames)
     return list(results)
