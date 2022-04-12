@@ -205,9 +205,7 @@ def process_raw_df(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def process_yearly_raw_files(parent_filename):
-    """Read yearly raw files, process and consolidate them into a single data
-    frame.
-    """
+    """Read yearly raw file, process it and save the result."""
     df = pd.DataFrame()
     parent_path = DIR_RAW + parent_filename
     parent_file = zf.ZipFile(parent_path)
@@ -233,8 +231,7 @@ def process_yearly_raw_files(parent_filename):
 
 
 def process_yearly_files(workers, filenames):
-    """Update main dataframe."""
-
+    """Execute function 'process_yearly_raw_files' asynchronously."""
     with ProcessPoolExecutor(max_workers=workers) as executor:
         results = executor.map(process_yearly_raw_files, filenames)
     return list(results)
