@@ -29,6 +29,40 @@ FinLogic is **not** affiliated, endorsed, or vetted by the Securities and Exchan
 
 ---
 
+## Installation
+
+The source code is currently hosted on GitHub at:
+https://github.com/crdcj/FinLogic
+
+Binary installers for the latest released version are available at the [Python
+Package Index (PyPI)](https://pypi.org/project/finlogic) and on [Conda](https://anaconda.org/conda-forge/finlogic).
+
+```sh
+# conda
+conda install -c conda-forge finlogic 
+```
+
+```sh
+# or PyPI
+pip install finlogic
+```
+
+### Requirements
+
+-   [Python](https://www.python.org) \>= 3.10+
+-   [Pandas](https://github.com/pydata/pandas) (tested to work with \>= 1.4.0)
+-   [Numpy](http://www.numpy.org) (tested to work with \>= 1.18.5)
+-   [requests](http://docs.python-requests.org/en/master/) \>= 2.27.1
+-   [zstandard](https://pypi.org/project/zstandard/) \>= 0.17.0
+
+---
+
+### Legal Stuff
+
+**FinLogic** is distributed under the **MIT License**. See the [LICENSE.txt](./LICENSE.txt) file in the release for details.
+
+---
+
 ## Quick Start
 
 ### Create FinLogic local database
@@ -146,29 +180,6 @@ The Company Class allows you to easily access financial data from Brazilian comp
 | operating_margin    |      0.178 |      0.120 |      0.307 |
 | net_margin          |      0.135 |      0.022 |      0.236 |
 ```
----
-## Installation
-
-Install `finlogic` using `pip`:
-
-``` {.sourceCode .bash}
-$ pip install finlogic
-```
-
-### Requirements
-
--   [Python](https://www.python.org) \>= 3.10+
--   [Pandas](https://github.com/pydata/pandas) (tested to work with \>= 1.4.0)
--   [Numpy](http://www.numpy.org) (tested to work with \>= 1.18.5)
--   [requests](http://docs.python-requests.org/en/master/) \>= 2.27.1
--   [zstandard](https://pypi.org/project/zstandard/) \>= 0.17.0
-
----
-
-### Legal Stuff
-
-**FinLogic** is distributed under the **MIT License**. See
-the [LICENSE.txt](./LICENSE.txt) file in the release for details.
 
 ---
 
