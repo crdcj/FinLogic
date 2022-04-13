@@ -1,3 +1,12 @@
+[![PyPI version](https://img.shields.io/pypi/v/finlogic.svg)](https://pypi.python.org/pypi/finlogic)
+[![Anaconda-Server Badge](https://anaconda.org/conda-forge/finlogic/badges/version.svg)](https://anaconda.org/conda-forge/finlogic)
+[![PyPI Python Version](https://img.shields.io/badge/python-3.10-blue.svg)](https://pypi.python.org/pypi/finlogic)
+[![Anaconda-Server Badge](https://anaconda.org/conda-forge/finlogic/badges/license.svg)](https://anaconda.org/conda-forge/finlogic)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![PyPI Status](https://img.shields.io/pypi/status/finlogic.svg)](https://pypi.python.org/pypi/finlogic)
+[![PyPI Downloads](https://img.shields.io/pypi/dm/finlogic.svg)](https://pypi.python.org/pypi/finlogic)
+[![PyPI Twitter](https://img.shields.io/twitter/follow/CRCarvalhoJ.svg?style=social&label=Follow)](https://twitter.com/CRCarvalhoJ)
+
 ## FinLogic: finance data analysis toolkit for listed Brazilian companies
 
 
@@ -7,26 +16,15 @@
 
 ---
 
-FinLogic is **not** affiliated, endorsed, or vetted by the Securities and Exchange Commission of Brazil (CVM). It's an open-source tool that uses CVM publicly available data and is intended for research and educational purposes.
+**FinLogic** is **not** affiliated, endorsed or vetted by the Securities and Exchange Commission of Brazil (CVM). It's an open-source tool that uses CVM publicly available data and is intended for research and educational purposes. This finance tool is distributed under the **MIT License** (see the [LICENSE](./LICENSE) file in the release for details).
+
+---
 
 </td></tr></table>
 
 ---
 
-[![PyPI version](https://img.shields.io/pypi/v/finlogic.svg)](https://pypi.python.org/pypi/finlogic)
-[![Anaconda-Server Badge](https://anaconda.org/conda-forge/finlogic/badges/version.svg)](https://anaconda.org/conda-forge/finlogic)
-[![Anaconda-Server Badge](https://anaconda.org/conda-forge/finlogic/badges/license.svg)](https://anaconda.org/conda-forge/finlogic)
-[![PyPI Python Version](https://img.shields.io/badge/python-3.10-blue.svg)](https://pypi.python.org/pypi/finlogic)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![PyPI Status](https://img.shields.io/pypi/status/finlogic.svg)](https://pypi.python.org/pypi/finlogic)
-[![PyPI Downloads](https://img.shields.io/pypi/dm/finlogic.svg)](https://pypi.python.org/pypi/finlogic)
-[![PyPI Github Stars](https://img.shields.io/github/stars/crdcj/FinLogic.svg?style=social&label=Star)](https://github.com/crdcj/FinLogic)
-[![PyPI Twitter](https://img.shields.io/twitter/follow/CRCarvalhoJ.svg?style=social&label=Follow)](https://twitter.com/CRCarvalhoJ)
-
-
-![Pandas](https://img.shields.io/badge/pandas-%23150458.svg?style=for-the-badge&logo=pandas&logoColor=white)
-
-**FinLogic** offers a Pythonic/Pandas way to analyze financial data of listed companies in Brazil from information made publicly avaible by local securities market authority (CVM).
+**FinLogic** offers a Pythonic way to analyze financial data of listed companies in Brazil from information made publicly avaible by local securities market authority (CVM). This finance tool is built on top of Pandas.
 
 ---
 
@@ -58,15 +56,8 @@ pip install finlogic
 
 ---
 
-### Legal Stuff
-
-**FinLogic** is distributed under the **MIT License**. See the [LICENSE.txt](./LICENSE.txt) file in the release for details.
-
----
-
 ## Quick Start
-
-### Create FinLogic local database
+### Create FinLogic Local Database
 
 The 'update_database' function is responsible for downloading raw financial files from CVM, processesing aprox. 18 millions rows of accounting values and storing it into a single Pandas DataFrame compressed file for local data analysis.
 In the firt run, the update process can take some minutes depending on CVM Server connection and local CPU power. The database generation needs at least 8 GB of free memory and a quad core processor is recommended.
