@@ -14,7 +14,8 @@ FinLogic is **not** affiliated, endorsed, or vetted by the Securities and Exchan
 ---
 
 <a target="new" href="https://pypi.python.org/pypi/finlogic"><img border=0 src="https://img.shields.io/badge/python-3.10+-blue.svg?style=flat" alt="Python version"></a>
-[![GitHub license](https://badgen.net/github/license/Naereen/Strapdown.js)](https://github.com/Naereen/StrapDown.js/blob/master/LICENSE)
+[![Anaconda-Server Badge](https://anaconda.org/conda-forge/finlogic/badges/version.svg)](https://anaconda.org/conda-forge/finlogic)
+[![Anaconda-Server Badge](https://anaconda.org/conda-forge/finlogic/badges/license.svg)](https://anaconda.org/conda-forge/finlogic)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 <a target="new" href="https://pypi.python.org/pypi/finlogic"><img border=0 src="https://img.shields.io/pypi/v/finlogic.svg?maxAge=60%" alt="PyPi version"></a>
 <a target="new" href="https://pypi.python.org/pypi/finlogic"><img border=0 src="https://img.shields.io/pypi/status/finlogic.svg?maxAge=60" alt="PyPi status"></a>
