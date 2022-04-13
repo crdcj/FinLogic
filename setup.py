@@ -52,7 +52,7 @@ setup(
     python_requires=">=3.10",
     install_requires=[
         "pandas>=1.4.0",
-        "numpy>=1.18.0",
+        "numpy>=1.18.5",
         "requests>=2.27.0",
         "zstandard>=0.17.0",
     ],
