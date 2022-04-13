@@ -13,15 +13,15 @@ FinLogic is **not** affiliated, endorsed, or vetted by the Securities and Exchan
 
 ---
 
-<a target="new" href="https://pypi.python.org/pypi/finlogic"><img border=0 src="https://img.shields.io/badge/python-3.10+-blue.svg?style=flat" alt="Python version"></a>
+[![PyPI version](https://img.shields.io/pypi/v/finlogic.svg)](https://pypi.python.org/pypi/finlogic)
 [![Anaconda-Server Badge](https://anaconda.org/conda-forge/finlogic/badges/version.svg)](https://anaconda.org/conda-forge/finlogic)
 [![Anaconda-Server Badge](https://anaconda.org/conda-forge/finlogic/badges/license.svg)](https://anaconda.org/conda-forge/finlogic)
+[![PyPI Python Version](https://img.shields.io/badge/python-3.10-blue.svg)](https://pypi.python.org/pypi/finlogic)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-<a target="new" href="https://pypi.python.org/pypi/finlogic"><img border=0 src="https://img.shields.io/pypi/v/finlogic.svg?maxAge=60%" alt="PyPi version"></a>
-<a target="new" href="https://pypi.python.org/pypi/finlogic"><img border=0 src="https://img.shields.io/pypi/status/finlogic.svg?maxAge=60" alt="PyPi status"></a>
-<a target="new" href="https://pypi.python.org/pypi/finlogic"><img border=0 src="https://img.shields.io/pypi/dm/finlogic.svg?maxAge=2592000&label=installs&color=%2327B1FF" alt="PyPi downloads"></a>
-<a target="new" href="https://github.com/crdcj/FinLogic"><img border=0 src="https://img.shields.io/github/stars/crdcj/FinLogic.svg?style=social&label=Star&maxAge=60" alt="Star this repo"></a>
-<a target="new" href="https://twitter.com/CRCarvalhoJ"><img border=0 src="https://img.shields.io/twitter/follow/CRCarvalhoJ.svg?style=social&label=Follow&maxAge=60" alt="Follow me on twitter"></a>
+[![PyPI Status](https://img.shields.io/pypi/status/finlogic.svg)](https://pypi.python.org/pypi/finlogic)
+[![PyPI Downloads](https://img.shields.io/pypi/dm/finlogic.svg)](https://pypi.python.org/pypi/finlogic)
+[![PyPI Github Stars](https://img.shields.io/github/stars/crdcj/FinLogic.svg?style=social&label=Star)](https://github.com/crdcj/FinLogic)
+[![PyPI Twitter](https://img.shields.io/twitter/follow/CRCarvalhoJ.svg?style=social&label=Follow)](https://twitter.com/CRCarvalhoJ)
 
 
 ![Pandas](https://img.shields.io/badge/pandas-%23150458.svg?style=for-the-badge&logo=pandas&logoColor=white)
