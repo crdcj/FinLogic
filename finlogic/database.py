@@ -353,26 +353,24 @@ def database_info() -> pd.DataFrame:
     -------
     pd.DataFrame
     """
-    df = pd.read_pickle(MAIN_DF_PATH)
+    main_df = pd.read_pickle(MAIN_DF_PATH)
+    info_df = pd.DataFrame()
+    print("FinLogic Database Info")
+    info_df["Value"] = None
+    info_df.loc["Size in Memory (MB)"] = round(
+        main_df.memory_usage(index=True, deep=True).sum() / (1024 * 1024), 1
+    )
+    info_df.loc["Accounting Rows"] = len(main_df.index)
+    info_df.loc["Unique Accounting Codes"] = main_df["acc_code"].nunique()
+    info_df.loc["Companies"] = main_df["cvm_id"].nunique()
     columns_duplicates = ["cvm_id", "report_version", "report_type", "period_reference"]
-    info_dic = {
-        "Database size in memory (MB)": round(
-            df.memory_usage(index=True, deep=True).sum() / (1024 * 1024), 1
-        ),
-        "Accounting rows": len(df.index),
-        "Unique accounting codes": df["acc_code"].nunique(),
-        "Companies": df["cvm_id"].nunique(),
-        "Financial Statements": len(
-            df.drop_duplicates(subset=columns_duplicates).index
-        ),
-        "First Financial Statement in database": (
-            df["period_end"].astype("datetime64").min().strftime("%Y-%m-%d")
-        ),
-        "Last Financial Statement in database": (
-            df["period_end"].astype("datetime64").max().strftime("%Y-%m-%d")
-        ),
-    }
-    info_df = pd.DataFrame.from_dict(
-        info_dic, orient="index", columns=["FinLogic Database Info"]
+    info_df.loc["Unique Financial Statements"] = len(
+        main_df.drop_duplicates(subset=columns_duplicates).index
+    )
+    info_df.loc["First Financial Statement"] = (
+        main_df["period_end"].astype("datetime64").min().strftime("%Y-%m-%d")
+    )
+    info_df.loc["Last Financial Statement"] = (
+        main_df["period_end"].astype("datetime64").max().strftime("%Y-%m-%d")
     )
     return info_df

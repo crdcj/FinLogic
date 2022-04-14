@@ -4,3 +4,5 @@ build/
 .vscode/
 data/
 finlogic.egg-info/
+dev*.*
+dev/
