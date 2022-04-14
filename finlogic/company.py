@@ -226,7 +226,7 @@ class Company:
         ].max()
 
     def info(self) -> pd.DataFrame:
-        """Return dictionary with company info."""
+        """Return dataframe with company info."""
         company_info = {
             "Name": self._NAME,
             "CVM ID": self._cvm_id,
@@ -239,9 +239,8 @@ class Company:
             "Last Annual Report": self._LAST_ANNUAL.strftime("%Y-%m-%d"),
             "Last Quarterly Report": self._LAST_QUARTERLY.strftime("%Y-%m-%d"),
         }
-        df = pd.DataFrame.from_dict(
-            company_info, orient="index", columns=["Company Info"]
-        )
+        df = pd.DataFrame.from_dict(company_info, orient="index", columns=["Values"])
+        df.index.name = "Company Info"
         return df
 
     def report(
@@ -496,6 +495,8 @@ class Company:
         dfo.loc["ebitda_margin"] = ebitda / revenues
         dfo.loc["operating_margin"] = ebit * (1 - self._tax_rate) / revenues
         dfo.loc["net_margin"] = net_income / revenues
+
+        dfo.index.name = "Company Financial Indicators"
         # Show only the selected number of years
         if num_years > 0:
             dfo = dfo[dfo.columns[-num_years:]]

@@ -119,17 +119,18 @@ petro.acc_unit = 'billion'
 petro.info()
 ```
 
-|                               | Company Info                       |
-|:------------------------------|-----------------------------------:|
-| Company Name                  | PETROLEO BRASILEIRO S.A. PETROBRAS |
-| Company CVM ID                | 9512                               |
-| Company Fiscal ID (CNPJ)      | 33.000.167/0001-01                 |
-| Company total accounting rows | 39,292                             |
-| Selected Accounting Method    | consolidated                       |
-| Selected Accounting Unit      | 1,000,000,000                      |
-| First Annual Report           | 2009-12-31                         |
-| Last Annual Report            | 2021-12-31                         |
-| Last Quarterly Report         | 2021-09-30                         |
+| Company Info               |                             Values |
+|:---------------------------|-----------------------------------:|
+| Name                       | PETROLEO BRASILEIRO S.A. PETROBRAS |
+| CVM ID                     |                               9512 |
+| Fiscal ID (CNPJ)           |                 33.000.167/0001-01 |
+| Total Accounting Rows      |                             39,292 |
+| Selected Tax Rate          |                               0.34 |
+| Selected Accounting Method |                       consolidated |
+| Selected Accounting Unit   |                      1,000,000,000 |
+| First Annual Report        |                         2009-12-31 |
+| Last Annual Report         |                         2021-12-31 |
+| Last Quarterly Report      |                         2021-09-30 |
 
 ```python
 # show company assets in Brazilian currency 
@@ -139,41 +140,41 @@ petro.report(report_type='assets')
 petro.report(report_type='debt', acc_level=4, num_years=3)
 ```
 
-|   | acc_name                       | acc_code   | 2019-12-31 | 2020-12-31 | 2021-12-31 |
-|--:|:-------------------------------|:-----------|-----------:|-----------:|-----------:|
-| 0 | Empréstimos e Financiamentos   | 2.01.04    |     41.139 |     51.364 |     50.631 |
-| 1 | Empréstimos e Financiamentos   | 2.01.04.01 |     18.013 |     21.751 |     20.316 |
-| 2 | Debêntures                     | 2.01.04.02 |      0     |      0     |      0     |
-| 3 | Financiamento por Arrendamento | 2.01.04.03 |     23.126 |     29.613 |     30.315 |
-| 4 | Empréstimos e Financiamentos   | 2.02.01    |    310.022 |    341.184 |    277.187 |
-| 5 | Empréstimos e Financiamentos   | 2.02.01.01 |    236.969 |    258.287 |    178.908 |
-| 6 | Debêntures                     | 2.02.01.02 |      0     |      0     |      0     |
-| 7 | Financiamento por Arrendamento | 2.02.01.03 |     73.053 |     82.897 |     98.279 |
+|   | acc_name                       | acc_code   | acc_fixed | 2019-12-31 | 2020-12-31 | 2021-12-31 |
+|:--|:-------------------------------|:-----------|:---------:|-----------:|-----------:|-----------:|
+| 0 | Empréstimos e Financiamentos   | 2.01.04    |   True    |     41.139 |     51.364 |     50.631 |
+| 1 | Empréstimos e Financiamentos   | 2.01.04.01 |   True    |     18.013 |     21.751 |     20.316 |
+| 2 | Debêntures                     | 2.01.04.02 |   True    |          0 |          0 |      0     |
+| 3 | Financiamento por Arrendamento | 2.01.04.03 |   True    |     23.126 |     29.613 |     30.315 |
+| 4 | Empréstimos e Financiamentos   | 2.02.01    |   True    |    310.022 |    341.184 |    277.187 |
+| 5 | Empréstimos e Financiamentos   | 2.02.01.01 |   True    |    236.969 |    258.287 |    178.908 |
+| 6 | Debêntures                     | 2.02.01.02 |   True    |          0 |          0 |      0     |
+| 7 | Financiamento por Arrendamento | 2.02.01.03 |   True    |     73.053 |     82.897 |     98.279 |
 
 ```python
 # show company main indicators
 petro.indicators(num_years=3)
 ```
 
-|                     | 2019-12-31 | 2020-12-31 | 2021-12-31 |
-|:--------------------|-----------:|-----------:|-----------:|
-| revenues            |    302.245 |    272.069 |    452.668 |
-| operating_cash_flow |    101.766 |    148.106 |    203.126 |
-| ebitda              |    140.203 |    107.926 |    273.879 |
-| ebit                |     81.701 |     49.621 |    210.831 |
-| net_income          |     40.97  |      6.246 |    107.264 |
-| total_cash          |     33.294 |     64.28  |     62.04  |
-| total_debt          |    351.161 |    392.548 |    327.818 |
-| net_debt            |    317.867 |    328.268 |    265.778 |
-| working_capital     |     -4.046 |      6.036 |     33.334 |
-| invested_capital    |    617.004 |    639.418 |    655.359 |
-| return_on_assets    |      0.062 |      0.035 |      0.140 |
-| return_on_capital   |      0.097 |      0.053 |      0.217 |
-| return_on_equity    |      0.144 |      0.020 |      0.344 |
-| gross_margin        |      0.403 |      0.455 |      0.485 |
-| ebitda_margin       |      0.463 |      0.396 |      0.605 |
-| operating_margin    |      0.178 |      0.120 |      0.307 |
-| net_margin          |      0.135 |      0.022 |      0.236 |
+| Company Financial Indicators   |   2019-12-31 |   2020-12-31 |   2021-12-31 |
+|:-------------------------------|-------------:|-------------:|-------------:|
+| revenues                       |  302.245     |  272.069     |   452.668    |
+| operating_cash_flow            |  101.766     |  148.106     |   203.126    |
+| ebitda                         |  140.203     |  107.926     |   273.879    |
+| ebit                           |   81.701     |   49.621     |   210.831    |
+| net_income                     |   40.97      |    6.246     |   107.264    |
+| total_cash                     |   33.294     |   64.28      |    62.04     |
+| total_debt                     |  351.161     |  392.548     |   327.818    |
+| net_debt                       |  317.867     |  328.268     |   265.778    |
+| working_capital                |   -4.046     |    6.036     |    33.334    |
+| invested_capital               |  617.004     |  639.418     |   655.359    |
+| return_on_assets               |    0.0626663 |    0.0353666 |     0.140921 |
+| return_on_capital              |    0.0976211 |    0.0530788 |     0.217617 |
+| return_on_equity               |    0.144493  |    0.0208801 |     0.344734 |
+| gross_margin                   |    0.403993  |    0.455627  |     0.485205 |
+| ebitda_margin                  |    0.463872  |    0.396686  |     0.605033 |
+| operating_margin               |    0.178407  |    0.120373  |     0.307396 |
+| net_margin                     |    0.135552  |    0.0229574 |     0.23696  |
 
 ---
 
