@@ -29,7 +29,6 @@
 ---
 
 ## Installation
-
 The source code is currently hosted on GitHub at:
 https://github.com/crdcj/FinLogic
 
@@ -47,7 +46,6 @@ pip install finlogic
 ```
 
 ### Requirements
-
 -   [Python](https://www.python.org) \>= 3.10
 -   [Pandas](https://github.com/pydata/pandas) \>= 1.4.0)
 -   [Numpy](http://www.numpy.org) \>= 1.18.5)
@@ -58,36 +56,38 @@ pip install finlogic
 
 ## Quick Start
 ### Create FinLogic Local Database
-
 The 'update_database' function is responsible for downloading raw financial files from CVM, processesing aprox. 18 millions rows of accounting values and storing it into a single Pandas DataFrame compressed file for local data analysis.
 In the firt run, the update process can take some minutes depending on CVM Server connection and local CPU power. The database generation needs at least 8 GB of free memory and a quad core processor is recommended.
 For subsequent updates, only updated CVM files will be processed and inserted into the database, which will consume less CPU power.
 
 ```python
->>> import finlogic as fl
+import finlogic as fl
 
-### Starting FinLogic for the first time
->>> fl.update_database()
+# Starting FinLogic for the first time
+fl.update_database()
 
 Updating CVM raw files...
 ...
 FinLogic database updated ✅
 
-## Show database info
->>> fl.database_info()
+# Show database info
+fl.database_info()
+```
 
-| Database Info                         |            |
-|:--------------------------------------|:-----------|
-| Number accounting rows in database    | 18,194,002 |
-| Number of unique accounting codes     | 2,006      |
-| Number of companies                   | 1,082      |
-| Number of Financial Statements        | 11,755     |
-| Main Data frame memory size in MB     | 469.0      |
-| First Financial Statement in database | 2009-01-31 |
-| Last Financial Statement in database  | 2022-03-31 |
+| FinLogic Database Info      |        Value |
+|:----------------------------|-------------:|
+| Size in Memory (MB)         |        626.2 |
+| Accounting Rows             | 18,754,523.0 |
+| Unique Accounting Codes     |      2,007.0 |
+| Companies                   |      1,093.0 |
+| Unique Financial Statements |     12,137.0 |
+| First Financial Statement   |   2009-01-31 |
+| Last Financial Statement    |   2022-03-31 |
 
-## Search a company name in database
->>> fl.search_company('petro')
+```python
+# Search a company name in database
+fl.search_company('petro')
+```
 
 |   | co_name                                | cvm_id | fiscal_id          |
 |--:|:---------------------------------------|-------:|:-------------------|
@@ -99,29 +99,28 @@ FinLogic database updated ✅
 | 5 | PETRORECÔNCAVO S.A.                    |  25780 | 03.342.704/0001-30 |
 | 6 | PRONOR PETROQUIMICA SA                 |   9784 | 13.552.070/0001-02 |
 | 7 | REFINARIA DE PETROLEOS MANGUINHOS S.A. |   9989 | 33.412.081/0001-96 |
-```
 
 ### The Company Class
-
 The Company Class allows you to easily access financial data from Brazilian companies. All values are in local currency (Real).
-```python
 
->>> import finlogic as fl
+```python
+import finlogic as fl
 # Create a Company object to acces its fiancial data.
 # Both CVM (regulator) ID or Fiscal ID can be used as an identifier.
->>> petro = fl.Company(9512, acc_method='separate', acc_unit='million')
+petro = fl.Company(9512, acc_method='separate', acc_unit='million')
 
 # Change company accouting method back to default = 'consolidated'
->>> petro.acc_method = 'consolidated'
+petro.acc_method = 'consolidated'
 
 # Change company accouting unit to billion (default is 1)
->>> petro.acc_unit = 'billion'
+petro.acc_unit = 'billion'
 
 # show company info
->>> petro.info()
+petro.info()
+```
 
 |                               | Company Info                       |
-|:------------------------------|:-----------------------------------|
+|:------------------------------|-----------------------------------:|
 | Company Name                  | PETROLEO BRASILEIRO S.A. PETROBRAS |
 | Company CVM ID                | 9512                               |
 | Company Fiscal ID (CNPJ)      | 33.000.167/0001-01                 |
@@ -132,11 +131,13 @@ The Company Class allows you to easily access financial data from Brazilian comp
 | Last Annual Report            | 2021-12-31                         |
 | Last Quarterly Report         | 2021-09-30                         |
 
+```python
 # show company assets in Brazilian currency 
->>> petro.report(report_type='assets')
+petro.report(report_type='assets')
 ...
 # show company liabilities with custom arguments
->>> petro.report(report_type='debt', acc_level=4, num_years=3)
+petro.report(report_type='debt', acc_level=4, num_years=3)
+```
 
 |   | acc_name                       | acc_code   | 2019-12-31 | 2020-12-31 | 2021-12-31 |
 |--:|:-------------------------------|:-----------|-----------:|-----------:|-----------:|
@@ -149,8 +150,10 @@ The Company Class allows you to easily access financial data from Brazilian comp
 | 6 | Debêntures                     | 2.02.01.02 |      0     |      0     |      0     |
 | 7 | Financiamento por Arrendamento | 2.02.01.03 |     73.053 |     82.897 |     98.279 |
 
+```python
 # show company main indicators
->>> petro.indicators(num_years=3)
+petro.indicators(num_years=3)
+```
 
 |                     | 2019-12-31 | 2020-12-31 | 2021-12-31 |
 |:--------------------|-----------:|-----------:|-----------:|
@@ -171,7 +174,6 @@ The Company Class allows you to easily access financial data from Brazilian comp
 | ebitda_margin       |      0.463 |      0.396 |      0.605 |
 | operating_margin    |      0.178 |      0.120 |      0.307 |
 | net_margin          |      0.135 |      0.022 |      0.236 |
-```
 
 ---
 

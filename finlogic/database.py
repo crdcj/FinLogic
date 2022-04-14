@@ -355,8 +355,8 @@ def database_info() -> pd.DataFrame:
     """
     main_df = pd.read_pickle(MAIN_DF_PATH)
     info_df = pd.DataFrame()
-    print("FinLogic Database Info")
-    info_df["Value"] = None
+    info_df.index.name = "FinLogic Database Info"
+    info_df["Value"] = ""
     info_df.loc["Size in Memory (MB)"] = round(
         main_df.memory_usage(index=True, deep=True).sum() / (1024 * 1024), 1
     )
