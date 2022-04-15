@@ -1,11 +1,11 @@
 [![PyPI version](https://img.shields.io/pypi/v/finlogic.svg)](https://pypi.python.org/pypi/finlogic)
 [![Anaconda-Server Badge](https://anaconda.org/conda-forge/finlogic/badges/version.svg)](https://anaconda.org/conda-forge/finlogic)
-[![PyPI Python Version](https://img.shields.io/badge/python-3.10-blue.svg)](https://pypi.python.org/pypi/finlogic)
-[![Anaconda-Server Badge](https://anaconda.org/conda-forge/finlogic/badges/license.svg)](https://anaconda.org/conda-forge/finlogic)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![PyPI Status](https://img.shields.io/pypi/status/finlogic.svg)](https://pypi.python.org/pypi/finlogic)
 [![PyPI Downloads](https://img.shields.io/pypi/dm/finlogic.svg)](https://pypi.python.org/pypi/finlogic)
-[![PyPI Twitter](https://img.shields.io/twitter/follow/CRCarvalhoJ.svg?style=social&label=Follow)](https://twitter.com/CRCarvalhoJ)
+[![Python Version](https://img.shields.io/badge/python-3.10-blue.svg)](https://pypi.python.org/pypi/finlogic)
+[![Anaconda License](https://anaconda.org/conda-forge/finlogic/badges/license.svg)](https://anaconda.org/conda-forge/finlogic)
+[![Code Style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Twitter](https://img.shields.io/twitter/follow/CRCarvalhoJ.svg?style=social&label=Follow)](https://twitter.com/CRCarvalhoJ)
 
 ## FinLogic: finance data analysis toolkit for listed Brazilian companies
 
