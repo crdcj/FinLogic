@@ -140,16 +140,16 @@ petro.report(report_type='assets')
 petro.report(report_type='debt', acc_level=4, num_years=3)
 ```
 
-|   | acc_name                       | acc_code   | acc_fixed | 2019-12-31 | 2020-12-31 | 2021-12-31 |
-|:--|:-------------------------------|:-----------|:---------:|-----------:|-----------:|-----------:|
-| 0 | Empréstimos e Financiamentos   | 2.01.04    |   True    |     41.139 |     51.364 |     50.631 |
-| 1 | Empréstimos e Financiamentos   | 2.01.04.01 |   True    |     18.013 |     21.751 |     20.316 |
-| 2 | Debêntures                     | 2.01.04.02 |   True    |          0 |          0 |      0     |
-| 3 | Financiamento por Arrendamento | 2.01.04.03 |   True    |     23.126 |     29.613 |     30.315 |
-| 4 | Empréstimos e Financiamentos   | 2.02.01    |   True    |    310.022 |    341.184 |    277.187 |
-| 5 | Empréstimos e Financiamentos   | 2.02.01.01 |   True    |    236.969 |    258.287 |    178.908 |
-| 6 | Debêntures                     | 2.02.01.02 |   True    |          0 |          0 |      0     |
-| 7 | Financiamento por Arrendamento | 2.02.01.03 |   True    |     73.053 |     82.897 |     98.279 |
+|   | acc_name               | acc_code   | acc_fixed | 2019-12-31 | 2020-12-31 | 2021-12-31 |
+|:--|:-----------------------|:-----------|:---------:|-----------:|-----------:|-----------:|
+| 0 | Empréstimos e Financi. | 2.01.04    |   True    |     41.139 |     51.364 |     50.631 |
+| 1 | Empréstimos e Financi. | 2.01.04.01 |   True    |     18.013 |     21.751 |     20.316 |
+| 2 | Debêntures             | 2.01.04.02 |   True    |          0 |          0 |      0     |
+| 3 | Financiamento por Arr. | 2.01.04.03 |   True    |     23.126 |     29.613 |     30.315 |
+| 4 | Empréstimos e Financi. | 2.02.01    |   True    |    310.022 |    341.184 |    277.187 |
+| 5 | Empréstimos e Financi. | 2.02.01.01 |   True    |    236.969 |    258.287 |    178.908 |
+| 6 | Debêntures             | 2.02.01.02 |   True    |          0 |          0 |      0     |
+| 7 | Financiamento por Arr. | 2.02.01.03 |   True    |     73.053 |     82.897 |     98.279 |
 
 ```python
 # show company main indicators
