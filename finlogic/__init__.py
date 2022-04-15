@@ -11,4 +11,4 @@ from .company import Company
 
 __version__ = version.version
 __author__ = "Carlos Carvalho"
-__all__ = ['Company', 'update_database', 'search_company', 'database_info']
+__all__ = ["Company", "update_database", "search_company", "database_info"]

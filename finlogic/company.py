@@ -4,13 +4,10 @@ Abreviations used in code:
     dfi = input dataframe
     dfo = output dataframe
 """
-import os
 from typing import Literal
 import numpy as np
 import pandas as pd
-
-BASE_DIR = os.path.dirname(__file__)
-MAIN_DF_PATH = BASE_DIR + "/data/main_df.pkl.zst"
+import finlogic.constants as c
 
 
 class Company:
@@ -80,7 +77,7 @@ class Company:
         """
         # Create custom data frame for ID selection
         df = (
-            pd.read_pickle(MAIN_DF_PATH)[["cvm_id", "fiscal_id"]]
+            c.MAIN_DF[["cvm_id", "fiscal_id"]]
             .drop_duplicates()
             .astype({"cvm_id": int, "fiscal_id": str})
         )
@@ -191,8 +188,7 @@ class Company:
 
     def _set_main_data(self) -> pd.DataFrame:
         self._COMP_DF = (
-            pd.read_pickle(MAIN_DF_PATH)
-            .query("cvm_id == @self._cvm_id")
+            c.MAIN_DF.query("cvm_id == @self._cvm_id")
             .astype(
                 {
                     "co_name": str,
