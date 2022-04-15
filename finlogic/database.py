@@ -357,6 +357,10 @@ def database_info() -> pd.DataFrame:
     info_df = pd.DataFrame()
     info_df.index.name = "FinLogic Database Info"
     info_df["Value"] = ""
+    info_df.loc["Directory Name"] = MAIN_DF_PATH[:-15]
+    info_df.loc["File Size (MB)"] = round(
+        os.path.getsize(MAIN_DF_PATH) / (1024 * 1024), 1
+    )
     info_df.loc["Size in Memory (MB)"] = round(
         main_df.memory_usage(index=True, deep=True).sum() / (1024 * 1024), 1
     )
