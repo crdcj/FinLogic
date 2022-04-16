@@ -7,16 +7,19 @@ from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 import requests
 import pandas as pd
 import numpy as np
-import finlogic.constants as c
+from . import config as c
 
 URL_DFP = "http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/"
 URL_ITR = "http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/"
+
+DIR_RAW = c.DIR_DATA + "/raw/"
+DIR_PROCESSED = c.DIR_DATA + "/processed/"
 
 
 def update_raw_file(url: str) -> str:
     """Update file from CVM portal. Return True if file is updated."""
     filename = url[-23:]  # nome do arquivo = final da url
-    file_path = c.DIR_RAW + filename
+    file_path = DIR_RAW + filename
     with requests.Session() as s:
         r = s.get(url, stream=True)
         if r.status_code != requests.codes.ok:
@@ -207,7 +210,7 @@ def process_yearly_raw_files(parent_filename) -> str:
     filename.
     """
     df = pd.DataFrame()
-    parent_path = c.DIR_RAW + parent_filename
+    parent_path = DIR_RAW + parent_filename
     parent_file = zf.ZipFile(parent_path)
     child_filenames = parent_file.namelist()
 
@@ -226,7 +229,7 @@ def process_yearly_raw_files(parent_filename) -> str:
     # Most values in columns are repeated
     df = df.astype("category")
     processed_filename = parent_filename[0:-4] + ".pkl.zst"
-    df.to_pickle(c.DIR_PROCESSED + processed_filename)
+    df.to_pickle(DIR_PROCESSED + processed_filename)
     return processed_filename
 
 
@@ -246,9 +249,9 @@ def consolidate_main_df(processed_filenames: str):
         return
 
     for filename in processed_filenames:
-        updated_df = pd.read_pickle(c.DIR_PROCESSED + filename)
-        c.MAIN_DF = pd.concat([c.MAIN_DF, updated_df], ignore_index=True)
-    c.MAIN_DF = c.MAIN_DF.astype("category")
+        updated_df = pd.read_pickle(DIR_PROCESSED + filename)
+        c.main_df = pd.concat([c.main_df, updated_df], ignore_index=True)
+    c.main_df = c.main_df.astype("category")
     # Keep only the newest 'report_version' in df if values are repeated
     # print(len(main_df.index))
     cols = [
@@ -260,15 +263,15 @@ def consolidate_main_df(processed_filenames: str):
         "acc_method",
         "acc_code",
     ]
-    c.MAIN_DF.sort_values(by=cols, ignore_index=True, inplace=True)
-    cols = list(c.MAIN_DF.columns)
+    c.main_df.sort_values(by=cols, ignore_index=True, inplace=True)
+    cols = list(c.main_df.columns)
     cols_remove = ["report_version", "acc_value", "acc_fixed"]
     [cols.remove(col) for col in cols_remove]
     # tmp = main_df[main_df.duplicated(cols, keep=False)]
     # Ascending order --> last is the newest report_version
-    c.MAIN_DF.drop_duplicates(cols, keep="last", inplace=True)
+    c.main_df.drop_duplicates(cols, keep="last", inplace=True)
     # print(len(main_df.index))
-    c.MAIN_DF.to_pickle(c.PATH_MAIN_DF)
+    c.main_df.to_pickle(c.PATH_MAIN_DF)
 
 
 def update_database(cpu_usage: float = 0.75, reset_data: bool = False):
@@ -290,16 +293,17 @@ def update_database(cpu_usage: float = 0.75, reset_data: bool = False):
     # Parameter 'reset_data'-> delete all data for database recompilation
     if reset_data:
         shutil.rmtree(c.DIR_DATA)
+        c.main_df = pd.DataFrame()
     # Define the number of cpu cores for parallel data processing
     workers = math.trunc(os.cpu_count() * cpu_usage)
     if workers < 1:
         workers = 1
     print("workers=", workers)
     # create data folders if they do not exist
-    if not os.path.isdir(c.DIR_RAW):
-        os.makedirs(c.DIR_RAW)
-    if not os.path.isdir(c.DIR_PROCESSED):
-        os.makedirs(c.DIR_PROCESSED)
+    if not os.path.isdir(DIR_RAW):
+        os.makedirs(DIR_RAW)
+    if not os.path.isdir(DIR_PROCESSED):
+        os.makedirs(DIR_PROCESSED)
 
     print("Updating CVM raw files...")
     urls = list_urls()
@@ -327,7 +331,7 @@ def search_company(expression: str) -> pd.DataFrame:
     """
     expression = expression.upper()
     df = (
-        c.MAIN_DF.query("co_name.str.contains(@expression)")
+        c.main_df.query("co_name.str.contains(@expression)")
         .sort_values(by="co_name")
         .drop_duplicates(subset="cvm_id", ignore_index=True)[
             ["co_name", "cvm_id", "fiscal_id"]
@@ -351,20 +355,25 @@ def database_info() -> pd.DataFrame:
     info_df.loc["File Size (MB)"] = round(
         os.path.getsize(c.PATH_MAIN_DF) / (1024 * 1024), 1
     )
+    last_modified_python = os.path.getmtime(c.PATH_MAIN_DF)
+    # Convert python epoch to Pandas datetime
+    last_modified_python = os.path.getmtime(c.PATH_MAIN_DF)
+    last_modified_pandas = pd.to_datetime(last_modified_python, unit="s").round("1s")
+    info_df.loc["Last Modified (MB)"] = last_modified_pandas
     info_df.loc["Size in Memory (MB)"] = round(
-        c.MAIN_DF.memory_usage(index=True, deep=True).sum() / (1024 * 1024), 1
+        c.main_df.memory_usage(index=True, deep=True).sum() / (1024 * 1024), 1
     )
-    info_df.loc["Accounting Rows"] = len(c.MAIN_DF.index)
-    info_df.loc["Unique Accounting Codes"] = c.MAIN_DF["acc_code"].nunique()
-    info_df.loc["Companies"] = c.MAIN_DF["cvm_id"].nunique()
+    info_df.loc["Accounting Rows"] = len(c.main_df.index)
+    info_df.loc["Unique Accounting Codes"] = c.main_df["acc_code"].nunique()
+    info_df.loc["Companies"] = c.main_df["cvm_id"].nunique()
     columns_duplicates = ["cvm_id", "report_version", "report_type", "period_reference"]
     info_df.loc["Unique Financial Statements"] = len(
-        c.MAIN_DF.drop_duplicates(subset=columns_duplicates).index
+        c.main_df.drop_duplicates(subset=columns_duplicates).index
     )
     info_df.loc["First Financial Statement"] = (
-        c.MAIN_DF["period_end"].astype("datetime64").min().strftime("%Y-%m-%d")
+        c.main_df["period_end"].astype("datetime64").min().strftime("%Y-%m-%d")
     )
     info_df.loc["Last Financial Statement"] = (
-        c.MAIN_DF["period_end"].astype("datetime64").max().strftime("%Y-%m-%d")
+        c.main_df["period_end"].astype("datetime64").max().strftime("%Y-%m-%d")
     )
     return info_df

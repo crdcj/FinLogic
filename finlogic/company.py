@@ -7,7 +7,7 @@ Abreviations used in code:
 from typing import Literal
 import numpy as np
 import pandas as pd
-import finlogic.constants as c
+from . import config as c
 
 
 class Company:
@@ -77,7 +77,7 @@ class Company:
         """
         # Create custom data frame for ID selection
         df = (
-            c.MAIN_DF[["cvm_id", "fiscal_id"]]
+            c.main_df[["cvm_id", "fiscal_id"]]
             .drop_duplicates()
             .astype({"cvm_id": int, "fiscal_id": str})
         )
@@ -188,7 +188,7 @@ class Company:
 
     def _set_main_data(self) -> pd.DataFrame:
         self._COMP_DF = (
-            c.MAIN_DF.query("cvm_id == @self._cvm_id")
+            c.main_df.query("cvm_id == @self._cvm_id")
             .astype(
                 {
                     "co_name": str,
