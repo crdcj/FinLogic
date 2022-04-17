@@ -3,7 +3,8 @@ import os
 from pathlib import Path
 import shutil
 import math
-import zipfile as zf
+import zipfile
+from typing import List
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 import requests
 import pandas as pd
@@ -13,32 +14,11 @@ from . import config as c
 URL_DFP = "http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/"
 URL_ITR = "http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/"
 
-RAW_DIR = c.DATA_DIR / "raw"
-PROCESSED_DIR = c.DATA_DIR / "processed"
+RAW_DIR = c.DATA_PATH / "raw"
+PROCESSED_DIR = c.DATA_PATH / "processed"
 
 
-def update_raw_file(url: str) -> str:
-    """Update file from CVM portal. Return True if file is updated."""
-    raw_file = Path(RAW_DIR, url[-23:])  # filename = url final
-    with requests.Session() as s:
-        r = s.get(url, stream=True)
-        if r.status_code != requests.codes.ok:
-            return None
-        if Path.exists(raw_file):
-            local_file_size = raw_file.stat().st_size
-        else:
-            local_file_size = 0
-        url_file_size = int(r.headers["Content-Length"])
-        if local_file_size == url_file_size:
-            # print(f'{filename} already updated -> continue', flush=True)
-            return None
-        # print(f'{filename} new/outdated -> download file', flush=True)
-        with open(raw_file, "wb") as f:
-            f.write(r.content)
-        return raw_file
-
-
-def list_urls() -> list:
+def list_urls() -> List[str]:
     """Update the CVM Portal file base.
 
     Urls with CVM raw files:
@@ -66,16 +46,209 @@ def list_urls() -> list:
             filename = f"itr_cia_aberta_{year}.zip"
             url = f"{URL_ITR}{filename}"
             urls.append(url)
-
     return urls
 
 
-def update_raw_files(urls: str) -> list:
+def update_raw_file(url: str) -> Path:
+    """Update file from CVM portal. Return a Path object if file is updated."""
+    raw_path = Path(RAW_DIR, url[-23:])  # filename = url final
+    with requests.Session() as s:
+        r = s.get(url, stream=True)
+        if r.status_code != requests.codes.ok:
+            return None
+        if Path.exists(raw_path):
+            local_file_size = raw_path.stat().st_size
+        else:
+            local_file_size = 0
+        url_file_size = int(r.headers["Content-Length"])
+        if local_file_size == url_file_size:
+            return None
+        with raw_path.open(mode="wb") as f:
+            f.write(r.content)
+        return raw_path
+
+
+def update_raw_files(urls: str) -> List[Path]:
     """Update local CVM raw files asynchronously."""
     with ThreadPoolExecutor() as executor:
         results = executor.map(update_raw_file, urls)
-    updated_raw_files = [r for r in results if r is not None]
-    return updated_raw_files
+    updated_raw_paths = [r for r in results if r is not None]
+    return updated_raw_paths
+
+
+def process_raw_file(raw_path: Path) -> Path:
+    """
+    Read yearly raw file, process it, save the result and return a file path
+    object.
+    """
+    df = pd.DataFrame()
+    raw_zipfile = zipfile.ZipFile(raw_path)
+    child_filenames = raw_zipfile.namelist()
+
+    for child_filename in child_filenames[1:]:
+        child_file = raw_zipfile.open(child_filename)
+        df_child = pd.read_csv(child_file, sep=";", encoding="iso-8859-1", dtype=str)
+        # There are two types of CVM files: DFP(annual) and ITR(quarterly).
+        if str(raw_zipfile)[0:3] == "dfp":
+            df_child["report_type"] = "annual"
+        else:
+            df_child["report_type"] = "quarterly"
+
+        df_child = process_raw_df(df_child)
+        df = pd.concat([df, df_child], ignore_index=True)
+
+    # Most values in columns are repeated
+    df = df.astype("category")
+    processed_path = PROCESSED_DIR / raw_path.with_suffix(".pkl.zst").name
+    df.to_pickle(processed_path)
+    return processed_path
+
+
+def process_yearly_files(workers: int, raw_paths: List[Path]) -> List[Path]:
+    """
+    Execute function 'process_raw_file' asynchronously and return
+    a list with filenames for the processed files.
+    """
+    with ProcessPoolExecutor(max_workers=workers) as executor:
+        results = executor.map(process_raw_file, raw_paths)
+        processed_paths = [r for r in results]
+    return processed_paths
+
+
+def consolidate_main_df(processed_filenames: str):
+    # Guard clause: if no raw file was update, there is nothing to consolidate
+    if not processed_filenames:
+        return
+
+    for filename in processed_filenames:
+        updated_df = pd.read_pickle(PROCESSED_DIR / filename)
+        c.main_df = pd.concat([c.main_df, updated_df], ignore_index=True)
+    c.main_df = c.main_df.astype("category")
+    # Keep only the newest 'report_version' in df if values are repeated
+    # print(len(main_df.index))
+    cols = [
+        "cvm_id",
+        "report_type",
+        "period_reference",
+        "report_version",
+        "period_order",
+        "acc_method",
+        "acc_code",
+    ]
+    c.main_df.sort_values(by=cols, ignore_index=True, inplace=True)
+    cols = list(c.main_df.columns)
+    cols_remove = ["report_version", "acc_value", "acc_fixed"]
+    [cols.remove(col) for col in cols_remove]
+    # tmp = main_df[main_df.duplicated(cols, keep=False)]
+    # Ascending order --> last is the newest report_version
+    c.main_df.drop_duplicates(cols, keep="last", inplace=True)
+    # print(len(main_df.index))
+    c.main_df.to_pickle(c.MAIN_DF_PATH)
+
+
+def search_company(expression: str) -> pd.DataFrame:
+    """
+    Search companies names in database that contains the ```expression```
+
+    Parameters
+    ----------
+    expression : str
+        A expression to search in as fi column 'co_name'.
+
+    Returns
+    -------
+    pd.DataFrame with search results
+    """
+    expression = expression.upper()
+    df = (
+        c.main_df.query("co_name.str.contains(@expression)")
+        .sort_values(by="co_name")
+        .drop_duplicates(subset="cvm_id", ignore_index=True)[
+            ["co_name", "cvm_id", "fiscal_id"]
+        ]
+    )
+    return df
+
+
+def database_info() -> pd.DataFrame:
+    """
+    Return information about FinLogic database
+
+    Returns
+    -------
+    pd.DataFrame
+    """
+    info_df = pd.DataFrame()
+    info_df.index.name = "FinLogic Database Info"
+    info_df["Value"] = ""
+    info_df.loc["Database Path"] = c.DATA_PATH
+    info_df.loc["File Size (MB)"] = round(
+        os.path.getsize(c.MAIN_DF_PATH) / (1024 * 1024), 1
+    )
+    last_modified_python = os.path.getmtime(c.MAIN_DF_PATH)
+    # Convert python epoch to Pandas datetime
+    last_modified_python = os.path.getmtime(c.MAIN_DF_PATH)
+    last_modified_pandas = pd.to_datetime(last_modified_python, unit="s").round("1s")
+    info_df.loc["Last Modified (MB)"] = last_modified_pandas
+    info_df.loc["Size in Memory (MB)"] = round(
+        c.main_df.memory_usage(index=True, deep=True).sum() / (1024 * 1024), 1
+    )
+    info_df.loc["Accounting Rows"] = len(c.main_df.index)
+    info_df.loc["Unique Accounting Codes"] = c.main_df["acc_code"].nunique()
+    info_df.loc["Companies"] = c.main_df["cvm_id"].nunique()
+    columns_duplicates = ["cvm_id", "report_version", "report_type", "period_reference"]
+    info_df.loc["Unique Financial Statements"] = len(
+        c.main_df.drop_duplicates(subset=columns_duplicates).index
+    )
+    info_df.loc["First Financial Statement"] = (
+        c.main_df["period_end"].astype("datetime64").min().strftime("%Y-%m-%d")
+    )
+    info_df.loc["Last Financial Statement"] = (
+        c.main_df["period_end"].astype("datetime64").max().strftime("%Y-%m-%d")
+    )
+    return info_df
+
+
+def update_database(cpu_usage: float = 0.75, reset_data: bool = False):
+    """
+    Create/Update all remote files (raw files) and process them for local data
+    access.
+
+    Parameters
+    ----------
+    cpu_usage: float, default 0.75
+        A number between 0 and 1, where 1 represents 100% CPU usage. This
+        argument will define the number of cpu cores used for data processing.
+    reset_data: bool, default True
+        Delete all raw files and force a full database recompilation
+    Returns
+    -------
+    None
+    """
+    # Parameter 'reset_data'-> delete, if they exist, data folders
+    if reset_data:
+        if Path.exists(c.DATA_PATH):
+            shutil.rmtree(c.DATA_PATH)
+        c.main_df = pd.DataFrame()
+
+    # create data folders if they do not exist
+    Path.mkdir(RAW_DIR, parents=True, exist_ok=True)
+    Path.mkdir(PROCESSED_DIR, parents=True, exist_ok=True)
+
+    # Define the number of cpu cores for parallel data processing
+    workers = math.trunc(os.cpu_count() * cpu_usage)
+    if workers < 1:
+        workers = 1
+
+    print("Updating CVM raw files...")
+    urls = list_urls()
+    raw_paths = update_raw_files(urls)
+    print(f"Number of CVM raw files updated = {len(raw_paths)}")
+    print("Processing CVM raw files...")
+    processed_filenames = process_yearly_files(workers, raw_paths)
+    print("Consolidating processed files...")
+    consolidate_main_df(processed_filenames)
+    print("FinLogic database updated \u2705")
 
 
 def process_raw_df(df: pd.DataFrame) -> pd.DataFrame:
@@ -202,178 +375,3 @@ def process_raw_df(df: pd.DataFrame) -> pd.DataFrame:
     df = df[columns_order]
 
     return df
-
-
-def process_yearly_raw_files(raw_file) -> str:
-    """
-    Read yearly raw file, process it, save the result and return saved
-    filename.
-    """
-    df = pd.DataFrame()
-    raw_zip = zf.ZipFile(RAW_DIR / raw_file)
-    child_filenames = raw_zip.namelist()
-
-    for child_filename in child_filenames[1:]:
-        child_file = raw_zip.open(child_filename)
-        df_child = pd.read_csv(child_file, sep=";", encoding="iso-8859-1", dtype=str)
-        # There are two types of CVM files: DFP(annual) and ITR(quarterly).
-        if str(raw_zip)[0:3] == "dfp":
-            df_child["report_type"] = "annual"
-        else:
-            df_child["report_type"] = "quarterly"
-
-        df_child = process_raw_df(df_child)
-        df = pd.concat([df, df_child], ignore_index=True)
-
-    # Most values in columns are repeated
-    df = df.astype("category")
-    processed_filename = raw_file.stem / ".pkl.zst"
-    df.to_pickle(PROCESSED_DIR / processed_filename)
-    return processed_filename
-
-
-def process_yearly_files(workers: int, raw_filenames: list) -> list:
-    """
-    Execute function 'process_yearly_raw_files' asynchronously and return
-    a list with filenames for the processed files.
-    """
-    with ProcessPoolExecutor(max_workers=workers) as executor:
-        results = executor.map(process_yearly_raw_files, raw_filenames)
-    return list(results)
-
-
-def consolidate_main_df(processed_filenames: str):
-    # Guard clause: if no raw file was update, there is nothing to consolidate
-    if not processed_filenames:
-        return
-
-    for filename in processed_filenames:
-        updated_df = pd.read_pickle(PROCESSED_DIR / filename)
-        c.main_df = pd.concat([c.main_df, updated_df], ignore_index=True)
-    c.main_df = c.main_df.astype("category")
-    # Keep only the newest 'report_version' in df if values are repeated
-    # print(len(main_df.index))
-    cols = [
-        "cvm_id",
-        "report_type",
-        "period_reference",
-        "report_version",
-        "period_order",
-        "acc_method",
-        "acc_code",
-    ]
-    c.main_df.sort_values(by=cols, ignore_index=True, inplace=True)
-    cols = list(c.main_df.columns)
-    cols_remove = ["report_version", "acc_value", "acc_fixed"]
-    [cols.remove(col) for col in cols_remove]
-    # tmp = main_df[main_df.duplicated(cols, keep=False)]
-    # Ascending order --> last is the newest report_version
-    c.main_df.drop_duplicates(cols, keep="last", inplace=True)
-    # print(len(main_df.index))
-    c.main_df.to_pickle(c.MAIN_DF_PATH)
-
-
-def search_company(expression: str) -> pd.DataFrame:
-    """
-    Search companies names in database that contains the ```expression```
-
-    Parameters
-    ----------
-    expression : str
-        A expression to search in as fi column 'co_name'.
-
-    Returns
-    -------
-    pd.DataFrame with search results
-    """
-    expression = expression.upper()
-    df = (
-        c.main_df.query("co_name.str.contains(@expression)")
-        .sort_values(by="co_name")
-        .drop_duplicates(subset="cvm_id", ignore_index=True)[
-            ["co_name", "cvm_id", "fiscal_id"]
-        ]
-    )
-    return df
-
-
-def database_info() -> pd.DataFrame:
-    """
-    Return information about FinLogic database
-
-    Returns
-    -------
-    pd.DataFrame
-    """
-    info_df = pd.DataFrame()
-    info_df.index.name = "FinLogic Database Info"
-    info_df["Value"] = ""
-    info_df.loc["Database Path"] = c.DATA_DIR
-    info_df.loc["File Size (MB)"] = round(
-        os.path.getsize(c.MAIN_DF_PATH) / (1024 * 1024), 1
-    )
-    last_modified_python = os.path.getmtime(c.MAIN_DF_PATH)
-    # Convert python epoch to Pandas datetime
-    last_modified_python = os.path.getmtime(c.MAIN_DF_PATH)
-    last_modified_pandas = pd.to_datetime(last_modified_python, unit="s").round("1s")
-    info_df.loc["Last Modified (MB)"] = last_modified_pandas
-    info_df.loc["Size in Memory (MB)"] = round(
-        c.main_df.memory_usage(index=True, deep=True).sum() / (1024 * 1024), 1
-    )
-    info_df.loc["Accounting Rows"] = len(c.main_df.index)
-    info_df.loc["Unique Accounting Codes"] = c.main_df["acc_code"].nunique()
-    info_df.loc["Companies"] = c.main_df["cvm_id"].nunique()
-    columns_duplicates = ["cvm_id", "report_version", "report_type", "period_reference"]
-    info_df.loc["Unique Financial Statements"] = len(
-        c.main_df.drop_duplicates(subset=columns_duplicates).index
-    )
-    info_df.loc["First Financial Statement"] = (
-        c.main_df["period_end"].astype("datetime64").min().strftime("%Y-%m-%d")
-    )
-    info_df.loc["Last Financial Statement"] = (
-        c.main_df["period_end"].astype("datetime64").max().strftime("%Y-%m-%d")
-    )
-    return info_df
-
-
-def update_database(cpu_usage: float = 0.75, reset_data: bool = False):
-    """
-    Create/Update all remote files (raw files) and process them for local data
-    access.
-
-    Parameters
-    ----------
-    cpu_usage: float, default 0.75
-        A number between 0 and 1, where 1 represents 100% CPU usage. This
-        argument will define the number of cpu cores used for data processing.
-    reset_data: bool, default True
-        Delete all raw files and force a full database recompilation
-    Returns
-    -------
-    None
-    """
-    # Parameter 'reset_data'-> delete, if they exist, data folders
-    if reset_data:
-        if Path.exists(c.DATA_DIR):
-            shutil.rmtree(c.DATA_DIR)
-        c.main_df = pd.DataFrame()
-
-    # create data folders if they do not exist
-    Path.mkdir(RAW_DIR, parents=True, exist_ok=True)
-    Path.mkdir(PROCESSED_DIR, parents=True, exist_ok=True)
-
-    # Define the number of cpu cores for parallel data processing
-    workers = math.trunc(os.cpu_count() * cpu_usage)
-    if workers < 1:
-        workers = 1
-    print("workers=", workers)
-
-    print("Updating CVM raw files...")
-    urls = list_urls()
-    raw_filenames = update_raw_files(urls)
-    print(f"Number of CVM raw files updated = {len(raw_filenames)}")
-    print("Processing CVM raw files...")
-    processed_filenames = process_yearly_files(workers, raw_filenames)
-    print("Consolidating processed files...")
-    consolidate_main_df(processed_filenames)
-    print("FinLogic database updated \u2705")
