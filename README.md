@@ -57,8 +57,8 @@ pip install finlogic
 ## Quick Start
 ### Create FinLogic Local Database
 The 'update_database' function is responsible for downloading raw financial files from CVM, processesing aprox. 18 millions rows of accounting values and storing it into a single Pandas DataFrame compressed file for local data analysis.
-In the firt run, the update process can take some minutes depending on CVM Server connection and local CPU power. The database generation needs at least 8 GB of free memory and a quad core processor is recommended.
-For subsequent updates, only updated CVM files will be processed and inserted into the database, which will consume less CPU power.
+In the firt run, the process can take 3 minutes depending on CVM Server connection and local CPU power. The database generation needs at least 8 GB of free memory and a quad core processor is recommended.
+For subsequent updates, only updated CVM files will be processed and inserted into the database, which will be faster.
 
 ```python
 import finlogic as fl

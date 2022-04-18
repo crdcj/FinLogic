@@ -106,14 +106,22 @@ def process_raw_file(raw_path: Path) -> Path:
     return processed_path
 
 
-def process_yearly_files(workers: int, raw_paths: List[Path]) -> List[Path]:
+def process_raw_files(
+    workers: int, raw_paths: List[Path], asynchronous: bool
+) -> List[Path]:
     """
     Execute function 'process_raw_file' asynchronously and return
     a list with filenames for the processed files.
     """
-    with ProcessPoolExecutor(max_workers=workers) as executor:
-        results = executor.map(process_raw_file, raw_paths)
-    processed_paths = [r for r in results]
+    if asynchronous:
+        with ProcessPoolExecutor(max_workers=workers) as executor:
+            results = executor.map(process_raw_file, raw_paths)
+        processed_paths = [r for r in results]
+    else:
+        processed_paths = []
+        for raw_path in raw_paths:
+            processed_paths.append(process_raw_file(raw_path))
+
     return processed_paths
 
 
@@ -213,18 +221,25 @@ def database_info() -> pd.DataFrame:
     return info_df
 
 
-def update_database(cpu_usage: float = 0.75, reset_data: bool = False):
+def update_database(
+    reset_data: bool = False, asynchronous: bool = False, cpu_usage: float = 0.75
+):
     """
     Create/Update all remote files (raw files) and process them for local data
     access.
 
     Parameters
     ----------
-    cpu_usage: float, default 0.75
-        A number between 0 and 1, where 1 represents 100% CPU usage. This
-        argument will define the number of cpu cores used for data processing.
     reset_data: bool, default True
         Delete all raw files and force a full database recompilation
+    asynchronous: bool, default False
+        Generate database by processing raw files asynchronously. Works only on Linux
+        and Mac
+    cpu_usage: float, default 0.75
+        A number between 0 and 1, where 1 represents 100% CPU usage. This
+        argument will define the number of cpu cores used for data processing when
+        function asynchronous mode is set to 'True'.
+
     Returns
     -------
     None
@@ -249,7 +264,9 @@ def update_database(cpu_usage: float = 0.75, reset_data: bool = False):
     raw_paths = update_raw_files(urls)
     print(f"Number of CVM raw files updated = {len(raw_paths)}")
     print("Processing CVM raw files...")
-    processed_filenames = process_yearly_files(workers, raw_paths)
+    processed_filenames = process_raw_files(
+        workers, raw_paths, asynchronous=asynchronous
+    )
     print("Consolidating processed files...")
     consolidate_main_df(processed_filenames)
     print("FinLogic database updated \u2705")
