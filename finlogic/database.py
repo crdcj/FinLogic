@@ -180,6 +180,9 @@ def database_info() -> pd.DataFrame:
     -------
     pd.DataFrame
     """
+    if c.main_df.empty:
+        print("There is no data in database")
+        return
     info_df = pd.DataFrame()
     info_df.index.name = "FinLogic Database Info"
     info_df["Value"] = ""
@@ -189,7 +192,6 @@ def database_info() -> pd.DataFrame:
     )
     last_modified_python = os.path.getmtime(c.MAIN_DF_PATH)
     # Convert python epoch to Pandas datetime
-    last_modified_python = os.path.getmtime(c.MAIN_DF_PATH)
     last_modified_pandas = pd.to_datetime(last_modified_python, unit="s").round("1s")
     info_df.loc["Last Modified (MB)"] = last_modified_pandas
     info_df.loc["Size in Memory (MB)"] = round(
