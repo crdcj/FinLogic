@@ -5,13 +5,12 @@
 #
 # Copyright 2022 Carlos Carvalho
 #
-from . import version
 from . import config  # noqa
 from .database import update_database, search_company, database_info
 from .company import Company
 
 
-__version__ = version.version
+__version__ = "0.2.3"
 __author__ = "Carlos Carvalho"
 
 
