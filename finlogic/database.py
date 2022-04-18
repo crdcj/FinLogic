@@ -87,15 +87,17 @@ def process_raw_file(raw_path: Path) -> Path:
 
     for child_filename in child_filenames[1:]:
         child_file = raw_zipfile.open(child_filename)
-        df_child = pd.read_csv(child_file, sep=";", encoding="iso-8859-1", dtype=str)
+        raw_child_df = pd.read_csv(
+            child_file, sep=";", encoding="iso-8859-1", dtype=str
+        )
         # There are two types of CVM files: DFP(annual) and ITR(quarterly).
-        if str(raw_zipfile)[0:3] == "dfp":
-            df_child["report_type"] = "annual"
+        if str(raw_path.name)[0:3] == "dfp":
+            raw_child_df["report_type"] = "annual"
         else:
-            df_child["report_type"] = "quarterly"
+            raw_child_df["report_type"] = "quarterly"
 
-        df_child = process_raw_df(df_child)
-        df = pd.concat([df, df_child], ignore_index=True)
+        processed_child_df = process_raw_df(raw_child_df)
+        df = pd.concat([df, processed_child_df], ignore_index=True)
 
     # Most values in columns are repeated
     df = df.astype("category")
