@@ -222,7 +222,7 @@ def database_info() -> pd.DataFrame:
 
 
 def update_database(
-    cpu_usage: float = 0.75, reset_data: bool = False, asynchronous: bool = False
+    reset_data: bool = False, asynchronous: bool = False, cpu_usage: float = 0.75
 ):
     """
     Create/Update all remote files (raw files) and process them for local data
@@ -230,11 +230,16 @@ def update_database(
 
     Parameters
     ----------
-    cpu_usage: float, default 0.75
-        A number between 0 and 1, where 1 represents 100% CPU usage. This
-        argument will define the number of cpu cores used for data processing.
     reset_data: bool, default True
         Delete all raw files and force a full database recompilation
+    asynchronous: bool, default False
+        Generate database by processing raw files asynchronously. Works only on Linux
+        and Mac
+    cpu_usage: float, default 0.75
+        A number between 0 and 1, where 1 represents 100% CPU usage. This
+        argument will define the number of cpu cores used for data processing when
+        function asynchronous mode is set to 'True'.
+
     Returns
     -------
     None
