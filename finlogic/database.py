@@ -113,7 +113,7 @@ def process_yearly_files(workers: int, raw_paths: List[Path]) -> List[Path]:
     """
     with ProcessPoolExecutor(max_workers=workers) as executor:
         results = executor.map(process_raw_file, raw_paths)
-        processed_paths = [r for r in results]
+    processed_paths = [r for r in results]
     return processed_paths
 
 
