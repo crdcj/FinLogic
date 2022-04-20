@@ -61,17 +61,17 @@ In the firt run, the process can take 3 minutes depending on CVM Server connecti
 For subsequent updates, only updated CVM files will be processed and inserted into the database, which will be faster.
 
 ```python
-import finlogic as fl
+>>> import finlogic as fl
 
 # Starting FinLogic for the first time
-fl.update_database()
+>>> fl.update_database()
 
 Updating CVM raw files...
 ...
 FinLogic database updated ✅
 
 # Show database info
-fl.database_info()
+>>> fl.database_info()
 ```
 
 | FinLogic Database Info      |        Value |
@@ -86,7 +86,7 @@ fl.database_info()
 
 ```python
 # Search a company name in database
-fl.search_company('petro')
+>>> fl.search_company('petro')
 ```
 
 |   | co_name                                | cvm_id | fiscal_id          |
@@ -104,19 +104,19 @@ fl.search_company('petro')
 The Company Class allows you to easily access financial data from Brazilian companies. All values are in local currency (Real).
 
 ```python
-import finlogic as fl
+>>> import finlogic as fl
 # Create a Company object to acces its fiancial data.
 # Both CVM (regulator) ID or Fiscal ID can be used as an identifier.
-petro = fl.Company(9512, acc_method='separate', acc_unit='million')
+>>> petro = fl.Company(9512, acc_method='separate', acc_unit='million')
 
 # Change company accouting method back to default = 'consolidated'
-petro.acc_method = 'consolidated'
+>>> petro.acc_method = 'consolidated'
 
 # Change company accouting unit to billion (default is 1)
-petro.acc_unit = 'billion'
+>>> petro.acc_unit = 'billion'
 
 # show company info
-petro.info()
+>>> petro.info()
 ```
 
 | Company Info               |                             Values |
@@ -134,10 +134,10 @@ petro.info()
 
 ```python
 # show company assets in Brazilian currency 
-petro.report(report_type='assets')
+>>> petro.report(report_type='assets')
 ...
 # show company liabilities with custom arguments
-petro.report(report_type='debt', acc_level=4, num_years=3)
+>>> petro.report(report_type='debt', acc_level=4, num_years=3)
 ```
 
 |   | acc_name               | acc_code   | acc_fixed | 2019-12-31 | 2020-12-31 | 2021-12-31 |
@@ -153,7 +153,7 @@ petro.report(report_type='debt', acc_level=4, num_years=3)
 
 ```python
 # show company main indicators
-petro.indicators(num_years=3)
+>>> petro.indicators(num_years=3)
 ```
 
 | Company Financial Indicators | 2019-12-31 | 2020-12-31 | 2021-12-31 |

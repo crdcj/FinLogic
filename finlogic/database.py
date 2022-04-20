@@ -4,6 +4,7 @@ from pathlib import Path
 import shutil
 import math
 import zipfile
+from datetime import datetime
 from typing import List
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 import requests
@@ -65,6 +66,19 @@ def update_raw_file(url: str) -> Path:
             return None
         with raw_path.open(mode="wb") as f:
             f.write(r.content)
+
+        # Timestamps
+        ts_gmt = pd.to_datetime(r.headers["Last-Modified"])
+        ts_sao_paulo = ts_gmt.tz_convert("America/sao_paulo")
+        ts_now = pd.Timestamp.now().tz_localize("America/sao_paulo")
+
+        # Store URL files metadata
+        c.cvm_df.loc[ts_now] = [
+            raw_path.name,
+            r.headers["Content-Length"],
+            r.headers["ETag"],
+            ts_sao_paulo,
+        ]
         return raw_path
 
 
@@ -72,6 +86,7 @@ def update_raw_files(urls: str) -> List[Path]:
     """Update local CVM raw files asynchronously."""
     with ThreadPoolExecutor() as executor:
         results = executor.map(update_raw_file, urls)
+    c.cvm_df.to_pickle(c.CVM_DF_PATH)
     updated_raw_paths = [r for r in results if r is not None]
     return updated_raw_paths
 
@@ -196,12 +211,17 @@ def database_info() -> pd.DataFrame:
     info_df["Value"] = ""
     info_df.loc["Database Path"] = c.DATA_PATH
     info_df.loc["File Size (MB)"] = round(
-        os.path.getsize(c.MAIN_DF_PATH) / (1024 * 1024), 1
+        c.MAIN_DF_PATH.lstat().st_size / (1024 * 1024), 1
     )
-    last_modified_python = os.path.getmtime(c.MAIN_DF_PATH)
-    # Convert python epoch to Pandas datetime
-    last_modified_pandas = pd.to_datetime(last_modified_python, unit="s").round("1s")
-    info_df.loc["Last Modified (MB)"] = last_modified_pandas
+    info_df.loc["Last Update Call"] = c.cvm_df.index.max().round("1s").tz_localize(None)
+
+    # Convert python datetime to Pandas Timestamp
+    last_modified_python = datetime.fromtimestamp(c.MAIN_DF_PATH.lstat().st_mtime)
+    last_modified_pandas = pd.to_datetime(last_modified_python).round("1s")
+    info_df.loc["Finlogic Last Modified"] = last_modified_pandas
+
+    info_df.loc["CVM Last Update"] = c.cvm_df["last_modified"].max().tz_localize(None)
+
     info_df.loc["Size in Memory (MB)"] = round(
         c.main_df.memory_usage(index=True, deep=True).sum() / (1024 * 1024), 1
     )
