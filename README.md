@@ -74,15 +74,20 @@ FinLogic database updated ✅
 >>> fl.database_info()
 ```
 
-| FinLogic Database Info      |        Value |
-|:----------------------------|-------------:|
-| Size in Memory (MB)         |        626.2 |
-| Accounting Rows             | 18,754,523.0 |
-| Unique Accounting Codes     |      2,007.0 |
-| Companies                   |      1,093.0 |
-| Unique Financial Statements |     12,137.0 |
-| First Financial Statement   |   2009-01-31 |
-| Last Financial Statement    |   2022-03-31 |
+| FinLogic Database Info      | Value                                   |
+|:----------------------------|----------------------------------------:|
+| Database Path               | /home/crcj/repos/FinLogic/finlogic/data |
+| File Size (MB)              | 39.0                                    |
+| Last Update Call            | 2022-04-20 06:10:13                     |
+| Finlogic Last Modified      | 2022-04-20 07:31:48                     |
+| CVM Last Update             | 2022-04-17 13:09:01                     |
+| Size in Memory (MB)         | 626.4                                   |
+| Accounting Rows             | 18,757,249                              |
+| Unique Accounting Codes     | 2,008                                   |
+| Companies                   | 1,093                                   |
+| Unique Financial Statements | 12,139                                  |
+| First Financial Statement   | 2009-01-31                              |
+| Last Financial Statement    | 2022-03-31                              |
 
 ```python
 # Search a company name in database
