@@ -336,10 +336,11 @@ class Company:
         df.reset_index(drop=True, inplace=True)
 
         report_df = self._make_report(df)
-        # Show only the selected number of years
+        report_df.set_index(keys="acc_code", drop=True, inplace=True)
+        # Show only selected years
         if num_years > 0:
             cols = report_df.columns.to_list()
-            cols = cols[0:3] + cols[-num_years:]
+            cols = cols[0:2] + cols[-num_years:]
             report_df = report_df[cols]
         return report_df
 
@@ -397,15 +398,11 @@ class Company:
         df_le = self.report("liabilities_and_equity")
         df_is = self.report("income")
         df_cf = self.report("cash_flow")
-        dfo = (
-            pd.concat([df_as, df_le, df_is, df_cf], ignore_index=True)
-            .query("acc_code == @acc_list")
-            .reset_index(drop=True)
-        )
-        # Show only the selected number of years
+        dfo = pd.concat([df_as, df_le, df_is, df_cf]).query("acc_code == @acc_list")
+        # Show only selected years
         if num_years > 0:
             cols = dfo.columns.to_list()
-            cols = cols[0:3] + cols[-num_years:]
+            cols = cols[0:2] + cols[-num_years:]
             dfo = dfo[cols]
         return dfo
 
@@ -442,15 +439,14 @@ class Company:
                 Capital (ROIC) and Return on Equity (ROE): Measurement and
                 Implications.", 2007,
                 https://people.stern.nyu.edu/adamodar/pdfoles/papers/returnmeasures.pdf
+                https://people.stern.nyu.edu/adamodar/New_Home_Page/datafile/variable.htm
         """
         df_as = self.report("assets")
         df_le = self.report("liabilities_and_equity")
         df_in = self.report("income")
         df_cf = self.report("cash_flow")
-        df = (
-            pd.concat([df_as, df_le, df_in, df_cf], ignore_index=True)
-            .set_index(keys="acc_code", drop=True)
-            .drop(columns=["acc_fixed", "acc_name"])
+        df = pd.concat([df_as, df_le, df_in, df_cf]).drop(
+            columns=["acc_fixed", "acc_name"]
         )
         # Calculate indicators series
         revenues = df.loc["3.01"]
@@ -489,7 +485,8 @@ class Company:
         dfo.loc["return_on_equity"] = net_income / equity_p
         dfo.loc["gross_margin"] = gross_profit / revenues
         dfo.loc["ebitda_margin"] = ebitda / revenues
-        dfo.loc["operating_margin"] = ebit * (1 - self._tax_rate) / revenues
+        dfo.loc["pre_tax_operating_margin"] = ebit / revenues
+        dfo.loc["after_tax_operating_margin"] = ebit * (1 - self._tax_rate) / revenues
         dfo.loc["net_margin"] = net_income / revenues
 
         dfo.index.name = "Company Financial Indicators"
