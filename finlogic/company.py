@@ -455,6 +455,7 @@ class Company:
         depreciation_amortization = df.loc["6.01.01.04"]
         ebitda = ebit + depreciation_amortization
         operating_cash_flow = df.loc["6.01"]
+        # capex = df.loc["6.02"]
         net_income = df.loc["3.11"]
         total_assets = df.loc["1"]
         total_assets_p = self._prior_values(total_assets, is_prior)
@@ -472,6 +473,7 @@ class Company:
         dfo = pd.DataFrame(columns=df.columns)
         dfo.loc["revenues"] = revenues
         dfo.loc["operating_cash_flow"] = operating_cash_flow
+        # dfo.loc["capex"] = capex
         dfo.loc["ebitda"] = ebitda
         dfo.loc["ebit"] = ebit
         dfo.loc["net_income"] = net_income
@@ -493,6 +495,8 @@ class Company:
         # Show only the selected number of years
         if num_years > 0:
             dfo = dfo[dfo.columns[-num_years:]]
+        # Since all columns are strings representing corporate year, convert them to datetime64
+        dfo.columns = pd.to_datetime(dfo.columns)
         return dfo
 
     def _make_report(self, dfi: pd.DataFrame) -> pd.DataFrame:
@@ -527,7 +531,7 @@ class Company:
             df_year = df.query("period_end == @period")[
                 ["acc_value", "acc_code"]
             ].copy()
-            period_str = np.datetime_as_string(period, unit="D")
+            period_str = str(np.datetime_as_string(period, unit="D"))
             if period == self._LAST_QUARTERLY:
                 period_str += " (ttm)"
             df_year.rename(columns={"acc_value": period_str}, inplace=True)
