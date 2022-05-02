@@ -452,6 +452,8 @@ class Company:
         revenues = df.loc["3.01"]
         gross_profit = df.loc["3.03"]
         ebit = df.loc["3.05"]
+        ebt = df.loc["3.07"]
+        effective_tax = df.loc["3.08"]
         depreciation_amortization = df.loc["6.01.01.04"]
         ebitda = ebit + depreciation_amortization
         operating_cash_flow = df.loc["6.01"]
@@ -469,13 +471,17 @@ class Company:
         net_debt = total_debt - total_cash
         invested_capital = total_debt + equity - total_cash
         invested_capital_p = self._prior_values(invested_capital, is_prior)
-        # dfo: dataframe with indicators
+
+
+        # Output Dataframe (dfo)
         dfo = pd.DataFrame(columns=df.columns)
         dfo.loc["revenues"] = revenues
         dfo.loc["operating_cash_flow"] = operating_cash_flow
         # dfo.loc["capex"] = capex
         dfo.loc["ebitda"] = ebitda
         dfo.loc["ebit"] = ebit
+        dfo.loc["ebt"] = ebt
+        dfo.loc["effective_tax_rate"] = -1 * effective_tax / ebt
         dfo.loc["net_income"] = net_income
         dfo.loc["total_cash"] = total_cash
         dfo.loc["total_debt"] = total_debt
