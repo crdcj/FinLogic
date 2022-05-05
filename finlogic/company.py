@@ -316,7 +316,8 @@ class Company:
             "liabilities_and_equity": ["2"],
             "equity": ["2.03"],
             "income": ["3"],
-            "earnings_per_share": ["3.99.01.01", "3.99.02.01"],
+            # "earnings_per_share": ["3.99.01.01", "3.99.02.01"],
+            "earnings_per_share": ["3.99"],
             "comprehensive_income": ["4"],
             "changes_in_equity": ["5"],
             "cash_flow": ["6"],
@@ -329,6 +330,10 @@ class Company:
                 expression += " or "
             expression += f'acc_code.str.startswith("{acc_code}")'
         df.query(expression, inplace=True)
+
+        # remove earnings per share from income statment
+        if report_type == 'income':
+            df = df[~df['acc_code'].str.startswith("3.99")]
 
         if report_type in {"income", "cash_flow"}:
             df = self._calculate_ttm(df)
