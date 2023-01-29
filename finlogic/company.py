@@ -196,9 +196,9 @@ class Company:
                     "fiscal_id": str,
                     "report_type": str,
                     "report_version": str,
-                    "period_reference": "datetime64",
-                    "period_begin": "datetime64",
-                    "period_end": "datetime64",
+                    "period_reference": "datetime64[ns]",
+                    "period_begin": "datetime64[ns]",
+                    "period_end": "datetime64[ns]",
                     "period_order": np.int8,
                     "acc_code": str,
                     "acc_name": str,
@@ -332,8 +332,8 @@ class Company:
         df.query(expression, inplace=True)
 
         # remove earnings per share from income statment
-        if report_type == 'income':
-            df = df[~df['acc_code'].str.startswith("3.99")]
+        if report_type == "income":
+            df = df[~df["acc_code"].str.startswith("3.99")]
 
         if report_type in {"income", "cash_flow"}:
             df = self._calculate_ttm(df)
@@ -476,7 +476,6 @@ class Company:
         net_debt = total_debt - total_cash
         invested_capital = total_debt + equity - total_cash
         invested_capital_p = self._prior_values(invested_capital, is_prior)
-
 
         # Output Dataframe (dfo)
         dfo = pd.DataFrame(columns=df.columns)

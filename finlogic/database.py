@@ -233,10 +233,10 @@ def database_info() -> pd.DataFrame:
         c.main_df.drop_duplicates(subset=columns_duplicates).index
     )
     info_df.loc["First Financial Statement"] = (
-        c.main_df["period_end"].astype("datetime64").min().strftime("%Y-%m-%d")
+        c.main_df["period_end"].astype("datetime64[ns]").min().strftime("%Y-%m-%d")
     )
     info_df.loc["Last Financial Statement"] = (
-        c.main_df["period_end"].astype("datetime64").max().strftime("%Y-%m-%d")
+        c.main_df["period_end"].astype("datetime64[ns]").max().strftime("%Y-%m-%d")
     )
     return info_df
 
