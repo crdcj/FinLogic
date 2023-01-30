@@ -332,8 +332,8 @@ class Company:
         df.query(expression, inplace=True)
 
         # remove earnings per share from income statment
-        if report_type == 'income':
-            df = df[~df['acc_code'].str.startswith("3.99")]
+        if report_type == "income":
+            df = df[~df["acc_code"].str.startswith("3.99")]
 
         if report_type in {"income", "cash_flow"}:
             df = self._calculate_ttm(df)
@@ -477,7 +477,6 @@ class Company:
         invested_capital = total_debt + equity - total_cash
         invested_capital_p = self._prior_values(invested_capital, is_prior)
 
-
         # Output Dataframe (dfo)
         dfo = pd.DataFrame(columns=df.columns)
         dfo.loc["revenues"] = revenues
@@ -507,7 +506,7 @@ class Company:
         if num_years > 0:
             dfo = dfo[dfo.columns[-num_years:]]
         # Since all columns are strings representing corporate year, convert them to datetime64
-        dfo.columns = pd.to_datetime(dfo.columns)
+        # dfo.columns = pd.to_datetime(dfo.columns)
         return dfo
 
     def _make_report(self, dfi: pd.DataFrame) -> pd.DataFrame:
