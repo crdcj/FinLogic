@@ -63,7 +63,7 @@ For subsequent updates, only updated CVM files will be processed and inserted in
 ```python
 >>> import finlogic as fl
 
-# Starting FinLogic for the first time
+# Compile FinLogic database for the first time
 >>> fl.update_database()
 
 Updating CVM raw files...
@@ -109,7 +109,6 @@ FinLogic database updated ✅
 The Company Class allows you to easily access financial data from Brazilian companies. All values are in local currency (Real).
 
 ```python
->>> import finlogic as fl
 # Create a Company object to acces its fiancial data.
 # Both CVM (regulator) ID or Fiscal ID can be used as an identifier.
 >>> petro = fl.Company(9512, acc_method='separate', acc_unit='million')
