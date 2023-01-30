@@ -90,7 +90,7 @@ FinLogic database updated ✅
 | Last Financial Statement    | 2022-03-31                              |
 
 ```python
-# Search a company name in database
+# Search for a company in database
 >>> fl.search_company('petro')
 ```
 
