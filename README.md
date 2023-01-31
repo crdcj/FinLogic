@@ -118,7 +118,7 @@ The Company Class allows you to easily access financial data from Brazilian comp
 # Change company accouting unit to billion (default is 1)
 >>> petro.acc_unit = 'billion'
 
-# show company info
+# Show company info
 >>> petro.info()
 ```
 
@@ -136,10 +136,10 @@ The Company Class allows you to easily access financial data from Brazilian comp
 | Last Quarterly Report      |                         2021-09-30 |
 
 ```python
-# show company assets in Brazilian currency 
+# Show company assets in Brazilian currency 
 >>> petro.report(report_type='assets')
 ...
-# show company liabilities with custom arguments
+# Show company liabilities with custom arguments
 >>> petro.report(report_type='debt', acc_level=4, num_years=3)
 ```
 
@@ -155,7 +155,7 @@ The Company Class allows you to easily access financial data from Brazilian comp
 | 7 | Financiamento por Arr. | 2.02.01.03 |   True    |     73.053 |     82.897 |     98.279 |
 
 ```python
-# show company main indicators
+# Show company main indicators
 >>> petro.indicators(num_years=3)
 ```
 
