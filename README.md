@@ -36,12 +36,12 @@ Binary installers for the latest released version are available at the [Python
 Package Index (PyPI)](https://pypi.org/project/finlogic) and on [Conda](https://anaconda.org/conda-forge/finlogic).
 
 ```sh
-# conda
+# Conda:
 conda install -c conda-forge finlogic 
 ```
 
 ```sh
-# or PyPI
+# or PyPI:
 pip install finlogic
 ```
 
@@ -62,14 +62,14 @@ For subsequent updates, only updated CVM files will be processed and inserted in
 ```python
 >>> import finlogic as fl
 
-# Compile FinLogic database for the first time
+# Compile FinLogic database for the first time:
 >>> fl.update_database()
 
 Updating CVM raw files...
 ...
 FinLogic database updated ✅
 
-# Show database info
+# Show database info:
 >>> fl.database_info()
 ```
 
@@ -89,7 +89,7 @@ FinLogic database updated ✅
 | Last Financial Statement    | 2022-03-31                              |
 
 ```python
-# Search for a company in database
+# Search for a company in database:
 >>> fl.search_company('petro')
 ```
 
@@ -108,17 +108,17 @@ FinLogic database updated ✅
 The Company Class allows you to easily access financial data from Brazilian companies. All values are in local currency (Real).
 
 ```python
-# Create a Company object to acces its fiancial data.
+# Create a Company object to acces its fiancial data:
 # Both CVM (regulator) ID or Fiscal ID can be used as an identifier.
 >>> petro = fl.Company(9512, acc_method='separate', acc_unit='million')
 
-# Change company accouting method back to default = 'consolidated'
+# Change company accouting method back to consolidated (default):
 >>> petro.acc_method = 'consolidated'
 
-# Change company accouting unit to billion (default is 1)
+# Change company accouting unit to billion (default is 1):
 >>> petro.acc_unit = 'billion'
 
-# Show company info
+# Show company info:
 >>> petro.info()
 ```
 
@@ -136,10 +136,10 @@ The Company Class allows you to easily access financial data from Brazilian comp
 | Last Quarterly Report      |                         2021-09-30 |
 
 ```python
-# Show company assets in Brazilian currency 
+# Show company assets in Brazilian currency:
 >>> petro.report(report_type='assets')
 ...
-# Show company liabilities with custom arguments
+# Show company liabilities with custom arguments:
 >>> petro.report(report_type='debt', acc_level=4, num_years=3)
 ```
 
@@ -155,7 +155,7 @@ The Company Class allows you to easily access financial data from Brazilian comp
 | 7 | Financiamento por Arr. | 2.02.01.03 |   True    |     73.053 |     82.897 |     98.279 |
 
 ```python
-# Show company main indicators
+# Show company main indicators:
 >>> petro.indicators(num_years=3)
 ```
 
