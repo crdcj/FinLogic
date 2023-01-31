@@ -48,7 +48,6 @@ pip install finlogic
 ### Requirements
 -   [Python](https://www.python.org) \>= 3.10
 -   [Pandas](https://github.com/pydata/pandas) \>= 1.4.0)
--   [Numpy](http://www.numpy.org) \>= 1.18.5)
 -   [requests](http://docs.python-requests.org/en/master/) \>= 2.27.0
 -   [zstandard](https://pypi.org/project/zstandard/) \>= 0.17.0
 
