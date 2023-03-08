@@ -28,7 +28,7 @@ class Company:
         acc_method: Literal["consolidated", "separate"] = "consolidated",
         acc_unit: float | str = 1.0,
         tax_rate: float = 0.34,
-        language: str = "en",
+        language: str = "english",
     ):
         """Initialize main variables.
 
@@ -57,7 +57,35 @@ class Company:
         self.acc_method = acc_method
         self.acc_unit = acc_unit
         self.tax_rate = tax_rate
-        self.language = language
+        self.set_language(language)
+
+    def set_language(self, language: str):
+        """
+        Set the language of the account names.
+
+        Parameters
+        ----------
+        value: str
+            A valid language code.
+
+        Returns
+        -------
+        str
+
+        Raises
+        ------
+        KeyError
+            * If passed ``language`` not supported.
+        """
+        # Supported languages
+        list_languages = ["english", "portuguese"]
+
+        if language.lower() in list_languages:
+            self.language = language
+        else:
+            raise KeyError(
+                f"'{language}' not supported. Supported languages: {', '.join(list_languages)}"
+            )
 
     def set_id(self, identifier: int | str):
         """
@@ -288,7 +316,7 @@ class Company:
         df = self._COMP_DF.query("acc_method == @self._acc_method").copy()
 
         # Set language
-        if self.language == "en":
+        if self.language == "english":
             pten_dict = dict(pd.read_csv("pten_df.csv").values)
             df["acc_name"] = df["acc_name"].map(pten_dict)
         else:
