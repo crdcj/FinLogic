@@ -321,7 +321,7 @@ class Company:
             """Custom dictionary class to return key if key is not found.""" ""
 
             def __missing__(self, key):
-                return key
+                return "(pt) " + key
 
         if self.language == "english":
             pten_dict = dict(pd.read_csv("pten_df.csv").values)
