@@ -3,8 +3,8 @@ dist/
 build/
 .vscode/
 !data/
-/data/*
 !data/pten_df.csv
+/data/*
 data/
 finlogic.egg-info/
 dev*.*
