@@ -316,8 +316,16 @@ class Company:
         df = self._COMP_DF.query("acc_method == @self._acc_method").copy()
 
         # Set language
+
+        class MyDict(dict):
+            """Custom dictionary class to return key if key is not found.""" ""
+
+            def __missing__(self, key):
+                return key
+
         if self.language == "english":
             pten_dict = dict(pd.read_csv("pten_df.csv").values)
+            pten_dict = MyDict(pten_dict)
             df["acc_name"] = df["acc_name"].map(pten_dict)
         else:
             pass
