@@ -57,35 +57,7 @@ class Company:
         self.acc_method = acc_method
         self.acc_unit = acc_unit
         self.tax_rate = tax_rate
-        self.set_language(language)
-
-    def set_language(self, language: str):
-        """
-        Set the language of the account names.
-
-        Parameters
-        ----------
-        value: str
-            A valid language code.
-
-        Returns
-        -------
-        str
-
-        Raises
-        ------
-        KeyError
-            * If passed ``language`` not supported.
-        """
-        # Supported languages
-        list_languages = ["english", "portuguese"]
-
-        if language.lower() in list_languages:
-            self.language = language
-        else:
-            raise KeyError(
-                f"'{language}' not supported. Supported languages: {', '.join(list_languages)}"
-            )
+        self.language = language
 
     def set_id(self, identifier: int | str):
         """
@@ -124,6 +96,42 @@ class Company:
             raise KeyError("Company 'identifier' not found in database")
         # Only set company data after object identifier validation
         self._set_main_data()
+
+    @property
+    def language(self):
+        """
+        Set the language of the account names.
+        """
+        return self._language
+
+    @language.setter
+    def language(self, language: str):
+        """
+        Set the language of the account names.
+
+        Parameters
+        ----------
+        value: str
+            A valid language string.
+
+        Returns
+        -------
+        str
+
+        Raises
+        ------
+        KeyError
+            * If passed ``language`` not supported.
+        """
+
+        # Supported languages
+        list_languages = ["english", "portuguese"]
+        if language.lower() in list_languages:
+            self._language = language.capitalize()
+        else:
+            raise KeyError(
+                f"'{language}' not supported. Supported languages: {', '.join(list_languages)}"
+            )
 
     @property
     def acc_method(self):
@@ -323,10 +331,10 @@ class Company:
             def __missing__(self, key):
                 return "(pt) " + key
 
-        if self.language == "english":
-            pten_dict = dict(c.language_df.values)
-            pten_dict = MyDict(pten_dict)
-            df["acc_name"] = df["acc_name"].map(pten_dict)
+        if self._language == "English":
+            _pten_dict = dict(c.language_df.values)
+            _pten_dict = MyDict(_pten_dict)
+            df["acc_name"] = df["acc_name"].map(_pten_dict)
         else:
             pass
 

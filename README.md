@@ -156,7 +156,7 @@ The Company Class allows you to easily access financial data from Brazilian comp
 
 ```python
 # Change account names to Portuguese:
->>> petro.set_language("portuguese")
+>>> petro.language = "portuguese"
 >>> petro.report(report_type='debt', acc_level=4, num_years=3)
 ```
 
