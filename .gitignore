@@ -2,8 +2,10 @@ __pycache__/
 dist/
 build/
 .vscode/
+!data/
+/data/*
+!data/pten_df.csv
 data/
 finlogic.egg-info/
 dev*.*
 dev/
-!/pten_df.csv
