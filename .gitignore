@@ -6,3 +6,4 @@ data/
 finlogic.egg-info/
 dev*.*
 dev/
+!/pten_df.csv
