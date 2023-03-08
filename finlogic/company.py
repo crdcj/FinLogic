@@ -28,6 +28,7 @@ class Company:
         acc_method: Literal["consolidated", "separate"] = "consolidated",
         acc_unit: float | str = 1.0,
         tax_rate: float = 0.34,
+        language: str = "en",
     ):
         """Initialize main variables.
 
@@ -47,12 +48,16 @@ class Company:
         tax_rate : float, default 0.34
             The 'tax_rate' attribute will be used to calculate some of the
             company indicators.
+            The 'language' attribute will be used to set the language of the
+            account names.
+
 
         """
         self.set_id(identifier)
         self.acc_method = acc_method
         self.acc_unit = acc_unit
         self.tax_rate = tax_rate
+        self.language = language
 
     def set_id(self, identifier: int | str):
         """
@@ -281,6 +286,14 @@ class Company:
             raise ValueError("acc_level expects None, 2, 3 or 4")
 
         df = self._COMP_DF.query("acc_method == @self._acc_method").copy()
+
+        # Set language
+        if self.language == "en":
+            pten_dict = dict(pd.read_csv("pten_df.csv").values)
+            df["acc_name"] = df["acc_name"].map(pten_dict)
+        else:
+            pass
+
         # Change acc_unit only for accounts different from 3.99
         df["acc_value"] = np.where(
             df["acc_code"].str.startswith("3.99"),
