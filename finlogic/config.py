@@ -5,6 +5,7 @@ base_dir = Path(__file__).parent
 DATA_PATH = base_dir / "data"
 MAIN_DF_PATH = DATA_PATH / "main_df.pkl.zst"
 CVM_DF_PATH = DATA_PATH / "cvm_df.pkl"
+LANGUAGE_DF_PATH = DATA_PATH / "interim/pten_df.csv.zst"
 
 # Start/load main dataframe
 if MAIN_DF_PATH.is_file():
@@ -18,3 +19,6 @@ if CVM_DF_PATH.is_file():
 else:
     columns = ["filename", "file_size", "etag", "last_modified"]
     cvm_df = pd.DataFrame(columns=columns)
+
+# Start/load language file data
+language_df = pd.read_csv(LANGUAGE_DF_PATH)

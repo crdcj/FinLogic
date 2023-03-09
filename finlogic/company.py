@@ -28,6 +28,7 @@ class Company:
         acc_method: Literal["consolidated", "separate"] = "consolidated",
         acc_unit: float | str = 1.0,
         tax_rate: float = 0.34,
+        language: str = "english",
     ):
         """Initialize main variables.
 
@@ -47,12 +48,16 @@ class Company:
         tax_rate : float, default 0.34
             The 'tax_rate' attribute will be used to calculate some of the
             company indicators.
+            The 'language' attribute will be used to set the language of the
+            account names.
+
 
         """
         self.set_id(identifier)
         self.acc_method = acc_method
         self.acc_unit = acc_unit
         self.tax_rate = tax_rate
+        self.language = language
 
     def set_id(self, identifier: int | str):
         """
@@ -91,6 +96,42 @@ class Company:
             raise KeyError("Company 'identifier' not found in database")
         # Only set company data after object identifier validation
         self._set_main_data()
+
+    @property
+    def language(self):
+        """
+        Set the language of the account names.
+        """
+        return self._language
+
+    @language.setter
+    def language(self, language: str):
+        """
+        Set the language of the account names.
+
+        Parameters
+        ----------
+        value: str
+            A valid language string.
+
+        Returns
+        -------
+        str
+
+        Raises
+        ------
+        KeyError
+            * If passed ``language`` not supported.
+        """
+
+        # Supported languages
+        list_languages = ["english", "portuguese"]
+        if language.lower() in list_languages:
+            self._language = language.capitalize()
+        else:
+            raise KeyError(
+                f"'{language}' not supported. Supported languages: {', '.join(list_languages)}"
+            )
 
     @property
     def acc_method(self):
@@ -281,6 +322,22 @@ class Company:
             raise ValueError("acc_level expects None, 2, 3 or 4")
 
         df = self._COMP_DF.query("acc_method == @self._acc_method").copy()
+
+        # Set language
+
+        class MyDict(dict):
+            """Custom dictionary class to return key if key is not found."""
+
+            def __missing__(self, key):
+                return "(pt) " + key
+
+        if self._language == "English":
+            _pten_dict = dict(c.language_df.values)
+            _pten_dict = MyDict(_pten_dict)
+            df["acc_name"] = df["acc_name"].map(_pten_dict)
+        else:
+            pass
+
         # Change acc_unit only for accounts different from 3.99
         df["acc_value"] = np.where(
             df["acc_code"].str.startswith("3.99"),
