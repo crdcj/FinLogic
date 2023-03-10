@@ -8,5 +8,4 @@ dev/
 **.zst
 **.pkl
 **.zip
-
-
+!pten_df.csv.zst
