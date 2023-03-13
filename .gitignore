@@ -1,11 +1,8 @@
 __pycache__/
 dist/
 build/
+data/
 .vscode/
 finlogic.egg-info/
 dev*.*
 dev/
-**.zst
-**.pkl
-**.zip
-!pten_df.csv.zst
