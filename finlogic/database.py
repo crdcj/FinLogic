@@ -15,8 +15,11 @@ from . import config as c
 URL_DFP = "http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/"
 URL_ITR = "http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/"
 
+URL_LANGUAGE = "https://raw.githubusercontent.com/fe-lipe-c/finlogic_datasets/master/data/pten_df.csv"
+
 RAW_DIR = c.DATA_PATH / "raw"
 PROCESSED_DIR = c.DATA_PATH / "processed"
+INTERIM_DIR = c.DATA_PATH / "interim"
 
 
 def list_urls() -> List[str]:
@@ -289,6 +292,10 @@ def update_database(
     )
     print("Consolidating processed files...")
     consolidate_main_df(processed_filenames)
+
+    print('Updating "language" database...')
+    process_language_df()
+
     print("FinLogic database updated \u2705")
 
 
@@ -416,3 +423,12 @@ def process_raw_df(df: pd.DataFrame) -> pd.DataFrame:
     df = df[columns_order]
 
     return df
+
+
+def process_language_df():
+    """Process language dataframe."""
+    language_df = pd.read_csv(URL_LANGUAGE)
+    Path.mkdir(INTERIM_DIR, parents=True, exist_ok=True)
+    LANGUAGE_DF_PATH = INTERIM_DIR / "pten_df.csv.zst"
+    language_df.to_csv(LANGUAGE_DF_PATH, compression="zstd", index=False)
+    c.language_df = pd.read_csv(LANGUAGE_DF_PATH)
