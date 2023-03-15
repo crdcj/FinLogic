@@ -108,14 +108,14 @@ FinLogic database updated ✅
 The Company Class allows you to easily access financial data from Brazilian companies. All values are in local currency (Real).
 
 ```python
-# Create a Company object to acces its fiancial data:
+# Create a Company object to acces its financial data:
 # Both CVM (regulator) ID or Fiscal ID can be used as an identifier.
 >>> petro = fl.Company(9512, acc_method='separate', acc_unit='million')
 
-# Change company accouting method back to consolidated (default):
+# Change company accounting method back to consolidated (default):
 >>> petro.acc_method = 'consolidated'
 
-# Change company accouting unit to billion (default is 1):
+# Change company accounting unit to billion (default is 1):
 >>> petro.acc_unit = 'billion'
 
 # Show company info:
@@ -200,4 +200,4 @@ The Company Class allows you to easily access financial data from Brazilian comp
 
 P.S.: All contributors are welcome, from beginner to advanced.
 
-**Carlos Carvalho**
+**Felipe Costa and Carlos Carvalho**

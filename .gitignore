@@ -1,12 +1,8 @@
 __pycache__/
 dist/
 build/
+data/
 .vscode/
 finlogic.egg-info/
 dev*.*
 dev/
-**.zst
-**.pkl
-**.zip
-
-

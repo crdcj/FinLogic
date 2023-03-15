@@ -15,8 +15,11 @@ from . import config as c
 URL_DFP = "http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/"
 URL_ITR = "http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/"
 
+URL_LANGUAGE = "https://raw.githubusercontent.com/fe-lipe-c/finlogic_datasets/master/data/pten_df.csv"
+
 RAW_DIR = c.DATA_PATH / "raw"
 PROCESSED_DIR = c.DATA_PATH / "processed"
+INTERIM_DIR = c.DATA_PATH / "interim"
 
 
 def list_urls() -> List[str]:
@@ -79,6 +82,7 @@ def update_raw_file(url: str) -> Path:
             r.headers["ETag"],
             ts_sao_paulo,
         ]
+        print(f"File {raw_path.name} saved locally.")
         return raw_path
 
 
@@ -118,6 +122,7 @@ def process_raw_file(raw_path: Path) -> Path:
     df = df.astype("category")
     processed_path = PROCESSED_DIR / raw_path.with_suffix(".pkl.zst").name
     df.to_pickle(processed_path)
+    print(f"File {raw_path.name} processed.")
     return processed_path
 
 
@@ -283,12 +288,18 @@ def update_database(
     urls = list_urls()
     raw_paths = update_raw_files(urls)
     print(f"Number of CVM raw files updated = {len(raw_paths)}")
+    print()
     print("Processing CVM raw files...")
     processed_filenames = process_raw_files(
         workers, raw_paths, asynchronous=asynchronous
     )
+    print()
     print("Consolidating processed files...")
     consolidate_main_df(processed_filenames)
+
+    print('Updating "language" database...')
+    process_language_df()
+
     print("FinLogic database updated \u2705")
 
 
@@ -416,3 +427,12 @@ def process_raw_df(df: pd.DataFrame) -> pd.DataFrame:
     df = df[columns_order]
 
     return df
+
+
+def process_language_df():
+    """Process language dataframe."""
+    language_df = pd.read_csv(URL_LANGUAGE)
+    Path.mkdir(INTERIM_DIR, parents=True, exist_ok=True)
+    LANGUAGE_DF_PATH = INTERIM_DIR / "pten_df.csv.zst"
+    language_df.to_csv(LANGUAGE_DF_PATH, compression="zstd", index=False)
+    c.language_df = pd.read_csv(LANGUAGE_DF_PATH)

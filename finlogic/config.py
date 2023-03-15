@@ -21,4 +21,7 @@ else:
     cvm_df = pd.DataFrame(columns=columns)
 
 # Start/load language file data
-language_df = pd.read_csv(LANGUAGE_DF_PATH)
+if LANGUAGE_DF_PATH.is_file():
+    language_df = pd.read_csv(LANGUAGE_DF_PATH)
+else:
+    language_df = pd.DataFrame()
