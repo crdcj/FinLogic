@@ -122,6 +122,7 @@ def process_raw_file(raw_path: Path) -> Path:
     df = df.astype("category")
     processed_path = PROCESSED_DIR / raw_path.with_suffix(".pkl.zst").name
     df.to_pickle(processed_path)
+    print(f"File {raw_path.name} processed.")
     return processed_path
 
 
@@ -287,10 +288,12 @@ def update_database(
     urls = list_urls()
     raw_paths = update_raw_files(urls)
     print(f"Number of CVM raw files updated = {len(raw_paths)}")
+    print()
     print("Processing CVM raw files...")
     processed_filenames = process_raw_files(
         workers, raw_paths, asynchronous=asynchronous
     )
+    print()
     print("Consolidating processed files...")
     consolidate_main_df(processed_filenames)
 
