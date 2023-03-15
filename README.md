@@ -200,4 +200,4 @@ The Company Class allows you to easily access financial data from Brazilian comp
 
 P.S.: All contributors are welcome, from beginner to advanced.
 
-**Carlos Carvalho**
+**Felipe Costa and Carlos Carvalho**

@@ -82,6 +82,7 @@ def update_raw_file(url: str) -> Path:
             r.headers["ETag"],
             ts_sao_paulo,
         ]
+        print(f"File {raw_path.name} saved locally.")
         return raw_path
 
 
