@@ -5,7 +5,6 @@
 [![Python Version](https://img.shields.io/pypi/pyversions/finlogic)](https://www.python.org/)
 [![Anaconda License](https://anaconda.org/conda-forge/finlogic/badges/license.svg)](https://anaconda.org/conda-forge/finlogic)
 [![Code Style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Twitter](https://img.shields.io/twitter/follow/CRCarvalhoJ.svg?style=social&label=Follow)](https://twitter.com/CRCarvalhoJ)
 
 ## FinLogic: finance data analysis toolkit for listed Brazilian companies
 
