@@ -7,11 +7,11 @@ readme = "README.md"
 license = {file = "LICENSE"}
 keywords = ["pandas, cvm, finance, investment, accounting"]
 authors = [
-    {name = 'Carlos Carvalho', email = 'cr.cj@outlook.com'},
+    {name = 'Carlos Carvalho', email = 'cr.cj@outlook.com'}
 ]
 classifiers = [
     "Topic :: Financial :: Investment",
-    "Programming Language :: Python "
+    "Programming Language :: Python"
 ]
 dependencies = [
     "pandas>=1.4.0",
