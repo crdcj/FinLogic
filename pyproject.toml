@@ -10,8 +10,9 @@ authors = [
     {name = 'Carlos Carvalho', email = 'cr.cj@outlook.com'}
 ]
 classifiers = [
-    "Topic :: Financial :: Investment",
-    "Programming Language :: Python"
+    "Topic :: Office/Business :: Financial :: Accounting",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "Programming Language :: Python :: 3"    
 ]
 dependencies = [
     "pandas>=1.4.0",
@@ -24,3 +25,6 @@ repository = "https://github.com/crdcj/FinLogic"
 [build-system]
 requires = ["pdm-pep517>=1.0"]
 build-backend = "pdm.pep517.api"
+
+[tool.pdm]
+version = { source = "file", path = "finlogic/__init__.py" }
