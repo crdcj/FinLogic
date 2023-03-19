@@ -1,0 +1,26 @@
+[project]
+name = "FinLogic"
+dynamic = ["version"]
+description="Finance toolkit for listed Brazilian companies"
+requires-python = ">=3.10"
+readme = "README.md"
+license = {file = "LICENSE"}
+keywords = ["pandas, cvm, finance, investment, accounting"]
+authors = [
+    {name = 'Carlos Carvalho', email = 'cr.cj@outlook.com'}
+]
+classifiers = [
+    "Topic :: Financial :: Investment",
+    "Programming Language :: Python"
+]
+dependencies = [
+    "pandas>=1.4.0",
+    "requests>=2.27.0",
+    "zstandard>=0.17.0"
+]
+[project.urls]
+repository = "https://github.com/crdcj/FinLogic"
+
+[build-system]
+requires = ["pdm-pep517>=1.0"]
+build-backend = "pdm.pep517.api"
