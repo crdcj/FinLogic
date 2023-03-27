@@ -57,12 +57,47 @@ class Company:
             account values.
 
         """
+        self.currency = currency
         self.set_id(identifier)
         self.acc_method = acc_method
         self.acc_unit = acc_unit
         self.tax_rate = tax_rate
         self.language = language
-        self.currency = currency
+
+    @property
+    def currency(self):
+        """
+        Get or set company 'currency' attribute.
+
+        Parameters
+        ----------
+        value : str, default 'BRL'
+            'value' will be passed to 'currency' object attribute.
+
+        Returns
+        -------
+        str
+
+        Raises
+        ------
+        ValueError
+            * If passed ``value`` is invalid.
+        """
+        return self._currency
+
+    @currency.setter
+    def currency(self, currency: str):
+
+        list_currency = [
+            i.replace("acc_value", "").replace("_", "").lower()
+            for i in c.main_df.filter(regex="acc_value").columns
+        ]
+        if currency.lower() in list_currency:
+            self._currency = currency.upper()
+        else:
+            raise KeyError(
+                f"'{currency}' not installed. Downloaded currencies: {','.join(list_currency)}"
+            )
 
     def set_id(self, identifier: int | str):
         """
@@ -232,30 +267,6 @@ class Company:
         else:
             raise ValueError("Company 'tax_rate' value is invalid")
 
-    @property
-    def currency(self):
-        """
-        Get or set company 'currency' attribute.
-
-        Parameters
-        ----------
-        value : str, default 'BRL'
-            'value' will be passed to 'currency' object attribute.
-
-        Returns
-        -------
-        str
-
-        Raises
-        ------
-        ValueError
-            * If passed ``value`` is invalid.
-        """
-        return self._currency
-
-    # @currency.setter
-    # def currency(self, value: str):
-
     def _set_main_data(self) -> pd.DataFrame:
         self._COMP_DF = (
             c.main_df.query("cvm_id == @self._cvm_id")
@@ -274,7 +285,8 @@ class Company:
                     "acc_name": str,
                     "acc_method": str,
                     "acc_fixed": bool,
-                    "acc_value": float,
+                    # "acc_value": float,
+                    f"acc_value_{self._currency}": float,
                     "equity_statement_column": str,
                 }
             )
@@ -368,10 +380,10 @@ class Company:
             pass
 
         # Change acc_unit only for accounts different from 3.99
-        df["acc_value"] = np.where(
+        df[f"acc_value_{self._currency}"] = np.where(
             df["acc_code"].str.startswith("3.99"),
-            df["acc_value"],
-            df["acc_value"] / self._acc_unit,
+            df[f"acc_value_{self._currency}"],
+            df[f"acc_value_{self._currency}"] / self._acc_unit,
         )
         # Filter dataframe for selected acc_level
         if acc_level:
@@ -444,17 +456,19 @@ class Company:
 
         df2 = dfi.query("period_reference == @self._LAST_QUARTERLY").copy()
         df2.query("period_begin == period_begin.min()", inplace=True)
-        df2["acc_value"] = -df2["acc_value"]
+        df2[f"acc_value_{self._currency}"] = -df2[f"acc_value_{self._currency}"]
 
         df3 = dfi.query("period_end == @self._LAST_ANNUAL").copy()
 
         df_ttm = (
-            pd.concat([df1, df2, df3], ignore_index=True)[["acc_code", "acc_value"]]
+            pd.concat([df1, df2, df3], ignore_index=True)[
+                ["acc_code", f"acc_value_{self._currency}"]
+            ]
             .groupby(by="acc_code")
             .sum()
             .reset_index()
         )
-        df1.drop(columns="acc_value", inplace=True)
+        df1.drop(columns=f"acc_value_{self._currency}", inplace=True)
         df_ttm = pd.merge(df1, df_ttm)
         df_ttm["report_type"] = "quarterly"
         df_ttm["period_begin"] = self._LAST_QUARTERLY - pd.DateOffset(years=1)
@@ -625,12 +639,14 @@ class Company:
 
         for period in periods:
             df_year = df.query("period_end == @period")[
-                ["acc_value", "acc_code"]
+                [f"acc_value_{self._currency}", "acc_code"]
             ].copy()
             period_str = str(np.datetime_as_string(period, unit="D"))
             if period == self._LAST_QUARTERLY:
                 period_str += " (ttm)"
-            df_year.rename(columns={"acc_value": period_str}, inplace=True)
+            df_year.rename(
+                columns={f"acc_value_{self._currency}": period_str}, inplace=True
+            )
             dfo = pd.merge(dfo, df_year, how="left", on=["acc_code"])
 
         return dfo.sort_values("acc_code", ignore_index=True)

@@ -168,7 +168,7 @@ def consolidate_main_df(processed_filenames: str):
     ]
     c.main_df.sort_values(by=cols, ignore_index=True, inplace=True)
     cols = list(c.main_df.columns)
-    cols_remove = ["report_version", "acc_value", "acc_fixed"]
+    cols_remove = ["report_version", "acc_value_BRL", "acc_fixed"]
     [cols.remove(col) for col in cols_remove]
     # tmp = main_df[main_df.duplicated(cols, keep=False)]
     # Ascending order --> last is the newest report_version
@@ -326,7 +326,7 @@ def process_raw_df(df: pd.DataFrame) -> pd.DataFrame:
         "CD_CONTA": "acc_code",
         "DS_CONTA": "acc_name",
         "ST_CONTA_FIXA": "acc_fixed",
-        "VL_CONTA": "acc_value",
+        "VL_CONTA": "acc_value_BRL",
         "COLUNA_DF": "equity_statement_column",
         "MOEDA": "currency",
         "ESCALA_MOEDA": "currency_unit",
@@ -337,7 +337,7 @@ def process_raw_df(df: pd.DataFrame) -> pd.DataFrame:
     # ['3', '2', '4', '1', '7', '5', '6', '9', '8']
     df["report_version"] = df["report_version"].astype(np.int8)
     df["cvm_id"] = df["cvm_id"].astype(np.int32)  # max < 600_000
-    df["acc_value"] = df["acc_value"].astype(float)
+    df["acc_value_BRL"] = df["acc_value_BRL"].astype(float)
 
     # df.query("acc_value == 0") -> 10.891.139 rows from 17.674.199
     # Zero values will not be used.
@@ -354,10 +354,10 @@ def process_raw_df(df: pd.DataFrame) -> pd.DataFrame:
     # Unit base currency.
     df["acc_codes_level"] = df["acc_code"].str[0:4]
     # Do not adjust earnings per share rows (account codes 3.99...)
-    df["acc_value"] = np.where(
+    df["acc_value_BRL"] = np.where(
         df.acc_codes_level == "3.99",
-        df["acc_value"],
-        df["acc_value"] * df["currency_unit"],
+        df["acc_value_BRL"],
+        df["acc_value_BRL"] * df["currency_unit"],
     )
     df.drop(columns=["currency_unit", "acc_codes_level"], inplace=True)
 
@@ -412,7 +412,7 @@ def process_raw_df(df: pd.DataFrame) -> pd.DataFrame:
 
     # Remove duplicated accounts
     cols = list(df.columns)
-    cols.remove("acc_value")
+    cols.remove("acc_value_BRL")
     df.drop_duplicates(cols, keep="last", inplace=True)
 
     columns_order = [
@@ -429,7 +429,7 @@ def process_raw_df(df: pd.DataFrame) -> pd.DataFrame:
         "acc_name",
         "acc_method",
         "acc_fixed",
-        "acc_value",
+        "acc_value_BRL",
         "equity_statement_column",
     ]
     df = df[columns_order]
@@ -450,6 +450,8 @@ def process_currency_col(currency, currency_conversion):
     """Process currency column."""
 
     if currency == "BRL":
+        # c.main_df.rename(columns={"acc_value": "acc_value_BRL"}, inplace=True)
+        # c.main_df.to_pickle(c.MAIN_DF_PATH)
         return
 
     # Start the API.
@@ -501,8 +503,8 @@ def process_currency_col(currency, currency_conversion):
             on="date",
             direction="backward",
         )
-        c.main_df["acc_value_temp"] = c.main_df["acc_value"].astype("float64")
-        c.main_df[f"acc_value ({currency})"] = (
+        c.main_df["acc_value_temp"] = c.main_df["acc_value_BRL"].astype("float64")
+        c.main_df[f"acc_value_{currency}"] = (
             c.main_df["acc_value_temp"] / c.main_df["mid_price"]
         )
         c.main_df.drop(columns=["mid_price", "date", "acc_value_temp"], inplace=True)
