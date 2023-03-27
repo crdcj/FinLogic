@@ -10,6 +10,7 @@ from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 import requests
 import pandas as pd
 import numpy as np
+from bcb import PTAX, sgs
 from . import config as c
 
 URL_DFP = "http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/"
@@ -247,7 +248,11 @@ def database_info() -> pd.DataFrame:
 
 
 def update_database(
-    reset_data: bool = False, asynchronous: bool = False, cpu_usage: float = 0.75
+    reset_data: bool = False,
+    asynchronous: bool = False,
+    cpu_usage: float = 0.75,
+    currency: str = "BRL",
+    currency_conversion: str = "historical",
 ):
     """
     Create/Update all remote files (raw files) and process them for local data
@@ -299,6 +304,9 @@ def update_database(
 
     print('Updating "language" database...')
     process_language_df()
+
+    print('Updating "currency" database...')
+    process_currency_col(currency, currency_conversion)
 
     print("FinLogic database updated \u2705")
 
@@ -436,3 +444,66 @@ def process_language_df():
     LANGUAGE_DF_PATH = INTERIM_DIR / "pten_df.csv.zst"
     language_df.to_csv(LANGUAGE_DF_PATH, compression="zstd", index=False)
     c.language_df = pd.read_csv(LANGUAGE_DF_PATH)
+
+
+def process_currency_col(currency, currency_conversion):
+    """Process currency column."""
+
+    if currency == "BRL":
+        return
+
+    # Start the API.
+    ptax = PTAX()
+    if currency_conversion == "historical":
+        # Set API's type of information.
+        ep = ptax.get_endpoint("CotacaoMoedaPeriodo")
+
+        # Get initial and final dates of the dataframe and convert to use the
+        # bcb API.
+        start_date = str(
+            np.sort(c.main_df["period_end"].unique())[0] - pd.Timedelta(days=1)
+        )[:10]
+        start_date = start_date.split("-")
+        start_date = start_date[1] + "/" + start_date[2] + "/" + start_date[0]
+
+        end_date = str(np.sort(c.main_df["period_end"].unique())[-1])[:10]
+        end_date = end_date.split("-")
+        end_date = end_date[1] + "/" + end_date[2] + "/" + end_date[0]
+
+        # Get the currency exchange rate from the BCB API.
+        df_ptax = (
+            ep.query()
+            .parameters(
+                moeda=currency, dataInicial=start_date, dataFinalCotacao=end_date
+            )
+            .collect()
+        )
+        # Process the dataframe.
+        df_ptax["mid_price"] = (df_ptax["cotacaoCompra"] + df_ptax["cotacaoVenda"]) / 2
+        df_ptax["date"] = pd.to_datetime(df_ptax["dataHoraCotacao"])
+        df_ptax.query("tipoBoletim == 'Fechamento'", inplace=True)
+        df_ptax.drop(
+            columns=[
+                "paridadeCompra",
+                "paridadeVenda",
+                "cotacaoCompra",
+                "cotacaoVenda",
+                "tipoBoletim",
+                "dataHoraCotacao",
+            ],
+            inplace=True,
+        )
+        c.main_df["date"] = pd.to_datetime(c.main_df["period_end"])
+        c.main_df["date"] = c.main_df["date"].astype("datetime64[ns]")
+        c.main_df = pd.merge_asof(
+            c.main_df.sort_values("date"),
+            df_ptax.sort_values("date"),
+            on="date",
+            direction="backward",
+        )
+        c.main_df["acc_value_temp"] = c.main_df["acc_value"].astype("float64")
+        c.main_df[f"acc_value ({currency})"] = (
+            c.main_df["acc_value_temp"] / c.main_df["mid_price"]
+        )
+        c.main_df.drop(columns=["mid_price", "date", "acc_value_temp"], inplace=True)
+        c.main_df.to_pickle(c.MAIN_DF_PATH)

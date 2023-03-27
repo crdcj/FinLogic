@@ -29,6 +29,7 @@ class Company:
         acc_unit: float | str = 1.0,
         tax_rate: float = 0.34,
         language: str = "english",
+        currency: str = "BRL",
     ):
         """Initialize main variables.
 
@@ -48,9 +49,12 @@ class Company:
         tax_rate : float, default 0.34
             The 'tax_rate' attribute will be used to calculate some of the
             company indicators.
+        language : str, default 'english'
             The 'language' attribute will be used to set the language of the
             account names.
-
+        currency : str, default 'BRL'
+            The 'currency' attribute will be used to set the currency of the
+            account values.
 
         """
         self.set_id(identifier)
@@ -58,6 +62,7 @@ class Company:
         self.acc_unit = acc_unit
         self.tax_rate = tax_rate
         self.language = language
+        self.currency = currency
 
     def set_id(self, identifier: int | str):
         """
@@ -226,6 +231,30 @@ class Company:
             self._tax_rate = value
         else:
             raise ValueError("Company 'tax_rate' value is invalid")
+
+    @property
+    def currency(self):
+        """
+        Get or set company 'currency' attribute.
+
+        Parameters
+        ----------
+        value : str, default 'BRL'
+            'value' will be passed to 'currency' object attribute.
+
+        Returns
+        -------
+        str
+
+        Raises
+        ------
+        ValueError
+            * If passed ``value`` is invalid.
+        """
+        return self._currency
+
+    # @currency.setter
+    # def currency(self, value: str):
 
     def _set_main_data(self) -> pd.DataFrame:
         self._COMP_DF = (
