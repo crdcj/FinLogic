@@ -30,6 +30,7 @@ class Company:
         tax_rate: float = 0.34,
         language: str = "english",
         currency: str = "BRL",
+        currency_conversion: str = "historical",
     ):
         """Initialize main variables.
 
@@ -58,6 +59,7 @@ class Company:
 
         """
         self.currency = currency
+        self.currency_conversion = currency_conversion
         self.set_id(identifier)
         self.acc_method = acc_method
         self.acc_unit = acc_unit
@@ -89,7 +91,11 @@ class Company:
     def currency(self, currency: str):
 
         list_currency = [
-            i.replace("acc_value", "").replace("_", "").lower()
+            i.replace("acc_value", "")
+            .replace("current", "")
+            .replace("historical", "")
+            .replace("_", "")
+            .lower()
             for i in c.main_df.filter(regex="acc_value").columns
         ]
         if currency.lower() in list_currency:
@@ -98,6 +104,55 @@ class Company:
             raise KeyError(
                 f"'{currency}' not installed. Downloaded currencies: {','.join(list_currency)}"
             )
+
+    @property
+    def currency_conversion(self):
+        """
+        Get the currency conversion rate.
+
+        Returns
+        -------
+        float
+            Currency conversion rate.
+        """
+        return self._currency_conversion
+
+    @currency_conversion.setter
+    def currency_conversion(self, currency_conversion: str):
+        """
+        Set the currency conversion type.
+
+        Parameters
+        ----------
+        currency_conversion: string
+            Currency conversion type.
+
+        Returns
+        -------
+        string
+        """
+        list_currency_conversion = ["historical", "current"]
+        if currency_conversion in list_currency_conversion:
+            self._currency_conversion = currency_conversion
+        else:
+            raise KeyError(
+                f"'{currency_conversion}' is invalid. Valid values are: {','.join(list_currency_conversion)}"
+            )
+
+    # @property
+    # def identifier(self):
+    #     """
+    #     Get the unique identifier used to filter the company in as fi.
+    #
+    #     Returns
+    #     -------
+    #     int or str
+    #         A unique identifier to filter a company in as fi.
+    #         Both CVM ID or Fiscal ID can be used.
+    #         CVM ID (regulator ID) must be an integer.
+    #         Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
+    #     """
+    #     return self._identifier
 
     def set_id(self, identifier: int | str):
         """
@@ -286,7 +341,7 @@ class Company:
                     "acc_method": str,
                     "acc_fixed": bool,
                     # "acc_value": float,
-                    f"acc_value_{self._currency}": float,
+                    f"acc_value_{self._currency}_{self._currency_conversion}": float,
                     "equity_statement_column": str,
                 }
             )
@@ -380,10 +435,11 @@ class Company:
             pass
 
         # Change acc_unit only for accounts different from 3.99
-        df[f"acc_value_{self._currency}"] = np.where(
+        df[f"acc_value_{self._currency}_{self._currency_conversion}"] = np.where(
             df["acc_code"].str.startswith("3.99"),
-            df[f"acc_value_{self._currency}"],
-            df[f"acc_value_{self._currency}"] / self._acc_unit,
+            df[f"acc_value_{self._currency}_{self._currency_conversion}"],
+            df[f"acc_value_{self._currency}_{self._currency_conversion}"]
+            / self._acc_unit,
         )
         # Filter dataframe for selected acc_level
         if acc_level:
@@ -456,19 +512,24 @@ class Company:
 
         df2 = dfi.query("period_reference == @self._LAST_QUARTERLY").copy()
         df2.query("period_begin == period_begin.min()", inplace=True)
-        df2[f"acc_value_{self._currency}"] = -df2[f"acc_value_{self._currency}"]
+        df2[f"acc_value_{self._currency}_{self._currency_conversion}"] = -df2[
+            f"acc_value_{self._currency}_{self._currency_conversion}"
+        ]
 
         df3 = dfi.query("period_end == @self._LAST_ANNUAL").copy()
 
         df_ttm = (
             pd.concat([df1, df2, df3], ignore_index=True)[
-                ["acc_code", f"acc_value_{self._currency}"]
+                ["acc_code", f"acc_value_{self._currency}_{self._currency_conversion}"]
             ]
             .groupby(by="acc_code")
             .sum()
             .reset_index()
         )
-        df1.drop(columns=f"acc_value_{self._currency}", inplace=True)
+        df1.drop(
+            columns=f"acc_value_{self._currency}_{self._currency_conversion}",
+            inplace=True,
+        )
         df_ttm = pd.merge(df1, df_ttm)
         df_ttm["report_type"] = "quarterly"
         df_ttm["period_begin"] = self._LAST_QUARTERLY - pd.DateOffset(years=1)
@@ -639,13 +700,16 @@ class Company:
 
         for period in periods:
             df_year = df.query("period_end == @period")[
-                [f"acc_value_{self._currency}", "acc_code"]
+                [f"acc_value_{self._currency}_{self._currency_conversion}", "acc_code"]
             ].copy()
             period_str = str(np.datetime_as_string(period, unit="D"))
             if period == self._LAST_QUARTERLY:
                 period_str += " (ttm)"
             df_year.rename(
-                columns={f"acc_value_{self._currency}": period_str}, inplace=True
+                columns={
+                    f"acc_value_{self._currency}_{self._currency_conversion}": period_str
+                },
+                inplace=True,
             )
             dfo = pd.merge(dfo, df_year, how="left", on=["acc_code"])
 
