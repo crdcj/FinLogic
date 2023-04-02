@@ -4,5 +4,6 @@ build/
 data/
 .vscode/
 finlogic.egg-info/
-dev*.*
-dev/
+# Jupyter Notebook extensions
+*.ipynb
+
