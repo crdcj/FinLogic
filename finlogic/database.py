@@ -14,12 +14,11 @@ from . import config as c
 
 URL_DFP = "http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/"
 URL_ITR = "http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/"
-
 URL_LANGUAGE = "https://raw.githubusercontent.com/fe-lipe-c/finlogic_datasets/master/data/pten_df.csv"
-
 RAW_DIR = c.DATA_PATH / "raw"
 PROCESSED_DIR = c.DATA_PATH / "processed"
 INTERIM_DIR = c.DATA_PATH / "interim"
+CHECKMARK = "\033[32m\u2714\033[0m"
 
 
 def list_urls() -> List[str]:
@@ -54,7 +53,7 @@ def list_urls() -> List[str]:
 
 
 def update_raw_file(url: str) -> Path:
-    """Update file from CVM portal. Return a Path object if file is updated."""
+    """Update raw file from CVM portal. Return a Path if file is updated."""
     raw_path = Path(RAW_DIR, url[-23:])  # filename = url final
     with requests.Session() as s:
         r = s.get(url, stream=True)
@@ -82,7 +81,7 @@ def update_raw_file(url: str) -> Path:
             r.headers["ETag"],
             ts_sao_paulo,
         ]
-        print(f"File {raw_path.name} saved locally.")
+        print(f"    {CHECKMARK} {raw_path.name} downloaded.")
         return raw_path
 
 
@@ -122,7 +121,7 @@ def process_raw_file(raw_path: Path) -> Path:
     df = df.astype("category")
     processed_path = PROCESSED_DIR / raw_path.with_suffix(".pkl.zst").name
     df.to_pickle(processed_path)
-    print(f"File {raw_path.name} processed.")
+    print(f"    {CHECKMARK} {raw_path.name} processed.")
     return processed_path
 
 
@@ -284,23 +283,21 @@ def update_database(
     if workers < 1:
         workers = 1
 
-    print("Updating CVM raw files...")
+    print("Updating financial statements...")
     urls = list_urls()
     raw_paths = update_raw_files(urls)
-    print(f"Number of CVM raw files updated = {len(raw_paths)}")
-    print()
-    print("Processing CVM raw files...")
+    print(f"Number of financial statements updated = {len(raw_paths)}")
+    print("\nProcessing financial statements...")
     processed_filenames = process_raw_files(
         workers, raw_paths, asynchronous=asynchronous
     )
-    print()
-    print("Consolidating processed files...")
+    print("\nConsolidating processed files...")
     consolidate_main_df(processed_filenames)
 
     print('Updating "language" database...')
     process_language_df()
 
-    print("FinLogic database updated \u2705")
+    print(f"{CHECKMARK} FinLogic database updated!")
 
 
 def process_raw_df(df: pd.DataFrame) -> pd.DataFrame:
@@ -325,15 +322,10 @@ def process_raw_df(df: pd.DataFrame) -> pd.DataFrame:
     }
     df.rename(columns=columns_translation, inplace=True)
 
-    # df['report_version'].unique()
-    # ['3', '2', '4', '1', '7', '5', '6', '9', '8']
+    # df['report_version'].unique() -> ['3', '2', '4', '1', '7', '5', '6', '9', '8']
     df["report_version"] = df["report_version"].astype(np.int8)
     df["cvm_id"] = df["cvm_id"].astype(np.int32)  # max < 600_000
     df["acc_value"] = df["acc_value"].astype(float)
-
-    # df.query("acc_value == 0") -> 10.891.139 rows from 17.674.199
-    # Zero values will not be used.
-    # df.query("acc_value != 0", inplace=True)
 
     # df['currency'].value_counts() -> REAL    43391302
     df.drop(columns=["currency"], inplace=True)
