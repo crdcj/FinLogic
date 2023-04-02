@@ -1,6 +1,34 @@
 import finlogic as fl
 
 
+def test_petro_info():
+    # Petro info
+    petro = fl.Company(9512, acc_method="separate", acc_unit="billion")
+    petro_info = petro.info()
+    # Get the info
+    co_name = petro_info.at["Name", "Values"]
+    cvm_id = petro_info.at["CVM ID", "Values"]
+    fiscal_id = petro_info.at["Fiscal ID (CNPJ)", "Values"]
+    # Check the info
+    assert co_name == "PETROLEO BRASILEIRO S.A. PETROBRAS"
+    assert cvm_id == 9512
+    assert fiscal_id == "33.000.167/0001-01"
+
+
+def test_petro_report():
+    # Petro reports
+    petro = fl.Company(9512, acc_method="consolidated", acc_unit="billion")
+    petro_report = petro.report(report_type="assets")
+    # Get Total Assets
+    assets_2009 = round(petro_report.at["1", "2009-12-31"], 3)
+    assets_2015 = round(petro_report.at["1", "2015-12-31"], 3)
+    assets_2020 = round(petro_report.at["1", "2020-12-31"], 3)
+    # Check the reports
+    assert assets_2009 == 350.419
+    assert assets_2015 == 900.135
+    assert assets_2020 == 987.419
+
+
 def test_petro_indicators_separate():
     # Petro indicators (separate)
     petro = fl.Company(9512, acc_method="separate", acc_unit="billion")
