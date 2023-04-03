@@ -17,7 +17,7 @@ class Company:
     Attributes
     ----------
     identifier: int or str
-        A unique identifier to filter a company in as fi. Both CVM
+        A unique identifier to filter a company in FinLogic Database. Both CVM
         ID or Fiscal ID can be used. CVM ID (regulator ID) must be an integer.
         Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
     """
@@ -30,28 +30,25 @@ class Company:
         tax_rate: float = 0.34,
         language: str = "english",
     ):
-        """Initialize main variables.
+        """Initializes a new instance of the Company class.
 
-        Parameters
-        ----------
-        identifier: int or str
-            A unique identifier to filter a company in as fi.
-            Both CVM ID or Fiscal ID can be used.
-            CVM ID (regulator ID) must be an integer.
-            Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
-        acc_method : {'consolidated', 'separate'}, default 'consolidated'
-            Accounting method used for registering investments in subsidiaries.
-        acc_unit : float or str, default 1.0
-            acc_unit is a constant that will divide company account values.
-            The constant can be a number greater than zero or the strings
-            {'thousand', 'million', 'billion'}.
-        tax_rate : float, default 0.34
-            The 'tax_rate' attribute will be used to calculate some of the
-            company indicators.
-            The 'language' attribute will be used to set the language of the
-            account names.
+        Args:
+            identifier (Union[int, str]): A unique identifier to select a company in FinLogic Database.
+                Both CVM ID or Fiscal ID can be used.
+                CVM ID (regulator ID) must be an integer.
+                Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
+            acc_method (Literal["consolidated", "separate"], optional): The accounting method used for registering investments in subsidiaries. Defaults to 'consolidated'.
+            acc_unit (Union[float, str], optional): The constant that will divide company account values.
+                Defaults to 1.0.
+                Can be a number greater than zero or the strings 'thousand', 'million', or 'billion'.
+            tax_rate (float, optional): The tax rate used to calculate some of the company indicators. Defaults to 0.34.
+            language (str, optional): The language of the account names. Defaults to 'english'.
 
+        Raises:
+            ValueError: If the input arguments are invalid.
 
+        Returns:
+            None
         """
         self.set_id(identifier)
         self.acc_method = acc_method
@@ -61,12 +58,12 @@ class Company:
 
     def set_id(self, identifier: int | str):
         """
-        Set a unique identifier to filter the company in as fi.
+        Set a unique identifier to filter the company in FinLogic Database.
 
         Parameters
         ----------
         value: int or str
-            A unique identifier to filter a company in as fi.
+            A unique identifier to filter a company in FinLogic Database.
             Both CVM ID or Fiscal ID can be used.
             CVM ID (regulator ID) must be an integer.
             Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
@@ -78,7 +75,7 @@ class Company:
         Raises
         ------
         KeyError
-            * If passed ``identifier`` not found in as fi.
+            * If passed ``identifier`` not found in FinLogic Database.
         """
         # Create custom data frame for ID selection
         df = (

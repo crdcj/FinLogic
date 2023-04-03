@@ -182,7 +182,7 @@ def search_company(expression: str) -> pd.DataFrame:
     Parameters
     ----------
     expression : str
-        A expression to search in as fi column 'co_name'.
+        A expression to search in FinLogic Database column 'co_name'.
 
     Returns
     -------
