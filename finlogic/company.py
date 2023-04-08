@@ -11,15 +11,45 @@ from . import config as c
 
 
 class Company:
-    """
-    Finance Data Class for listed Brazilian Companies.
+    """A class to represent a company financial data.
 
-    Attributes
-    ----------
-    identifier: int or str
-        A unique identifier to filter a company in FinLogic Database. Both CVM
-        ID or Fiscal ID can be used. CVM ID (regulator ID) must be an integer.
-        Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
+    This class provides methods to create financial reports and to
+    calculate financial indicators based on a company's accounting data.
+    The class also has an AI generated dictionary to translate from
+    Portuguese to English.
+
+    Attributes:
+        identifier:
+            A unique identifier to filter a company in the FinLogic
+            database. Both CVM ID or Fiscal ID can be used. CVM ID
+            (regulator number) must be an integer. Fiscal ID must be a
+            string in 'XX.XXX.XXX/XXXX-XX' format.
+        acc_unit:
+            The constant that will divide company account values. This
+            can be a number greater than zero or the strings 'thousand',
+            'million', or 'billion'. For example, if acc_unit is
+            1,000,000, all account values will be divided by one
+            million. Defaults to 1.0.
+        tax_rate:
+            The tax rate used to calculate some of the company
+            indicators, such as EBIT and net income. The default value
+            is 0.34, which is the standard corporate tax rate in Brazil.
+        language:
+            The language of the account names used in the financial
+            statements. The default is 'english'.
+
+    Methods:
+        report:
+            Generates a financial report based on a specified report
+            type and accounting level.
+        custom_report:
+            Creates a financial report from a custom list of accounting
+            codes.
+        indicators:
+            Returns a DataFrame with common financial indicators for the
+            company.
+    Raises:
+        ValueError: If the input arguments are invalid.
     """
 
     def __init__(
@@ -37,7 +67,6 @@ class Company:
                 Both CVM ID or Fiscal ID can be used.
                 CVM ID (regulator ID) must be an integer.
                 Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
-            acc_method (Literal["consolidated", "separate"], optional): The accounting method used for registering investments in subsidiaries. Defaults to 'consolidated'.
             acc_unit (Union[float, str], optional): The constant that will divide company account values.
                 Defaults to 1.0.
                 Can be a number greater than zero or the strings 'thousand', 'million', or 'billion'.
@@ -56,7 +85,7 @@ class Company:
         self.tax_rate = tax_rate
         self.language = language
 
-    def set_id(self, identifier: int | str):
+    def set_id(self, identifier) -> None:
         """
         Set a unique identifier to filter the company in FinLogic Database.
 
@@ -70,7 +99,7 @@ class Company:
 
         Returns
         -------
-        int or str
+        None
 
         Raises
         ------
@@ -93,6 +122,28 @@ class Company:
             raise KeyError("Company 'identifier' not found in database")
         # Only set company data after object identifier validation
         self._set_main_data()
+
+    @property
+    def acc_method(self):
+        """
+        Property that gets or sets the accounting method for registering
+        investments in subsidiaries. Consolidated accounting combines
+        the financial statements of a parent company and its
+        subsidiaries, while separate accounting keeps them separate.
+        Must be "consolidated" or "separate". Defaults to
+        'consolidated'.
+
+        Raises:
+            ValueError: If the accounting method is invalid.
+        """
+        return self._acc_unit
+
+    @acc_method.setter
+    def acc_method(self, value: Literal["consolidated", "separate"]):
+        if value in {"consolidated", "separate"}:
+            self._acc_method = value
+        else:
+            raise ValueError("acc_method expects 'consolidated' or 'separate'")
 
     @property
     def language(self):
@@ -129,35 +180,6 @@ class Company:
             raise KeyError(
                 f"'{language}' not supported. Supported languages: {', '.join(list_languages)}"
             )
-
-    @property
-    def acc_method(self):
-        """
-        Get or set accounting method used for registering investments in
-        subsidiaries.
-
-        Parameters
-        ----------
-        value : {'consolidated', 'separate'}, default 'consolidated'
-            Accounting method used for registering investments in subsidiaries.
-
-        Returns
-        -------
-        str
-
-        Raises
-        ------
-        ValueError
-            * If passed ``value`` is invalid.
-        """
-        return self._acc_unit
-
-    @acc_method.setter
-    def acc_method(self, value: Literal["consolidated", "separate"]):
-        if value in {"consolidated", "separate"}:
-            self._acc_method = value
-        else:
-            raise ValueError("acc_method expects 'consolidated' or 'separate'")
 
     @property
     def acc_unit(self):
