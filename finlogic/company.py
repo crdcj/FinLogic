@@ -24,12 +24,6 @@ class Company:
             database. Both CVM ID or Fiscal ID can be used. CVM ID
             (regulator number) must be an integer. Fiscal ID must be a
             string in 'XX.XXX.XXX/XXXX-XX' format.
-        acc_unit:
-            The constant that will divide company account values. This
-            can be a number greater than zero or the strings 'thousand',
-            'million', or 'billion'. For example, if acc_unit is
-            1,000,000, all account values will be divided by one
-            million. Defaults to 1.0.
         tax_rate:
             The tax rate used to calculate some of the company
             indicators, such as EBIT and net income. The default value
@@ -126,12 +120,11 @@ class Company:
     @property
     def acc_method(self):
         """
-        Property that gets or sets the accounting method for registering
-        investments in subsidiaries. Consolidated accounting combines
-        the financial statements of a parent company and its
-        subsidiaries, while separate accounting keeps them separate.
-        Must be "consolidated" or "separate". Defaults to
-        'consolidated'.
+        Get or set the accounting method for registering investments in
+        subsidiaries. Must be "consolidated" or "separate". Consolidated
+        accounting combines the financial statements of a parent company
+        and its subsidiaries, while separate accounting keeps them
+        separate. Defaults to 'consolidated'.
 
         Raises:
             ValueError: If the accounting method is invalid.
@@ -144,6 +137,45 @@ class Company:
             self._acc_method = value
         else:
             raise ValueError("acc_method expects 'consolidated' or 'separate'")
+
+    @property
+    def acc_unit(self):
+        """Get or set the accounting unit for the financial statements.
+
+        The accounting unit can be set using a number, or one of the
+        following string values:
+            - "thousand" to represent thousands       (1,000)
+            - "million" to represent millions     (1,000,000)
+            - "billion" to represent billions (1,000,000,000)
+
+        Returns:
+            float: The current accounting unit.
+
+        Raises:
+            ValueError: If the accounting unit is invalid.
+
+        Examples:
+            To set the accounting unit to millions:
+                company.acc_unit = "million"
+
+            To set the accounting unit to a custom factor, e.g., 10,000:
+                company.acc_unit = 10_000
+
+        """
+        return self._acc_unit
+
+    @acc_unit.setter
+    def acc_unit(self, value: float | str):
+        if value == "thousand":
+            self._acc_unit = 1_000
+        elif value == "million":
+            self._acc_unit = 1_000_000
+        elif value == "billion":
+            self._acc_unit = 1_000_000_000
+        elif value > 0:
+            self._acc_unit = value
+        else:
+            raise ValueError("Accounting Unit is invalid")
 
     @property
     def language(self):
@@ -180,42 +212,6 @@ class Company:
             raise KeyError(
                 f"'{language}' not supported. Supported languages: {', '.join(list_languages)}"
             )
-
-    @property
-    def acc_unit(self):
-        """
-        Get or set a constant to divide company account values.
-
-        Parameters
-        ----------
-        value : float or str, default 1.0
-            acc_unit is a constant that will divide company account values.
-            The constant can be a number greater than zero or the strings
-            {'thousand', 'million', 'billion'}.
-
-        Returns
-        -------
-        float
-
-        Raises
-        ------
-        ValueError
-            * If passed ``value`` is invalid.
-        """
-        return self._acc_unit
-
-    @acc_unit.setter
-    def acc_unit(self, value: float | str):
-        if value == "thousand":
-            self._acc_unit = 1_000
-        elif value == "million":
-            self._acc_unit = 1_000_000
-        elif value == "billion":
-            self._acc_unit = 1_000_000_000
-        elif value >= 0:
-            self._acc_unit = value
-        else:
-            raise ValueError("Accounting Unit is invalid")
 
     @property
     def tax_rate(self):
