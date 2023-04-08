@@ -20,17 +20,10 @@ class Company:
 
     Attributes:
         identifier:
-            A unique identifier to filter a company in the FinLogic
-            database. Both CVM ID or Fiscal ID can be used. CVM ID
+            A unique identifier to filter a company in FinLogic
+            Database. Both CVM ID or Fiscal ID can be used. CVM ID
             (regulator number) must be an integer. Fiscal ID must be a
             string in 'XX.XXX.XXX/XXXX-XX' format.
-        tax_rate:
-            The tax rate used to calculate some of the company
-            indicators, such as EBIT and net income. The default value
-            is 0.34, which is the standard corporate tax rate in Brazil.
-        language:
-            The language of the account names used in the financial
-            statements. The default is 'english'.
 
     Methods:
         report:
@@ -42,6 +35,7 @@ class Company:
         indicators:
             Returns a DataFrame with common financial indicators for the
             company.
+
     Raises:
         ValueError: If the input arguments are invalid.
     """
@@ -54,25 +48,7 @@ class Company:
         tax_rate: float = 0.34,
         language: str = "english",
     ):
-        """Initializes a new instance of the Company class.
-
-        Args:
-            identifier (Union[int, str]): A unique identifier to select a company in FinLogic Database.
-                Both CVM ID or Fiscal ID can be used.
-                CVM ID (regulator ID) must be an integer.
-                Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
-            acc_unit (Union[float, str], optional): The constant that will divide company account values.
-                Defaults to 1.0.
-                Can be a number greater than zero or the strings 'thousand', 'million', or 'billion'.
-            tax_rate (float, optional): The tax rate used to calculate some of the company indicators. Defaults to 0.34.
-            language (str, optional): The language of the account names. Defaults to 'english'.
-
-        Raises:
-            ValueError: If the input arguments are invalid.
-
-        Returns:
-            None
-        """
+        """Initializes a new instance of the Company class."""
         self.set_id(identifier)
         self.acc_method = acc_method
         self.acc_unit = acc_unit
@@ -142,14 +118,15 @@ class Company:
     def acc_unit(self):
         """Get or set the accounting unit for the financial statements.
 
-        The accounting unit can be set using a number, or one of the
-        following string values:
+        The "acc_unit" is a constant that will divide all company
+        accounting values. The constant must be a number greater than
+        zero or one of the following strings:
             - "thousand" to represent thousands       (1,000)
             - "million" to represent millions     (1,000,000)
             - "billion" to represent billions (1,000,000,000)
 
         Returns:
-            float: The current accounting unit.
+            The current accounting unit.
 
         Raises:
             ValueError: If the accounting unit is invalid.
@@ -178,60 +155,25 @@ class Company:
             raise ValueError("Accounting Unit is invalid")
 
     @property
-    def language(self):
-        """
-        Set the language of the account names.
-        """
-        return self._language
-
-    @language.setter
-    def language(self, language: str):
-        """
-        Set the language of the account names.
-
-        Parameters
-        ----------
-        value: str
-            A valid language string.
-
-        Returns
-        -------
-        str
-
-        Raises
-        ------
-        KeyError
-            * If passed ``language`` not supported.
-        """
-
-        # Supported languages
-        list_languages = ["english", "portuguese"]
-        if language.lower() in list_languages:
-            self._language = language.capitalize()
-        else:
-            raise KeyError(
-                f"'{language}' not supported. Supported languages: {', '.join(list_languages)}"
-            )
-
-    @property
     def tax_rate(self):
-        """
-        Get or set company 'tax_rate' attribute.
+        """Get or set company 'tax_rate' property.
 
-        Parameters
-        ----------
-        value : float, default 0.34
-            'value' will be passed to 'tax_rate' object attribute if
-             0 <= value <= 1.
+        The "tax_rate" is used to calculate some of the company
+        indicators, such as EBIT and net income. The default value
+        is 0.34, which is the standard corporate tax rate in Brazil.
 
-        Returns
-        -------
-        float
+        Returns:
+            The tax rate value.
 
-        Raises
-        ------
-        ValueError
-            * If passed ``value`` is invalid.
+        Raises:
+            ValueError: If the tax rate is not a float between 0 and 1.
+
+        Examples:
+            To set the tax rate to 21%:
+                company.tax_rate = 0.21
+
+            To set the tax rate to 0% (tax exempt):
+                company.tax_rate = 0.0
         """
         return self._tax_rate
 
@@ -241,6 +183,34 @@ class Company:
             self._tax_rate = value
         else:
             raise ValueError("Company 'tax_rate' value is invalid")
+
+    @property
+    def language(self):
+        """Get or set the language of the account names.
+
+        It is the language used in the account names of the financial
+        statements. This property accepts a string representing the
+        desired language. Supported languages are "english" and
+        "portuguese". The default is 'english'.
+
+        Returns: The language of the account names.
+
+        Raises:
+            KeyError: If the provided language is not supported.
+        """
+
+        return self._language
+
+    @language.setter
+    def language(self, language: str):
+        # Supported languages
+        list_languages = ["english", "portuguese"]
+        if language.lower() in list_languages:
+            self._language = language.capitalize()
+        else:
+            raise KeyError(
+                f"'{language}' not supported. Supported languages: {', '.join(list_languages)}"
+            )
 
     def _set_main_data(self) -> pd.DataFrame:
         self._COMP_DF = (
@@ -301,8 +271,7 @@ class Company:
         acc_level: int | None = None,
         num_years: int = 0,
     ) -> pd.DataFrame:
-        """
-        Return a DataFrame with company selected report type.
+        """Return a DataFrame with company selected report type.
 
         This function generates a report representing one of the financial
         statements for the company adjusted by the attributes passed and
