@@ -1,4 +1,11 @@
-"""Module containing Finlogic Database functions."""
+"""Finlogic Database module.
+
+This module provides functions to handle financial data from the CVM Portal. It
+allows updating, processing and consolidating financial statements, as well as
+searching for company names in the FinLogic Database and retrieving information
+about the database itself.
+"""
+
 import os
 from pathlib import Path
 import shutil
@@ -23,7 +30,6 @@ CHECKMARK = "\033[32m\u2714\033[0m"
 
 def list_urls() -> List[str]:
     """Update the CVM Portal file base.
-
     Urls with CVM raw files:
     http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/
     http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/
@@ -172,13 +178,19 @@ def consolidate_main_df(processed_filenames: str):
 
 
 def search_company(expression: str) -> pd.DataFrame:
-    """Search companies names in database that contains the ```expression```
+    """Search for company names in the FinLogic Database containing a given expression.
+
+    This function searches the 'co_name' column in the FinLogic Database for company names
+    that contain the provided expression. It returns a DataFrame containing the search
+    results, with each row representing a unique company that matches the search criteria.
 
     Args:
-        expression: A string to search in FinLogic Database column 'co_name'.
+        expression (str): A string to search for in the FinLogic Database 'co_name' column.
 
     Returns:
-        pd.DataFrame with the search results
+        pd.DataFrame: A DataFrame containing the search results, with columns 'co_name',
+            'cvm_id', and 'fiscal_id' for each unique company that matches the search
+            criteria.
     """
     expression = expression.upper()
     df = (
@@ -192,10 +204,16 @@ def search_company(expression: str) -> pd.DataFrame:
 
 
 def database_info() -> pd.DataFrame:
-    """Return information about FinLogic database
+    """Returns general information about FinLogic Database.
+
+    This function generates a pandas DataFrame containing various information
+    about the FinLogic database, such as the database path, file size, last
+    update call, last modified dates, size in memory, number of accounting rows,
+    unique accounting codes, companies, unique financial statements, first
+    financial statement date, and last financial statement date.
 
     Returns:
-        pd.DataFrame
+        pd.DataFrame: A DataFrame containing the FinLogic Database information.
     """
     if c.main_df.empty:
         print("There is no data in database")
