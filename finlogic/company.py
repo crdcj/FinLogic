@@ -94,9 +94,9 @@ class Company:
         self._set_main_data()
 
     @property
-    def acc_method(self):
+    def acc_method(self) -> Literal["consolidated", "separate"]:
         """
-        Get or set the accounting method for registering investments in
+        Gets or sets the accounting method for registering investments in
         subsidiaries. Must be "consolidated" or "separate". Consolidated
         accounting combines the financial statements of a parent company
         and its subsidiaries, while separate accounting keeps them
@@ -115,8 +115,8 @@ class Company:
             raise ValueError("acc_method expects 'consolidated' or 'separate'")
 
     @property
-    def acc_unit(self):
-        """Get or set the accounting unit for the financial statements.
+    def acc_unit(self) -> float:
+        """Gets or sets the accounting unit for the financial statements.
 
         The "acc_unit" is a constant that will divide all company
         accounting values. The constant must be a number greater than
@@ -137,7 +137,6 @@ class Company:
 
             To set the accounting unit to a custom factor, e.g., 10,000:
                 company.acc_unit = 10_000
-
         """
         return self._acc_unit
 
@@ -155,8 +154,8 @@ class Company:
             raise ValueError("Accounting Unit is invalid")
 
     @property
-    def tax_rate(self):
-        """Get or set company 'tax_rate' property.
+    def tax_rate(self) -> float:
+        """Gets or sets company 'tax_rate' property.
 
         The "tax_rate" is used to calculate some of the company
         indicators, such as EBIT and net income. The default value
@@ -185,15 +184,16 @@ class Company:
             raise ValueError("Company 'tax_rate' value is invalid")
 
     @property
-    def language(self):
-        """Get or set the language of the account names.
+    def language(self) -> str:
+        """Gets or sets the language of the account names.
 
         It is the language used in the account names of the financial
         statements. This property accepts a string representing the
         desired language. Supported languages are "english" and
         "portuguese". The default is 'english'.
 
-        Returns: The language of the account names.
+        Returns:
+            The language used in the account names.
 
         Raises:
             KeyError: If the provided language is not supported.
@@ -271,35 +271,33 @@ class Company:
         acc_level: int | None = None,
         num_years: int = 0,
     ) -> pd.DataFrame:
-        """Return a DataFrame with company selected report type.
+        """Generate an accounting report for the company.
 
         This function generates a report representing one of the financial
-        statements for the company adjusted by the attributes passed and
-        returns a pandas.DataFrame with this report.
+        statements for the company adjusted by the attributes passed.
 
-        Parameters
-        ----------
-        report_type : {'assets', 'liabilities_and_equity', 'liabilities',
-            'equity', 'income', 'cash_flow'}
-            Report type to be generated.
-        acc_level : {None, 2, 3, 4}, default None
-            Detail level to show for account codes.
-            acc_level = None -> X...       (default: show all accounts)
-            acc_level = 2    -> X.YY       (show 2 levels)
-            acc_level = 3    -> X.YY.ZZ    (show 3 levels)
-            acc_level = 4    -> X.YY.ZZ.WW (show 4 levels)
-        num_years : int, default 0
-            Select how many last years to show where 0 -> show all years
+        Args:
+            report_type: Type of financial report to be generated. Options
+                include: "assets", "cash", "current_assets",
+                "non_current_assets", "liabilities", "debt",
+                "current_liabilities", "non_current_liabilities",
+                "liabilities_and_equity", "equity", "income",
+                "earnings_per_share", "comprehensive_income",
+                "changes_in_equity", "cash_flow" and "added_value".
+            acc_level: Detail level to show for account codes. Options are 2,
+                3, 4 or None. Defaults to None.
+                    None -> X...       (default: show all accounts)
+                    2    -> X.YY       (show 2 levels)
+                    3    -> X.YY.ZZ    (show 3 levels)
+                    4    -> X.YY.ZZ.WW (show 4 levels)
+            num_years: Number of years to include in the report. Defaults to 0
+                (all years).
 
-        Returns
-        ------
-        pandas.DataFrame
+        Returns:
+            pd.DataFrame: Generated financial report as a pandas DataFrame.
 
-        Raises
-        ------
-        ValueError
-            * If ``report_type`` attribute is invalid
-            * If ``acc_level`` attribute is invalid
+        Raises:
+            ValueError: If some argument is invalid.
         """
         # Check input arguments.
         if acc_level not in {None, 2, 3, 4}:
@@ -308,7 +306,6 @@ class Company:
         df = self._COMP_DF.query("acc_method == @self._acc_method").copy()
 
         # Set language
-
         class MyDict(dict):
             """Custom dictionary class to return key if key is not found."""
 
@@ -357,7 +354,6 @@ class Company:
             "liabilities_and_equity": ["2"],
             "equity": ["2.03"],
             "income": ["3"],
-            # "earnings_per_share": ["3.99.01.01", "3.99.02.01"],
             "earnings_per_share": ["3.99"],
             "comprehensive_income": ["4"],
             "changes_in_equity": ["5"],
