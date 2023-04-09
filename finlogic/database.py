@@ -1,4 +1,4 @@
-"""Module containing local database functions."""
+"""Module containing Finlogic Database functions."""
 import os
 from pathlib import Path
 import shutil
@@ -95,8 +95,7 @@ def update_raw_files(urls: str) -> List[Path]:
 
 
 def process_raw_file(raw_path: Path) -> Path:
-    """
-    Read yearly raw file, process it, save the result and return a file path
+    """Read yearly raw file, process it, save the result and return a file path
     object.
     """
     df = pd.DataFrame()
@@ -154,7 +153,6 @@ def consolidate_main_df(processed_filenames: str):
         c.main_df = pd.concat([c.main_df, updated_df], ignore_index=True)
     c.main_df = c.main_df.astype("category")
     # Keep only the newest 'report_version' in df if values are repeated
-    # print(len(main_df.index))
     cols = [
         "cvm_id",
         "report_type",
@@ -168,25 +166,19 @@ def consolidate_main_df(processed_filenames: str):
     cols = list(c.main_df.columns)
     cols_remove = ["report_version", "acc_value", "acc_fixed"]
     [cols.remove(col) for col in cols_remove]
-    # tmp = main_df[main_df.duplicated(cols, keep=False)]
     # Ascending order --> last is the newest report_version
     c.main_df.drop_duplicates(cols, keep="last", inplace=True)
-    # print(len(main_df.index))
     c.main_df.to_pickle(c.MAIN_DF_PATH)
 
 
 def search_company(expression: str) -> pd.DataFrame:
-    """
-    Search companies names in database that contains the ```expression```
+    """Search companies names in database that contains the ```expression```
 
-    Parameters
-    ----------
-    expression : str
-        A expression to search in FinLogic Database column 'co_name'.
+    Args:
+        expression: A string to search in FinLogic Database column 'co_name'.
 
-    Returns
-    -------
-    pd.DataFrame with search results
+    Returns:
+        pd.DataFrame with the search results
     """
     expression = expression.upper()
     df = (
@@ -200,12 +192,10 @@ def search_company(expression: str) -> pd.DataFrame:
 
 
 def database_info() -> pd.DataFrame:
-    """
-    Return information about FinLogic database
+    """Return information about FinLogic database
 
-    Returns
-    -------
-    pd.DataFrame
+    Returns:
+        pd.DataFrame
     """
     if c.main_df.empty:
         print("There is no data in database")
@@ -218,14 +208,11 @@ def database_info() -> pd.DataFrame:
         c.MAIN_DF_PATH.lstat().st_size / (1024 * 1024), 1
     )
     info_df.loc["Last Update Call"] = c.cvm_df.index.max().round("1s").tz_localize(None)
-
     # Convert python datetime to Pandas Timestamp
     last_modified_python = datetime.fromtimestamp(c.MAIN_DF_PATH.lstat().st_mtime)
     last_modified_pandas = pd.to_datetime(last_modified_python).round("1s")
     info_df.loc["Finlogic Last Modified"] = last_modified_pandas
-
     info_df.loc["CVM Last Update"] = c.cvm_df["last_modified"].max().tz_localize(None)
-
     info_df.loc["Size in Memory (MB)"] = round(
         c.main_df.memory_usage(index=True, deep=True).sum() / (1024 * 1024), 1
     )
@@ -248,41 +235,33 @@ def database_info() -> pd.DataFrame:
 def update_database(
     reset_data: bool = False, asynchronous: bool = False, cpu_usage: float = 0.75
 ):
-    """
-    Create/Update all remote files (raw files) and process them for local data
+    """Create/Update all remote files (raw files) and process them for local data
     access.
 
-    Parameters
-    ----------
-    reset_data: bool, default True
-        Delete all raw files and force a full database recompilation
-    asynchronous: bool, default False
-        Generate database by processing raw files asynchronously. Works only on Linux
-        and Mac
-    cpu_usage: float, default 0.75
-        A number between 0 and 1, where 1 represents 100% CPU usage. This
-        argument will define the number of cpu cores used for data processing when
-        function asynchronous mode is set to 'True'.
+    Args:
+        reset_data: Delete all raw files and force a full database recompilation. Default
+            is False.
+        asynchronous: Generate the database by processing raw files asynchronously.
+            Works only on Linux and Mac. Default is False.
+        cpu_usage: A number between 0 and 1, where 1 represents 100% CPU usage. This
+            argument will define the number of cpu cores used for data processing when
+            function asynchronous mode is set to 'True'. Default is 0.75.
 
-    Returns
-    -------
-    None
+    Returns:
+        None
     """
     # Parameter 'reset_data'-> delete, if they exist, data folders
     if reset_data:
         if Path.exists(c.DATA_PATH):
             shutil.rmtree(c.DATA_PATH)
         c.main_df = pd.DataFrame()
-
     # create data folders if they do not exist
     Path.mkdir(RAW_DIR, parents=True, exist_ok=True)
     Path.mkdir(PROCESSED_DIR, parents=True, exist_ok=True)
-
     # Define the number of cpu cores for parallel data processing
     workers = math.trunc(os.cpu_count() * cpu_usage)
     if workers < 1:
         workers = 1
-
     print("Updating financial statements...")
     urls = list_urls()
     raw_paths = update_raw_files(urls)
@@ -293,16 +272,13 @@ def update_database(
     )
     print("\nConsolidating processed files...")
     consolidate_main_df(processed_filenames)
-
     print('Updating "language" database...')
     process_language_df()
-
     print(f"{CHECKMARK} FinLogic database updated!")
 
 
 def process_raw_df(df: pd.DataFrame) -> pd.DataFrame:
     """Process a raw dataframe"""
-
     columns_translation = {
         "CD_CVM": "cvm_id",
         "CNPJ_CIA": "fiscal_id",
@@ -321,20 +297,16 @@ def process_raw_df(df: pd.DataFrame) -> pd.DataFrame:
         "ESCALA_MOEDA": "currency_unit",
     }
     df.rename(columns=columns_translation, inplace=True)
-
     # df['report_version'].unique() -> ['3', '2', '4', '1', '7', '5', '6', '9', '8']
     df["report_version"] = df["report_version"].astype(np.int8)
     df["cvm_id"] = df["cvm_id"].astype(np.int32)  # max < 600_000
     df["acc_value"] = df["acc_value"].astype(float)
-
     # df['currency'].value_counts() -> REAL    43391302
     df.drop(columns=["currency"], inplace=True)
-
     # df['currency_unit'].value_counts()
     #   MIL        40483230
     #   UNIDADE     2908072
     df["currency_unit"] = df["currency_unit"].map({"MIL": 1000, "UNIDADE": 1})
-
     # Unit base currency.
     df["acc_codes_level"] = df["acc_code"].str[0:4]
     # Do not adjust earnings per share rows (account codes 3.99...)
@@ -344,14 +316,11 @@ def process_raw_df(df: pd.DataFrame) -> pd.DataFrame:
         df["acc_value"] * df["currency_unit"],
     )
     df.drop(columns=["currency_unit", "acc_codes_level"], inplace=True)
-
     # df['acc_fixed'].unique() -> ['S', 'N']
     df["acc_fixed"] = df["acc_fixed"].map({"S": True, "N": False})
-
     # df['period_order'].unique() -> ['PENÚLTIMO', 'ÚLTIMO']
     df["period_order"] = df["period_order"].map({"ÚLTIMO": 0, "PENÚLTIMO": -1})
     df["period_order"] = df["period_order"].astype(np.int8)
-
     df["period_reference"] = pd.to_datetime(df["period_reference"])
     df["period_end"] = pd.to_datetime(df["period_end"])
     # BPA, BPP and DFC files have no period_begin column.
@@ -390,15 +359,12 @@ def process_raw_df(df: pd.DataFrame) -> pd.DataFrame:
     )
     # 'GRUPO_DFP' data can be inferred from 'acc_method' and report_type
     df.drop(columns=["GRUPO_DFP"], inplace=True)
-
     # Correct/harmonize some account texts.
     df.replace(to_replace=["\xa0ON\xa0", "On"], value="ON", inplace=True)
-
     # Remove duplicated accounts
     cols = list(df.columns)
     cols.remove("acc_value")
     df.drop_duplicates(cols, keep="last", inplace=True)
-
     columns_order = [
         "co_name",
         "cvm_id",
@@ -417,7 +383,6 @@ def process_raw_df(df: pd.DataFrame) -> pd.DataFrame:
         "equity_statement_column",
     ]
     df = df[columns_order]
-
     return df
 
 
