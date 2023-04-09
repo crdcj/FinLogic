@@ -1,5 +1,11 @@
-"""
-Module containing the Company Class.
+"""This module contains the Company class, which provides methods for obtaining
+financial reports and calculating financial indicators for a company. Users can
+set the accounting method, unit, tax rate, and language for the company object.
+
+Classes:
+    Company: Represents a company with its financial information and allows
+    users to generate financial reports and indicators.
+
 Abreviations used in code:
     dfi = input dataframe
     dfo = output dataframe
@@ -56,25 +62,23 @@ class Company:
         self.language = language
 
     def set_id(self, identifier) -> None:
-        """
-        Set a unique identifier to filter the company in FinLogic Database.
+        """Set a unique identifier to select the company in FinLogic Database.
 
-        Parameters
-        ----------
-        value: int or str
-            A unique identifier to filter a company in FinLogic Database.
-            Both CVM ID or Fiscal ID can be used.
-            CVM ID (regulator ID) must be an integer.
-            Fiscal ID must be a string in 'XX.XXX.XXX/XXXX-XX' format.
+        This method sets the company's CVM and fiscal ID based on a given
+        identifier. The identifier can be either the CVM ID or the Fiscal ID
+        (CNPJ). If the identifier is not found in the database, a KeyError is
+        raised.
+        Args:
 
-        Returns
-        -------
-        None
+        identifier: A unique identifier for the company, either as a CVM ID or
+            Fiscal ID (CNPJ). CVM ID (regulator ID) must be an integer.
+            Fiscal ID must be a string in the format 'XX.XXX.XXX/XXXX-XX'.
 
-        Raises
-        ------
-        KeyError
-            * If passed ``identifier`` not found in FinLogic Database.
+        Returns:
+            None
+
+        Raises:
+            KeyError: If the given identifier isn't found in Finlogic Database.
         """
         # Create custom data frame for ID selection
         df = (
@@ -95,12 +99,13 @@ class Company:
 
     @property
     def acc_method(self) -> Literal["consolidated", "separate"]:
-        """
-        Gets or sets the accounting method for registering investments in
-        subsidiaries. Must be "consolidated" or "separate". Consolidated
-        accounting combines the financial statements of a parent company
-        and its subsidiaries, while separate accounting keeps them
-        separate. Defaults to 'consolidated'.
+        """Gets or sets the accounting method for registering investments in
+        subsidiaries.
+
+        The "acc_method" must be "consolidated" or "separate". Consolidated
+        accounting combines the financial statements of a parent company and its
+        subsidiaries, while separate accounting keeps them separate. Defaults to
+        'consolidated'.
 
         Raises:
             ValueError: If the accounting method is invalid.
@@ -419,22 +424,19 @@ class Company:
         acc_list: list[str],
         num_years: int = 0,
     ) -> pd.DataFrame:
-        """
-        Return a financial report from custom list of accounting codes
+        """Generate a financial report from custom list of accounting codes
 
-        Creates DataFrame object with a custom list of accounting codes
-        adjusted by function attributes
+        Args:
+            acc_list: A list of strings containg accounting codes to be used
+                in the report
+            num_years: Select how many years to show in the report.
+                Defaults to 0 (show all years)
 
-        Parameters
-        ----------
-        acc_list : list[str]
-            A list of strings containg accounting codes to be used in report
-        num_years : int, default 0
-            Select how many last years to show where 0 -> show all years
+        Returns:
+            pd.DataFrame: Generated financial report as a pandas DataFrame.
 
-        Returns
-        -------
-        pandas.DataFrame
+        Raises:
+            ValueError: If some argument is invalid.
         """
         df_as = self.report("assets")
         df_le = self.report("liabilities_and_equity")
@@ -458,26 +460,19 @@ class Company:
             return s
 
     def indicators(self, num_years: int = 0, is_prior: bool = True) -> pd.DataFrame:
-        """
-        Return company main operating indicators.
+        """Calculate the company main operating indicators.
 
-        Creates DataFrame object with company operating indicators as
-        described in reference [1]
+        Args:
+            num_years: Number of years to consider for calculation. If 0, use
+                all available years. Defaults to 0.
+            is_prior: Divide return measurements by book values from the end of
+                the prior year (see Damodaran reference). Defaults to True.
 
-        Parameters
-        ----------
-        num_years : int, default 0
-            Select how many last years to show where 0 -> show all years
-        is_prior : bool, default True
-            Divide return measurements by book values from the end of the prior
-            year (see Damodaran reference).
-        Returns
-        -------
-        pandas.Dataframe
+        Returns:
+            pd.DataFrame: Dataframe containing calculated financial indicators.
 
-        References
-        ----------
-        .. [1]  Aswath Damodaran, "Return on Capital (ROC), Return on Invested
+        References:
+            [1] Aswath Damodaran, "Return on Capital (ROC), Return on Invested
                 Capital (ROIC) and Return on Equity (ROE): Measurement and
                 Implications.", 2007,
                 https://people.stern.nyu.edu/adamodar/pdfoles/papers/returnmeasures.pdf
