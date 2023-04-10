@@ -21,7 +21,7 @@ from . import config as c
 
 URL_DFP = "http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/"
 URL_ITR = "http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/"
-URL_LANGUAGE = "https://raw.githubusercontent.com/fe-lipe-c/finlogic_datasets/master/data/pten_df.csv"
+URL_LANGUAGE = "https://raw.githubusercontent.com/fe-lipe-c/finlogic_datasets/master/data/pten_df.csv"  # noqa
 RAW_DIR = c.DATA_PATH / "raw"
 PROCESSED_DIR = c.DATA_PATH / "processed"
 INTERIM_DIR = c.DATA_PATH / "interim"
@@ -178,19 +178,21 @@ def consolidate_main_df(processed_filenames: str):
 
 
 def search_company(expression: str) -> pd.DataFrame:
-    """Search for company names in the FinLogic Database containing a given expression.
+    """Search for company names in the FinLogic Database.
 
-    This function searches the 'co_name' column in the FinLogic Database for company names
-    that contain the provided expression. It returns a DataFrame containing the search
-    results, with each row representing a unique company that matches the search criteria.
+    This function searches the 'co_name' column in the FinLogic Database for
+    company names that contain the provided expression. It returns a DataFrame
+    containing the search results, with each row representing a unique company
+    that matches the search criteria.
 
     Args:
-        expression (str): A string to search for in the FinLogic Database 'co_name' column.
+        expression (str): A string to search for in the FinLogic Database
+            'co_name' column.
 
     Returns:
-        pd.DataFrame: A DataFrame containing the search results, with columns 'co_name',
-            'cvm_id', and 'fiscal_id' for each unique company that matches the search
-            criteria.
+        pd.DataFrame: A DataFrame containing the search results, with columns
+            'co_name', 'cvm_id', and 'fiscal_id' for each unique company that
+            matches the search criteria.
     """
     expression = expression.upper()
     df = (
@@ -253,17 +255,17 @@ def database_info() -> pd.DataFrame:
 def update_database(
     reset_data: bool = False, asynchronous: bool = False, cpu_usage: float = 0.75
 ):
-    """Create/Update all remote files (raw files) and process them for local data
-    access.
+    """Verify changes in remote files and update them in Finlogic Database.
 
     Args:
-        reset_data: Delete all raw files and force a full database recompilation. Default
-            is False.
-        asynchronous: Generate the database by processing raw files asynchronously.
-            Works only on Linux and Mac. Default is False.
-        cpu_usage: A number between 0 and 1, where 1 represents 100% CPU usage. This
-            argument will define the number of cpu cores used for data processing when
-            function asynchronous mode is set to 'True'. Default is 0.75.
+        reset_data: Delete all raw files and force a full database
+            recompilation. Default is False.
+        asynchronous: Generate the database by processing raw files
+            asynchronously. Works only on Linux and Mac. Default is False.
+        cpu_usage: A number between 0 and 1, where 1 represents 100% CPU usage.
+            This argument will define the number of cpu cores used for data
+            processing when function asynchronous mode is set to 'True'. Default
+            is 0.75.
 
     Returns:
         None
