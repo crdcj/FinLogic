@@ -19,28 +19,14 @@ from . import config as c
 class Company:
     """A class to represent a company financial data.
 
-    This class provides methods to create financial reports and to
-    calculate financial indicators based on a company's accounting data.
-    The class also has an AI generated dictionary to translate from
-    Portuguese to English.
-
-    Attributes:
-        identifier:
-            A unique identifier to filter a company in FinLogic
-            Database. Both CVM ID or Fiscal ID can be used. CVM ID
-            (regulator number) must be an integer. Fiscal ID must be a
-            string in 'XX.XXX.XXX/XXXX-XX' format.
+    This class provides methods to create financial reports and to calculate
+    financial indicators based on a company's accounting data. The class also
+    has an AI generated dictionary to translate from Portuguese to English.
 
     Methods:
-        report:
-            Generates a financial report based on a specified report
-            type and accounting level.
-        custom_report:
-            Creates a financial report from a custom list of accounting
-            codes.
-        indicators:
-            Returns a DataFrame with common financial indicators for the
-            company.
+        report: Creates a financial report for the company.
+        custom_report: Creates a custom financial report for the company.
+        indicators: Calculates the financial indicators of the company.
 
     Raises:
         ValueError: If the input arguments are invalid.
@@ -55,24 +41,26 @@ class Company:
         language: str = "english",
     ):
         """Initializes a new instance of the Company class."""
-        self.set_id(identifier)
+        self.identifier = identifier
         self.acc_method = acc_method
         self.acc_unit = acc_unit
         self.tax_rate = tax_rate
         self.language = language
 
-    def set_id(self, identifier) -> None:
+    @property
+    def identifier(self) -> int | str:
         """Set a unique identifier to select the company in FinLogic Database.
 
         This method sets the company's CVM and fiscal ID based on a given
         identifier. The identifier can be either the CVM ID or the Fiscal ID
         (CNPJ). If the identifier is not found in the database, a KeyError is
         raised.
-        Args:
 
-        identifier: A unique identifier for the company, either as a CVM ID or
-            Fiscal ID (CNPJ). CVM ID (regulator ID) must be an integer.
-            Fiscal ID must be a string in the format 'XX.XXX.XXX/XXXX-XX'.
+        Args:
+            identifier: A unique identifier to select a company in FinLogic
+                Database. Both CVM ID or Fiscal ID can be used. CVM ID
+                (regulator number) must be an integer. Fiscal ID must be a
+                string in 'XX.XXX.XXX/XXXX-XX' format.
 
         Returns:
             None
@@ -80,6 +68,10 @@ class Company:
         Raises:
             KeyError: If the given identifier isn't found in Finlogic Database.
         """
+        return self._identifier
+
+    @identifier.setter
+    def identifier(self, identifier: int | str):
         # Create custom data frame for ID selection
         df = (
             c.main_df[["cvm_id", "fiscal_id"]]
@@ -96,6 +88,7 @@ class Company:
             raise KeyError("Company 'identifier' not found in database")
         # Only set company data after object identifier validation
         self._set_main_data()
+        self._identifier = identifier
 
     @property
     def acc_method(self) -> Literal["consolidated", "separate"]:
@@ -213,9 +206,8 @@ class Company:
         if language.lower() in list_languages:
             self._language = language.capitalize()
         else:
-            raise KeyError(
-                f"'{language}' not supported. Supported languages: {', '.join(list_languages)}"
-            )
+            sup_lang = f"Supported languages: {', '.join(list_languages)}"
+            raise KeyError(f"'{language}' not supported. {sup_lang}")
 
     def _set_main_data(self) -> pd.DataFrame:
         self._COMP_DF = (
@@ -290,11 +282,11 @@ class Company:
                 "earnings_per_share", "comprehensive_income",
                 "changes_in_equity", "cash_flow" and "added_value".
             acc_level: Detail level to show for account codes. Options are 2,
-                3, 4 or None. Defaults to None.
-                    None -> X...       (default: show all accounts)
+                3, 4 or None. Defaults to None. How the values works:
                     2    -> X.YY       (show 2 levels)
                     3    -> X.YY.ZZ    (show 3 levels)
                     4    -> X.YY.ZZ.WW (show 4 levels)
+                    None -> X...       (default: show all accounts)
             num_years: Number of years to include in the report. Defaults to 0
                 (all years).
 
@@ -537,8 +529,6 @@ class Company:
         # Show only the selected number of years
         if num_years > 0:
             dfo = dfo[dfo.columns[-num_years:]]
-        # Since all columns are strings representing corporate year, convert them to datetime64
-        # dfo.columns = pd.to_datetime(dfo.columns)
         return dfo
 
     def _make_report(self, dfi: pd.DataFrame) -> pd.DataFrame:
