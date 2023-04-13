@@ -75,7 +75,7 @@ def update_raw_file(url: str) -> Path:
         with raw_path.open(mode="wb") as f:
             f.write(r.content)
 
-        # Timestamps
+        # Header example: "Last-Modified: Wed, 23 Jun 2021 12:19:24 GMT"
         ts_gmt = pd.to_datetime(r.headers["Last-Modified"])
         ts_sao_paulo = ts_gmt.tz_convert("America/sao_paulo")
         ts_now = pd.Timestamp.now().tz_localize("America/sao_paulo")
@@ -270,20 +270,21 @@ def update_database(
     Returns:
         None
     """
-    # Parameter 'reset_data'-> delete, if they exist, data folders
+    # Parameter 'reset_data'-> delete, if they exist, data folders.
     if reset_data:
         if Path.exists(c.DATA_PATH):
             shutil.rmtree(c.DATA_PATH)
         c.main_df = pd.DataFrame()
-    # create data folders if they do not exist
+    # Create data folders if they do not exist.
     Path.mkdir(RAW_DIR, parents=True, exist_ok=True)
     Path.mkdir(PROCESSED_DIR, parents=True, exist_ok=True)
-    # Define the number of cpu cores for parallel data processing
+    # Define the number of cpu cores for parallel data processing.
     workers = math.trunc(os.cpu_count() * cpu_usage)
     if workers < 1:
         workers = 1
     print("Updating financial statements...")
     urls = list_urls()
+    urls = urls[:1]  # Test
     raw_paths = update_raw_files(urls)
     print(f"Number of financial statements updated = {len(raw_paths)}")
     print("\nProcessing financial statements...")
