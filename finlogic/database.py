@@ -9,7 +9,6 @@ about the database itself.
 import os
 from pathlib import Path
 import shutil
-import math
 import zipfile
 from typing import List
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
@@ -208,11 +207,11 @@ def search_company(expression: str) -> pd.DataFrame:
 def database_info() -> dict:
     """Returns general information about FinLogic Database.
 
-    This function generates a pandas DataFrame containing various information
-    about the FinLogic database, such as the database path, file size, last
-    update call, last modified dates, size in memory, number of accounting rows,
-    unique accounting codes, companies, unique financial statements, first
-    financial statement date, and last financial statement date.
+    This function generates a dictionary containing main information about
+    FinLogic Database, such as the database path, file size, last update call,
+    last modified dates, size in memory, number of accounting rows, unique
+    accounting codes, companies, unique financial statements, first financial
+    statement date and last financial statement date.
 
     Returns:
         A dictionary containing the FinLogic Database information.
@@ -220,27 +219,29 @@ def database_info() -> dict:
     if c.main_df.empty:
         print("Finlogic Database is empty")
         return
-    info_dict = {}
-    info_dict["Database Path"] = c.DATA_PATH
-    file_size = c.MAIN_DF_PATH.stat().st_size
-    info_dict["File Size (MB)"] = round(file_size / (1024 * 1024), 1)
-    info_dict["Last Update Call"] = c.cvm_df.index.max().round("1s").isoformat()
-    ts_unix = round(c.MAIN_DF_PATH.stat().st_mtime, 0)
-    ts_iso = pd.Timestamp.fromtimestamp(ts_unix).isoformat()
-    info_dict["Finlogic Last Modified"] = ts_iso
-    info_dict["CVM Last Update"] = c.cvm_df["last_modified"].max().isoformat()
-    data_size = c.main_df.memory_usage(index=True, deep=True).sum()
-    info_dict["Data Size in Memory (MB)"] = round(data_size / (1024 * 1024), 1)
-    info_dict["Accounting Rows"] = len(c.main_df.index)
-    info_dict["Unique Accounting Codes"] = c.main_df["acc_code"].nunique()
-    info_dict["Companies"] = c.main_df["cvm_id"].nunique()
-    columns_duplicates = ["cvm_id", "report_version", "report_type", "period_reference"]
-    num_unique = len(c.main_df.drop_duplicates(subset=columns_duplicates).index)
-    info_dict["Unique Financial Statements"] = num_unique
+
+    file_date_unix = round(c.MAIN_DF_PATH.stat().st_mtime, 0)
+    memory_size = c.main_df.memory_usage(index=True, deep=True).sum()
+    statements_cols = ["cvm_id", "report_version", "report_type", "period_reference"]
+    statements_num = len(c.main_df.drop_duplicates(subset=statements_cols).index)
     first_statement = c.main_df["period_end"].astype("datetime64[ns]").min()
-    info_dict["First Financial Statement"] = first_statement.strftime("%Y-%m-%d")
     last_statement = c.main_df["period_end"].astype("datetime64[ns]").max()
-    info_dict["Last Financial Statement"] = last_statement.strftime("%Y-%m-%d")
+
+    info_dict = {
+        "Path": c.DATA_PATH,
+        "File size (MB)": round(c.MAIN_DF_PATH.stat().st_size / 1024**2, 1),
+        "Last update call": c.cvm_df.index.max().round("1s").isoformat(),
+        "Last modified": pd.Timestamp.fromtimestamp(file_date_unix).isoformat(),
+        "Last updated data": c.cvm_df["last_modified"].max().isoformat(),
+        "Memory size (MB)": round(memory_size / 1024**2, 1),
+        "Accounting rows": len(c.main_df.index),
+        "Unique accounting codes": c.main_df["acc_code"].nunique(),
+        "Number of companies": c.main_df["cvm_id"].nunique(),
+        "Unique financial statements": statements_num,
+        "First financial statement": first_statement.strftime("%Y-%m-%d"),
+        "Last financial statement": last_statement.strftime("%Y-%m-%d"),
+    }
+
     return info_dict
 
 
@@ -271,7 +272,7 @@ def update_database(
     Path.mkdir(RAW_DIR, parents=True, exist_ok=True)
     Path.mkdir(PROCESSED_DIR, parents=True, exist_ok=True)
     # Define the number of cpu cores for parallel data processing.
-    workers = math.trunc(os.cpu_count() * cpu_usage)
+    workers = int(os.cpu_count() * cpu_usage)
     if workers < 1:
         workers = 1
     print("Updating financial statements...")

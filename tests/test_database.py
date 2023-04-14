@@ -3,8 +3,8 @@ import finlogic as fl
 
 def test_db_info():
     db_info = fl.database_info()
-    assert db_info["First Financial Statement"] == "2009-01-31"
-    assert db_info["Accounting Rows"] > 20_000_000
+    assert db_info["First financial statement"] == "2009-01-31"
+    assert db_info["Accounting rows"] > 20_000_000
 
 
 def test_search_company():
