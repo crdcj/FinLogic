@@ -6,4 +6,4 @@ data/
 finlogic.egg-info/
 # Jupyter Notebook extensions
 *.ipynb
-
+debug*

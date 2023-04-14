@@ -11,7 +11,6 @@ from pathlib import Path
 import shutil
 import math
 import zipfile
-from datetime import datetime
 from typing import List
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 import requests
@@ -65,30 +64,31 @@ def update_raw_file(url: str) -> Path:
         r = s.get(url, stream=True)
         if r.status_code != requests.codes.ok:
             return None
-        if Path.exists(raw_path):
-            local_file_size = raw_path.stat().st_size
-        else:
-            local_file_size = 0
-        url_file_size = int(r.headers["Content-Length"])
-        if local_file_size == url_file_size:
-            return None
-        with raw_path.open(mode="wb") as f:
-            f.write(r.content)
 
-        # Timestamps
-        ts_gmt = pd.to_datetime(r.headers["Last-Modified"])
-        ts_sao_paulo = ts_gmt.tz_convert("America/sao_paulo")
-        ts_now = pd.Timestamp.now().tz_localize("America/sao_paulo")
+    if Path.exists(raw_path):
+        local_file_size = raw_path.stat().st_size
+    else:
+        local_file_size = 0
+    url_file_size = int(r.headers["Content-Length"])
+    if local_file_size == url_file_size:
+        # File is already updated
+        return None
+    with raw_path.open(mode="wb") as f:
+        f.write(r.content)
 
-        # Store URL files metadata
-        c.cvm_df.loc[ts_now] = [
-            raw_path.name,
-            r.headers["Content-Length"],
-            r.headers["ETag"],
-            ts_sao_paulo,
-        ]
-        print(f"    {CHECKMARK} {raw_path.name} downloaded.")
-        return raw_path
+    # headers["Last-Modified"] -> 'Wed, 23 Jun 2021 12:19:24 GMT'
+    ts_server = pd.to_datetime(
+        r.headers["Last-Modified"], format="%a, %d %b %Y %H:%M:%S %Z"
+    )
+    # Store URL files metadata
+    c.cvm_df.loc[pd.Timestamp.now()] = [
+        raw_path.name,
+        r.headers["Content-Length"],
+        r.headers["ETag"],
+        ts_server,
+    ]
+    print(f"    {CHECKMARK} {raw_path.name} downloaded.")
+    return raw_path
 
 
 def update_raw_files(urls: str) -> List[Path]:
@@ -205,7 +205,7 @@ def search_company(expression: str) -> pd.DataFrame:
     return df
 
 
-def database_info() -> pd.DataFrame:
+def database_info() -> dict:
     """Returns general information about FinLogic Database.
 
     This function generates a pandas DataFrame containing various information
@@ -215,41 +215,33 @@ def database_info() -> pd.DataFrame:
     financial statement date, and last financial statement date.
 
     Returns:
-        pd.DataFrame: A DataFrame containing the FinLogic Database information.
+        A dictionary containing the FinLogic Database information.
     """
     if c.main_df.empty:
-        print("There is no data in database")
+        print("Finlogic Database is empty")
         return
-    info_df = pd.DataFrame()
-    info_df.index.name = "FinLogic Database Info"
-    info_df["Value"] = ""
-    info_df.loc["Database Path"] = c.DATA_PATH
-    info_df.loc["File Size (MB)"] = round(
-        c.MAIN_DF_PATH.lstat().st_size / (1024 * 1024), 1
-    )
-    info_df.loc["Last Update Call"] = c.cvm_df.index.max().round("1s").tz_localize(None)
-    # Convert python datetime to Pandas Timestamp
-    last_modified_python = datetime.fromtimestamp(c.MAIN_DF_PATH.lstat().st_mtime)
-    last_modified_pandas = pd.to_datetime(last_modified_python).round("1s")
-    info_df.loc["Finlogic Last Modified"] = last_modified_pandas
-    info_df.loc["CVM Last Update"] = c.cvm_df["last_modified"].max().tz_localize(None)
-    info_df.loc["Size in Memory (MB)"] = round(
-        c.main_df.memory_usage(index=True, deep=True).sum() / (1024 * 1024), 1
-    )
-    info_df.loc["Accounting Rows"] = len(c.main_df.index)
-    info_df.loc["Unique Accounting Codes"] = c.main_df["acc_code"].nunique()
-    info_df.loc["Companies"] = c.main_df["cvm_id"].nunique()
+    info_dict = {}
+    info_dict["Database Path"] = c.DATA_PATH
+    file_size = c.MAIN_DF_PATH.stat().st_size
+    info_dict["File Size (MB)"] = round(file_size / (1024 * 1024), 1)
+    info_dict["Last Update Call"] = c.cvm_df.index.max().round("1s").isoformat()
+    ts_unix = round(c.MAIN_DF_PATH.stat().st_mtime, 0)
+    ts_iso = pd.Timestamp.fromtimestamp(ts_unix).isoformat()
+    info_dict["Finlogic Last Modified"] = ts_iso
+    info_dict["CVM Last Update"] = c.cvm_df["last_modified"].max().isoformat()
+    data_size = c.main_df.memory_usage(index=True, deep=True).sum()
+    info_dict["Data Size in Memory (MB)"] = round(data_size / (1024 * 1024), 1)
+    info_dict["Accounting Rows"] = len(c.main_df.index)
+    info_dict["Unique Accounting Codes"] = c.main_df["acc_code"].nunique()
+    info_dict["Companies"] = c.main_df["cvm_id"].nunique()
     columns_duplicates = ["cvm_id", "report_version", "report_type", "period_reference"]
-    info_df.loc["Unique Financial Statements"] = len(
-        c.main_df.drop_duplicates(subset=columns_duplicates).index
-    )
-    info_df.loc["First Financial Statement"] = (
-        c.main_df["period_end"].astype("datetime64[ns]").min().strftime("%Y-%m-%d")
-    )
-    info_df.loc["Last Financial Statement"] = (
-        c.main_df["period_end"].astype("datetime64[ns]").max().strftime("%Y-%m-%d")
-    )
-    return info_df
+    num_unique = len(c.main_df.drop_duplicates(subset=columns_duplicates).index)
+    info_dict["Unique Financial Statements"] = num_unique
+    first_statement = c.main_df["period_end"].astype("datetime64[ns]").min()
+    info_dict["First Financial Statement"] = first_statement.strftime("%Y-%m-%d")
+    last_statement = c.main_df["period_end"].astype("datetime64[ns]").max()
+    info_dict["Last Financial Statement"] = last_statement.strftime("%Y-%m-%d")
+    return info_dict
 
 
 def update_database(
@@ -270,20 +262,21 @@ def update_database(
     Returns:
         None
     """
-    # Parameter 'reset_data'-> delete, if they exist, data folders
+    # Parameter 'reset_data'-> delete, if they exist, data folders.
     if reset_data:
         if Path.exists(c.DATA_PATH):
             shutil.rmtree(c.DATA_PATH)
         c.main_df = pd.DataFrame()
-    # create data folders if they do not exist
+    # Create data folders if they do not exist.
     Path.mkdir(RAW_DIR, parents=True, exist_ok=True)
     Path.mkdir(PROCESSED_DIR, parents=True, exist_ok=True)
-    # Define the number of cpu cores for parallel data processing
+    # Define the number of cpu cores for parallel data processing.
     workers = math.trunc(os.cpu_count() * cpu_usage)
     if workers < 1:
         workers = 1
     print("Updating financial statements...")
     urls = list_urls()
+    # urls = urls[:1]  # Test
     raw_paths = update_raw_files(urls)
     print(f"Number of financial statements updated = {len(raw_paths)}")
     print("\nProcessing financial statements...")
