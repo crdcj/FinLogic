@@ -244,8 +244,8 @@ class Company:
             "period_end"
         ].max()
 
-    def info(self) -> pd.DataFrame:
-        """Return dataframe with company info."""
+    def info(self) -> dict:
+        """Return a dictionay with company info."""
         company_info = {
             "Name": self._NAME,
             "CVM ID": self._cvm_id,
@@ -258,9 +258,7 @@ class Company:
             "Last Annual Report": self._LAST_ANNUAL.strftime("%Y-%m-%d"),
             "Last Quarterly Report": self._LAST_QUARTERLY.strftime("%Y-%m-%d"),
         }
-        df = pd.DataFrame.from_dict(company_info, orient="index", columns=["Values"])
-        df.index.name = "Company Info"
-        return df
+        return company_info
 
     def report(
         self,
@@ -558,12 +556,10 @@ class Company:
         ].drop_duplicates(subset="acc_code", ignore_index=True, keep="last")
 
         periods = list(df["period_end"].sort_values().unique())
-
         for period in periods:
-            df_year = df.query("period_end == @period")[
-                ["acc_value", "acc_code"]
-            ].copy()
-            period_str = str(np.datetime_as_string(period, unit="D"))
+            year_cols = ["acc_value", "acc_code"]
+            df_year = df.query("period_end == @period")[year_cols].copy()
+            period_str = period.strftime("%Y-%m-%d")
             if period == self._LAST_QUARTERLY:
                 period_str += " (ttm)"
             df_year.rename(columns={"acc_value": period_str}, inplace=True)
