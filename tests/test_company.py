@@ -4,15 +4,12 @@ import finlogic as fl
 def test_petro_info():
     # Petro info
     petro = fl.Company(9512, acc_method="separate", acc_unit="billion")
-    petro_info = petro.info()
     # Get the info
-    co_name = petro_info.at["Name", "Values"]
-    cvm_id = petro_info.at["CVM ID", "Values"]
-    fiscal_id = petro_info.at["Fiscal ID (CNPJ)", "Values"]
+    petro_info = petro.info()
     # Check the info
-    assert co_name == "PETROLEO BRASILEIRO S.A. PETROBRAS"
-    assert cvm_id == 9512
-    assert fiscal_id == "33.000.167/0001-01"
+    assert petro_info["Name"] == "PETROLEO BRASILEIRO S.A. PETROBRAS"
+    assert petro_info["CVM ID"] == 9512
+    assert petro_info["Fiscal ID (CNPJ)"] == "33.000.167/0001-01"
 
 
 def test_petro_report():
