@@ -7,14 +7,16 @@ about the database itself.
 """
 
 import os
-from pathlib import Path
 import shutil
 import zipfile
-from typing import List
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
-import requests
-import pandas as pd
+from pathlib import Path
+from typing import List
+
 import numpy as np
+import pandas as pd
+import requests
+
 from . import config as c
 
 URL_DFP = "http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/"
@@ -103,7 +105,7 @@ def process_raw_file(raw_path: Path) -> Path:
     """Read yearly raw file, process it, save the result and return a file path
     object.
     """
-    df = pd.DataFrame()
+    raw_df = pd.DataFrame()
     raw_zipfile = zipfile.ZipFile(raw_path)
     child_filenames = raw_zipfile.namelist()
 
@@ -118,11 +120,8 @@ def process_raw_file(raw_path: Path) -> Path:
         else:
             raw_child_df["report_type"] = "quarterly"
 
-        processed_child_df = process_raw_df(raw_child_df)
-        df = pd.concat([df, processed_child_df], ignore_index=True)
-
-    # Most values in columns are repeated
-    df = df.astype("category")
+        raw_df = pd.concat([raw_df, raw_child_df], ignore_index=True)
+    df = process_raw_df(raw_df)
     processed_path = PROCESSED_DIR / raw_path.with_suffix(".pkl.zst").name
     df.to_pickle(processed_path)
     print(f"    {CHECKMARK} {raw_path.name} processed.")
@@ -151,6 +150,7 @@ def process_raw_files(
 def process_raw_df(df: pd.DataFrame) -> pd.DataFrame:
     """Process a raw dataframe
     Data type scan:
+        cvm_id: max. value = 600_000
         report_version: [3, 2, 4, 1, 7, 5, 6, 9, 8]
         currency_unit: ['MIL', 'UNIDADE']
         currency: ['REAL']
@@ -175,6 +175,7 @@ def process_raw_df(df: pd.DataFrame) -> pd.DataFrame:
         "ESCALA_MOEDA": "currency_unit",
     }
     df.rename(columns=columns_translation, inplace=True)
+
     data_types = {
         "cvm_id": np.int32,
         "fiscal_id": str,
@@ -193,9 +194,6 @@ def process_raw_df(df: pd.DataFrame) -> pd.DataFrame:
         "currency_unit": str,
     }
     df = df.astype(data_types)
-    df["report_version"] = df["report_version"].astype(np.int8)
-    df["cvm_id"] = df["cvm_id"].astype(np.int32)  # max < 600_000
-    df["acc_value"] = df["acc_value"].astype(float)
     df.drop(columns=["currency"], inplace=True)
     df["currency_unit"] = df["currency_unit"].map({"MIL": 1000, "UNIDADE": 1})
     df["acc_codes_level"] = df["acc_code"].str[0:4]
@@ -271,6 +269,9 @@ def process_raw_df(df: pd.DataFrame) -> pd.DataFrame:
         "equity_statement_column",
     ]
     df = df[columns_order]
+    # Most values in columns are repeated
+    df = df.astype("category")
+
     return df
 
 
