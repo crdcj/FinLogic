@@ -2,6 +2,7 @@ __pycache__/
 dist/
 build/
 data/
+dev/
 .vscode/
 finlogic.egg-info/
 # Jupyter Notebook extensions
