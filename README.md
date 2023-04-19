@@ -43,6 +43,24 @@ conda install -c conda-forge finlogic
 pip install finlogic
 ```
 
+### Installation Using Docker
+
+An alternative installation method is to use Docker. This ensures an isolated and consistent environment for running the package.
+
+1. Install [Docker](https://www.docker.com/get-started) on your machine if you haven't already.
+2. Clone the repository:
+```sh
+git clone https://github.com/crdcj/FinLogic.git cd FinLogic
+```
+3. Build the Docker image:
+```sh
+docker build -t finlogic:latest .
+```
+4. Run a container from the built image: 
+```sh
+docker run -it --rm -v "$(pwd)":/app finlogic:latest
+```
+
 ### Requirements
 -   [Python](https://www.python.org) \>= 3.10
 -   [Pandas](https://github.com/pydata/pandas) \>= 1.4.0)
