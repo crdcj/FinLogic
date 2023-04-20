@@ -3,7 +3,7 @@ import pandas as pd
 
 base_dir = Path(__file__).parent
 DATA_PATH = base_dir / "data"
-MAIN_DF_PATH = DATA_PATH / "main_df.pkl.zst"
+FINLOGIC_DF_PATH = DATA_PATH / "finlogic_df.pkl.zst"
 CVM_DF_PATH = DATA_PATH / "cvm_df.pkl"
 
 LANGUAGE_DF_PATH = DATA_PATH / "interim/pten_df.csv.zst"
@@ -17,10 +17,10 @@ CHECKMARK = "\033[32m\u2714\033[0m"
 
 
 # Start/load main dataframe
-if MAIN_DF_PATH.is_file():
-    main_df = pd.read_pickle(MAIN_DF_PATH)
+if FINLOGIC_DF_PATH.is_file():
+    finlogic_df = pd.read_pickle(FINLOGIC_DF_PATH)
 else:
-    main_df = pd.DataFrame()
+    finlogic_df = pd.DataFrame()
 
 # Start/load CVM files data
 if CVM_DF_PATH.is_file():

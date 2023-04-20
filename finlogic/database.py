@@ -15,15 +15,15 @@ from . import config as cf
 from . import cvm as cv
 
 
-def consolidate_main_df(processed_filenames: str):
+def consolidate_finlogic_df(processed_filenames: str):
     # Guard clause: if no raw file was update, there is nothing to consolidate
     if not processed_filenames:
         return
 
     for filename in processed_filenames:
         updated_df = pd.read_pickle(cf.PROCESSED_DIR / filename)
-        cf.main_df = pd.concat([cf.main_df, updated_df], ignore_index=True)
-    cf.main_df = cf.main_df.astype("category")
+        cf.finlogic_df = pd.concat([cf.finlogic_df, updated_df], ignore_index=True)
+    cf.finlogic_df = cf.finlogic_df.astype("category")
     # Keep only the newest 'report_version' in df if values are repeated
     cols = [
         "co_id",
@@ -34,13 +34,13 @@ def consolidate_main_df(processed_filenames: str):
         "acc_method",
         "acc_code",
     ]
-    cf.main_df.sort_values(by=cols, ignore_index=True, inplace=True)
-    cols = list(cf.main_df.columns)
+    cf.finlogic_df.sort_values(by=cols, ignore_index=True, inplace=True)
+    cols = list(cf.finlogic_df.columns)
     cols_remove = ["report_version", "acc_value", "acc_fixed"]
     [cols.remove(col) for col in cols_remove]
     # Ascending order --> last is the newest report_version
-    cf.main_df.drop_duplicates(cols, keep="last", inplace=True)
-    cf.main_df.to_pickle(cf.MAIN_DF_PATH)
+    cf.finlogic_df.drop_duplicates(cols, keep="last", inplace=True)
+    cf.finlogic_df.to_pickle(cf.FINLOGIC_DF_PATH)
 
 
 def update_database(
@@ -65,7 +65,7 @@ def update_database(
     if reset_data:
         if Path.exists(cf.DATA_PATH):
             shutil.rmtree(cf.DATA_PATH)
-        cf.main_df = pd.DataFrame()
+        cf.finlogic_df = pd.DataFrame()
     # Create data folders if they do not exist.
     Path.mkdir(cf.RAW_DIR, parents=True, exist_ok=True)
     Path.mkdir(cf.PROCESSED_DIR, parents=True, exist_ok=True)
@@ -83,7 +83,7 @@ def update_database(
         workers, raw_paths, asynchronous=asynchronous
     )
     print("\nConsolidating processed files...")
-    consolidate_main_df(processed_filenames)
+    consolidate_finlogic_df(processed_filenames)
     print('Updating "language" database...')
     process_language_df()
     print(f"{cf.CHECKMARK} FinLogic database updated!")
@@ -101,27 +101,27 @@ def database_info() -> dict:
     Returns:
         A dictionary containing the FinLogic Database information.
     """
-    if cf.main_df.empty:
+    if cf.finlogic_df.empty:
         print("Finlogic Database is empty")
         return
 
-    file_date_unix = round(cf.MAIN_DF_PATH.stat().st_mtime, 0)
-    memory_size = cf.main_df.memory_usage(index=True, deep=True).sum()
+    file_date_unix = round(cf.FINLOGIC_DF_PATH.stat().st_mtime, 0)
+    memory_size = cf.finlogic_df.memory_usage(index=True, deep=True).sum()
     statements_cols = ["co_id", "report_version", "report_type", "period_reference"]
-    statements_num = len(cf.main_df.drop_duplicates(subset=statements_cols).index)
-    first_statement = cf.main_df["period_end"].astype("datetime64[ns]").min()
-    last_statement = cf.main_df["period_end"].astype("datetime64[ns]").max()
+    statements_num = len(cf.finlogic_df.drop_duplicates(subset=statements_cols).index)
+    first_statement = cf.finlogic_df["period_end"].astype("datetime64[ns]").min()
+    last_statement = cf.finlogic_df["period_end"].astype("datetime64[ns]").max()
 
     info_dict = {
         "Path": cf.DATA_PATH,
-        "File size (MB)": round(cf.MAIN_DF_PATH.stat().st_size / 1024**2, 1),
+        "File size (MB)": round(cf.FINLOGIC_DF_PATH.stat().st_size / 1024**2, 1),
         "Last update call": cf.cvm_df.index.max().round("1s").isoformat(),
         "Last modified": pd.Timestamp.fromtimestamp(file_date_unix).isoformat(),
         "Last updated data": cf.cvm_df["last_modified"].max().isoformat(),
         "Memory size (MB)": round(memory_size / 1024**2, 1),
-        "Accounting rows": len(cf.main_df.index),
-        "Unique accounting codes": cf.main_df["acc_code"].nunique(),
-        "Number of companies": cf.main_df["co_id"].nunique(),
+        "Accounting rows": len(cf.finlogic_df.index),
+        "Unique accounting codes": cf.finlogic_df["acc_code"].nunique(),
+        "Number of companies": cf.finlogic_df["co_id"].nunique(),
         "Unique financial statements": statements_num,
         "First financial statement": first_statement.strftime("%Y-%m-%d"),
         "Last financial statement": last_statement.strftime("%Y-%m-%d"),
@@ -149,7 +149,7 @@ def search_company(expression: str) -> pd.DataFrame:
     """
     expression = expression.upper()
     df = (
-        cf.main_df.query("co_name.str.contains(@expression)")
+        cf.finlogic_df.query("co_name.str.contains(@expression)")
         .sort_values(by="co_name")
         .drop_duplicates(subset="co_id", ignore_index=True)[
             ["co_name", "co_id", "co_fiscal_id"]

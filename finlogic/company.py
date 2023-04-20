@@ -74,7 +74,7 @@ class Company:
     def identifier(self, identifier: int | str):
         # Create custom data frame for ID selection
         df = (
-            c.main_df[["co_id", "co_fiscal_id"]]
+            c.finlogic_df[["co_id", "co_fiscal_id"]]
             .drop_duplicates()
             .astype({"co_id": int, "co_fiscal_id": str})
         )
@@ -213,18 +213,18 @@ class Company:
 
     def _set_main_data(self) -> pd.DataFrame:
         self._COMP_DF = (
-            c.main_df.query("co_id == @self._co_id")
+            c.finlogic_df.query("co_id == @self._co_id")
             .astype(
                 {
                     "co_name": str,
-                    "co_id": np.uint32,
+                    "co_id": "UInt32",
                     "co_fiscal_id": str,
                     "report_type": str,
                     "report_version": str,
                     "period_reference": "datetime64[ns]",
                     "period_begin": "datetime64[ns]",
                     "period_end": "datetime64[ns]",
-                    "period_order": np.int8,
+                    "period_order": "UInt8",
                     "acc_code": str,
                     "acc_name": str,
                     "acc_method": str,
@@ -236,13 +236,13 @@ class Company:
             .sort_values(by="acc_code", ignore_index=True)
         )
         self._NAME = self._COMP_DF["co_name"].iloc[0]
-        self._FIRST_ANNUAL = self._COMP_DF.query('report_type == "annual"')[
+        self._FIRST_ANNUAL = self._COMP_DF.query('report_type == "ANNUAL"')[
             "period_end"
         ].min()
-        self._LAST_ANNUAL = self._COMP_DF.query('report_type == "annual"')[
+        self._LAST_ANNUAL = self._COMP_DF.query('report_type == "ANNUAL"')[
             "period_end"
         ].max()
-        self._LAST_QUARTERLY = self._COMP_DF.query('report_type == "quarterly"')[
+        self._LAST_QUARTERLY = self._COMP_DF.query('report_type == "QUARTERLY"')[
             "period_end"
         ].max()
 
@@ -385,7 +385,7 @@ class Company:
 
     def _calculate_ttm(self, dfi: pd.DataFrame) -> pd.DataFrame:
         if self._LAST_ANNUAL > self._LAST_QUARTERLY:
-            return dfi.query('report_type == "annual"').copy()
+            return dfi.query('report_type == "ANNUAL"').copy()
 
         df1 = dfi.query("period_end == @self._LAST_QUARTERLY").copy()
         df1.query("period_begin == period_begin.min()", inplace=True)
@@ -404,10 +404,10 @@ class Company:
         )
         df1.drop(columns="acc_value", inplace=True)
         df_ttm = pd.merge(df1, df_ttm)
-        df_ttm["report_type"] = "quarterly"
+        df_ttm["report_type"] = "QUARTERLY"
         df_ttm["period_begin"] = self._LAST_QUARTERLY - pd.DateOffset(years=1)
 
-        df_annual = dfi.query('report_type == "annual"').copy()
+        df_annual = dfi.query('report_type == "ANNUAL"').copy()
 
         return pd.concat([df_annual, df_ttm], ignore_index=True)
 
@@ -534,19 +534,19 @@ class Company:
     def _make_report(self, dfi: pd.DataFrame) -> pd.DataFrame:
         # keep only last quarterly fs
         if self._LAST_ANNUAL > self._LAST_QUARTERLY:
-            df = dfi.query('report_type == "annual"').copy()
+            df = dfi.query('report_type == "ANNUAL"').copy()
             df.query(
-                "period_order == -1 or \
+                "period_order == 'PREVIOUS' or \
                  period_end == @self._LAST_ANNUAL",
                 inplace=True,
             )
         else:
             df = dfi.query(
-                'report_type == "annual" or \
+                'report_type == "ANNUAL" or \
                  period_end == @self._LAST_QUARTERLY'
             ).copy()
             df.query(
-                "period_order == -1 or \
+                "period_order == 'PREVIOUS' or \
                  period_end == @self._LAST_QUARTERLY or \
                  period_end == @self._LAST_ANNUAL",
                 inplace=True,
