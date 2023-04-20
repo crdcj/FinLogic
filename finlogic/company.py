@@ -74,16 +74,18 @@ class Company:
     def identifier(self, identifier: int | str):
         # Create custom data frame for ID selection
         df = (
-            c.main_df[["cvm_id", "fiscal_id"]]
+            c.main_df[["co_id", "co_fiscal_id"]]
             .drop_duplicates()
-            .astype({"cvm_id": int, "fiscal_id": str})
+            .astype({"co_id": int, "co_fiscal_id": str})
         )
-        if identifier in df["cvm_id"].values:
-            self._cvm_id = identifier
-            self._fiscal_id = df.loc[df["cvm_id"] == identifier, "fiscal_id"].item()
-        elif identifier in df["fiscal_id"].values:
-            self._fiscal_id = identifier
-            self._cvm_id = df.loc[df["fiscal_id"] == identifier, "cvm_id"].item()
+        if identifier in df["co_id"].values:
+            self._co_id = identifier
+            self._co_fiscal_id = df.loc[
+                df["co_id"] == identifier, "co_fiscal_id"
+            ].item()
+        elif identifier in df["co_fiscal_id"].values:
+            self._co_fiscal_id = identifier
+            self._co_id = df.loc[df["co_fiscal_id"] == identifier, "co_id"].item()
         else:
             raise KeyError("Company 'identifier' not found in database")
         # Only set company data after object identifier validation
@@ -211,12 +213,12 @@ class Company:
 
     def _set_main_data(self) -> pd.DataFrame:
         self._COMP_DF = (
-            c.main_df.query("cvm_id == @self._cvm_id")
+            c.main_df.query("co_id == @self._co_id")
             .astype(
                 {
                     "co_name": str,
-                    "cvm_id": np.uint32,
-                    "fiscal_id": str,
+                    "co_id": np.uint32,
+                    "co_fiscal_id": str,
                     "report_type": str,
                     "report_version": str,
                     "period_reference": "datetime64[ns]",
@@ -248,8 +250,8 @@ class Company:
         """Return a dictionay with company info."""
         company_info = {
             "Name": self._NAME,
-            "CVM ID": self._cvm_id,
-            "Fiscal ID (CNPJ)": self._fiscal_id,
+            "CVM ID": self._co_id,
+            "Fiscal ID (CNPJ)": self._co_fiscal_id,
             "Total Accounting Rows": len(self._COMP_DF.index),
             "Selected Tax Rate": self._tax_rate,
             "Selected Accounting Method": self._acc_method,

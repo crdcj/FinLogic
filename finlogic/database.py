@@ -26,7 +26,7 @@ def consolidate_main_df(processed_filenames: str):
     cf.main_df = cf.main_df.astype("category")
     # Keep only the newest 'report_version' in df if values are repeated
     cols = [
-        "cvm_id",
+        "co_id",
         "report_type",
         "period_reference",
         "report_version",
@@ -107,7 +107,7 @@ def database_info() -> dict:
 
     file_date_unix = round(cf.MAIN_DF_PATH.stat().st_mtime, 0)
     memory_size = cf.main_df.memory_usage(index=True, deep=True).sum()
-    statements_cols = ["cvm_id", "report_version", "report_type", "period_reference"]
+    statements_cols = ["co_id", "report_version", "report_type", "period_reference"]
     statements_num = len(cf.main_df.drop_duplicates(subset=statements_cols).index)
     first_statement = cf.main_df["period_end"].astype("datetime64[ns]").min()
     last_statement = cf.main_df["period_end"].astype("datetime64[ns]").max()
@@ -121,7 +121,7 @@ def database_info() -> dict:
         "Memory size (MB)": round(memory_size / 1024**2, 1),
         "Accounting rows": len(cf.main_df.index),
         "Unique accounting codes": cf.main_df["acc_code"].nunique(),
-        "Number of companies": cf.main_df["cvm_id"].nunique(),
+        "Number of companies": cf.main_df["co_id"].nunique(),
         "Unique financial statements": statements_num,
         "First financial statement": first_statement.strftime("%Y-%m-%d"),
         "Last financial statement": last_statement.strftime("%Y-%m-%d"),
@@ -144,15 +144,15 @@ def search_company(expression: str) -> pd.DataFrame:
 
     Returns:
         pd.DataFrame: A DataFrame containing the search results, with columns
-            'co_name', 'cvm_id', and 'fiscal_id' for each unique company that
+            'co_name', 'co_id', and 'co_fiscal_id' for each unique company that
             matches the search criteria.
     """
     expression = expression.upper()
     df = (
         cf.main_df.query("co_name.str.contains(@expression)")
         .sort_values(by="co_name")
-        .drop_duplicates(subset="cvm_id", ignore_index=True)[
-            ["co_name", "cvm_id", "fiscal_id"]
+        .drop_duplicates(subset="co_id", ignore_index=True)[
+            ["co_name", "co_id", "co_fiscal_id"]
         ]
     )
     return df
