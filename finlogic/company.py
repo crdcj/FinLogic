@@ -36,7 +36,7 @@ class Company:
         self,
         identifier: int | str,
         acc_method: Literal["consolidated", "separate"] = "consolidated",
-        acc_unit: float | str = 1.0,
+        acc_unit: int | float | str = 1,
         tax_rate: float = 0.34,
         language: str = "english",
     ):
@@ -87,7 +87,7 @@ class Company:
             self._co_fiscal_id = identifier
             self._co_id = df.loc[df["co_fiscal_id"] == identifier, "co_id"].item()
         else:
-            raise KeyError("Company 'identifier' not found in database")
+            raise KeyError("Company 'identifier' not found in FinLogic Database")
         # Only set company data after object identifier validation
         self._set_co_df()
         self._identifier = identifier
@@ -141,17 +141,20 @@ class Company:
         return self._acc_unit
 
     @acc_unit.setter
-    def acc_unit(self, value: float | str):
-        if value == "thousand":
-            self._acc_unit = 1_000
-        elif value == "million":
-            self._acc_unit = 1_000_000
-        elif value == "billion":
-            self._acc_unit = 1_000_000_000
-        elif value > 0:
-            self._acc_unit = value
-        else:
-            raise ValueError("Accounting Unit is invalid")
+    def acc_unit(self, value: int | float | str) -> float | int:
+        match value:
+            case "thousand":
+                self._acc_unit = 1_000
+            case "million":
+                self._acc_unit = 1_000_000
+            case "billion":
+                self._acc_unit = 1_000_000_000
+            case str():  # Add this case to catch invalid strings
+                raise ValueError("Invalid string for Accounting Unit")
+            case v if v > 0:
+                self._acc_unit = v
+            case _:
+                raise ValueError("Accounting Unit is invalid")
 
     @property
     def tax_rate(self) -> float:
