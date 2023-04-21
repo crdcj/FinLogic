@@ -239,7 +239,7 @@ def process_annual_files(
     workers: int, raw_paths: List[Path], asynchronous: bool
 ) -> List[Path]:
     """
-    Execute function 'process_raw_file' asynchronously and return
+    Execute function 'process_raw_file' and return
     a list with filenames for the processed files.
     """
     if asynchronous:
@@ -247,8 +247,6 @@ def process_annual_files(
             results = executor.map(process_annual_file, raw_paths)
         processed_paths = [r for r in results]
     else:
-        processed_paths = []
-        for raw_path in raw_paths:
-            processed_paths.append(process_annual_file(raw_path))
+        processed_paths = [process_annual_file(raw_path) for raw_path in raw_paths]
 
     return processed_paths

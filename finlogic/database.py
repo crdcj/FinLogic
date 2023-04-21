@@ -15,18 +15,14 @@ from . import config as cf
 from . import cvm as cv
 
 
-def consolidate_finlogic_df(processed_filenames: str):
+def consolidate_finlogic_df(filepaths: list):
     # Guard clause: if no raw file was update, there is nothing to consolidate
-    if not processed_filenames:
+    if not filepaths:
         return
-
-    # for filename in processed_filenames:
-    #     updated_df = pd.read_pickle(cf.PROCESSED_DIR / filename)
-    #     cf.finlogic_df = pd.concat([cf.finlogic_df, updated_df], ignore_index=True)
-
-    filepaths = [cf.PROCESSED_DIR / filename for filename in processed_filenames]
+    # Concatenate all processed files into a single dataframe
     cf.finlogic_df = pd.concat(
-        [pd.read_pickle(filepath) for filepath in filepaths], ignore_index=True
+        [pd.read_pickle(filepath) for filepath in filepaths],
+        ignore_index=True,
     )
     # Most values in datetime and string columns are the same.
     # So these remaining columns can be converted to category.
@@ -87,11 +83,11 @@ def update_database(
     raw_paths = cv.update_remote_files(urls)
     print(f"Number of financial statements updated = {len(raw_paths)}")
     print("\nProcessing financial statements...")
-    processed_filenames = cv.process_annual_files(
+    processed_filepaths = cv.process_annual_files(
         workers, raw_paths, asynchronous=asynchronous
     )
     print("\nConsolidating processed files...")
-    consolidate_finlogic_df(processed_filenames)
+    consolidate_finlogic_df(processed_filepaths)
     print('Updating "language" database...')
     process_language_df()
     print(f"{cf.CHECKMARK} FinLogic database updated!")
