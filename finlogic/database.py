@@ -20,9 +20,14 @@ def consolidate_finlogic_df(processed_filenames: str):
     if not processed_filenames:
         return
 
-    for filename in processed_filenames:
-        updated_df = pd.read_pickle(cf.PROCESSED_DIR / filename)
-        cf.finlogic_df = pd.concat([cf.finlogic_df, updated_df], ignore_index=True)
+    # for filename in processed_filenames:
+    #     updated_df = pd.read_pickle(cf.PROCESSED_DIR / filename)
+    #     cf.finlogic_df = pd.concat([cf.finlogic_df, updated_df], ignore_index=True)
+
+    filepaths = [cf.PROCESSED_DIR / filename for filename in processed_filenames]
+    cf.finlogic_df = pd.concat(
+        [pd.read_pickle(filepath) for filepath in filepaths], ignore_index=True
+    )
     # Most values in datetime and string columns are the same.
     # So these remaining columns can be converted to category.
     columns = cf.finlogic_df.select_dtypes(include=["datetime64[ns]", "object"]).columns
@@ -38,7 +43,7 @@ def consolidate_finlogic_df(processed_filenames: str):
         "acc_code",
     ]
     cf.finlogic_df.sort_values(by=cols, ignore_index=True, inplace=True)
-    cols = list(cf.finlogic_df.columns)
+    cols = cf.finlogic_df.columns.tolist()
     cols_remove = ["report_version", "acc_value", "acc_fixed"]
     [cols.remove(col) for col in cols_remove]
     # Ascending order --> last is the newest report_version

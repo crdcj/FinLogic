@@ -152,11 +152,11 @@ def format_annual_df(df: pd.DataFrame) -> pd.DataFrame:
     df = df.astype(adjust_data_types)
     # currency_unit values are ['MIL', 'UNIDADE']
     df["currency_unit"] = (
-        df["currency_unit"].map({"UNIDADE": 1, "MIL": 1000}).astype("UInt16")
+        df["currency_unit"].map({"UNIDADE": 1, "MIL": 1000}).astype(int)
     )
 
     # Do not ajust acc_value for 3.99 codes.
-    df["acc_value_pd"] = df["acc_value"].where(
+    df["acc_value"] = df["acc_value"].where(
         df["acc_code"].str.startswith("3.99"),
         df["acc_value"] * df["currency_unit"],
     )
