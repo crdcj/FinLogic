@@ -23,7 +23,10 @@ def consolidate_finlogic_df(processed_filenames: str):
     for filename in processed_filenames:
         updated_df = pd.read_pickle(cf.PROCESSED_DIR / filename)
         cf.finlogic_df = pd.concat([cf.finlogic_df, updated_df], ignore_index=True)
-    cf.finlogic_df = cf.finlogic_df.astype("category")
+    # Most values in datetime and string columns are the same.
+    # So these remaining columns can be converted to category.
+    columns = cf.finlogic_df.select_dtypes(include=["datetime64[ns]", "object"]).columns
+    cf.finlogic_df[columns] = cf.finlogic_df[columns].astype("category")
     # Keep only the newest 'report_version' in df if values are repeated
     cols = [
         "co_id",
@@ -76,10 +79,10 @@ def update_database(
     print("Updating financial statements...")
     urls = cv.list_urls()
     # urls = urls[:1]  # Test
-    raw_paths = cv.update_raw_files(urls)
+    raw_paths = cv.update_remote_files(urls)
     print(f"Number of financial statements updated = {len(raw_paths)}")
     print("\nProcessing financial statements...")
-    processed_filenames = cv.process_raw_files(
+    processed_filenames = cv.process_annual_files(
         workers, raw_paths, asynchronous=asynchronous
     )
     print("\nConsolidating processed files...")

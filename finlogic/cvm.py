@@ -91,7 +91,7 @@ def process_annual_df(raw_path: Path) -> Path:
 
     df_list = []
     for child_filename in child_filenames[1:]:
-        print(f"    {child_filename}")
+        # print(f"    {child_filename}")
         child_file = annual_zipfile.open(child_filename)
 
         # Only "DT_INI_EXERC" and "COLUNA_DF" have missing values.
@@ -107,9 +107,9 @@ def process_annual_df(raw_path: Path) -> Path:
 
         # There are two types of CVM files: DFP (annual) and ITR (quarterly).
         if raw_path.name.startswith("dfp"):
-            child_df["report_type"] = "ANNUAL"
+            child_df["report_type"] = "annual"
         else:
-            child_df["report_type"] = "QUARTERLY"
+            child_df["report_type"] = "quarterly"
 
         df_list.append(child_df)
 
@@ -189,7 +189,7 @@ def format_annual_df(df: pd.DataFrame) -> pd.DataFrame:
     if == 'Ind' -> separate statement
     """
     df["acc_method"] = (
-        df["report_group"].str[3:6].map({"Con": "CONSOLIDATED", "Ind": "SEPARATE"})
+        df["report_group"].str[3:6].map({"Con": "consolidated", "Ind": "separate"})
     )
     # 'GRUPO_DFP' data can be inferred from 'acc_code'
     df.drop(columns=["report_group"], inplace=True)
