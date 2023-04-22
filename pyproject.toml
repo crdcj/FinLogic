@@ -30,9 +30,5 @@ test = [
 [project.urls]
 repository = "https://github.com/crdcj/FinLogic"
 
-[build-system]
-requires = ["pdm-pep517>=1.0"]
-build-backend = "pdm.pep517.api"
-
 [tool.pdm]
 version = { source = "file", path = "finlogic/__init__.py" }
