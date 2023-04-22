@@ -36,7 +36,7 @@ class Company:
         self,
         identifier: int | str,
         acc_method: Literal["consolidated", "separate"] = "consolidated",
-        acc_unit: float | str = 1.0,
+        acc_unit: int | float | str = 1,
         tax_rate: float = 0.34,
         language: str = "english",
     ):
@@ -74,20 +74,22 @@ class Company:
     def identifier(self, identifier: int | str):
         # Create custom data frame for ID selection
         df = (
-            c.main_df[["cvm_id", "fiscal_id"]]
+            c.finlogic_df[["co_id", "co_fiscal_id"]]
             .drop_duplicates()
-            .astype({"cvm_id": int, "fiscal_id": str})
+            .astype({"co_id": int, "co_fiscal_id": str})
         )
-        if identifier in df["cvm_id"].values:
-            self._cvm_id = identifier
-            self._fiscal_id = df.loc[df["cvm_id"] == identifier, "fiscal_id"].item()
-        elif identifier in df["fiscal_id"].values:
-            self._fiscal_id = identifier
-            self._cvm_id = df.loc[df["fiscal_id"] == identifier, "cvm_id"].item()
+        if identifier in df["co_id"].values:
+            self._co_id = identifier
+            self._co_fiscal_id = df.loc[
+                df["co_id"] == identifier, "co_fiscal_id"
+            ].item()
+        elif identifier in df["co_fiscal_id"].values:
+            self._co_fiscal_id = identifier
+            self._co_id = df.loc[df["co_fiscal_id"] == identifier, "co_id"].item()
         else:
-            raise KeyError("Company 'identifier' not found in database")
+            raise KeyError("Company 'identifier' not found in FinLogic Database")
         # Only set company data after object identifier validation
-        self._set_main_data()
+        self._set_co_df()
         self._identifier = identifier
 
     @property
@@ -139,17 +141,20 @@ class Company:
         return self._acc_unit
 
     @acc_unit.setter
-    def acc_unit(self, value: float | str):
-        if value == "thousand":
-            self._acc_unit = 1_000
-        elif value == "million":
-            self._acc_unit = 1_000_000
-        elif value == "billion":
-            self._acc_unit = 1_000_000_000
-        elif value > 0:
-            self._acc_unit = value
-        else:
-            raise ValueError("Accounting Unit is invalid")
+    def acc_unit(self, value: int | float | str) -> float | int:
+        match value:
+            case "thousand":
+                self._acc_unit = 1_000
+            case "million":
+                self._acc_unit = 1_000_000
+            case "billion":
+                self._acc_unit = 1_000_000_000
+            case str():  # Add this case to catch invalid strings
+                raise ValueError("Invalid string for Accounting Unit")
+            case v if v > 0:
+                self._acc_unit = v
+            case _:
+                raise ValueError("Accounting Unit is invalid")
 
     @property
     def tax_rate(self) -> float:
@@ -209,20 +214,20 @@ class Company:
             sup_lang = f"Supported languages: {', '.join(list_languages)}"
             raise KeyError(f"'{language}' not supported. {sup_lang}")
 
-    def _set_main_data(self) -> pd.DataFrame:
-        self._COMP_DF = (
-            c.main_df.query("cvm_id == @self._cvm_id")
+    def _set_co_df(self) -> pd.DataFrame:
+        self._co_df = (
+            c.finlogic_df.query("co_id == @self._co_id")
             .astype(
                 {
                     "co_name": str,
-                    "cvm_id": np.uint32,
-                    "fiscal_id": str,
+                    "co_id": "UInt32",
+                    "co_fiscal_id": str,
                     "report_type": str,
                     "report_version": str,
                     "period_reference": "datetime64[ns]",
                     "period_begin": "datetime64[ns]",
                     "period_end": "datetime64[ns]",
-                    "period_order": np.int8,
+                    "period_order": str,
                     "acc_code": str,
                     "acc_name": str,
                     "acc_method": str,
@@ -233,30 +238,30 @@ class Company:
             )
             .sort_values(by="acc_code", ignore_index=True)
         )
-        self._NAME = self._COMP_DF["co_name"].iloc[0]
-        self._FIRST_ANNUAL = self._COMP_DF.query('report_type == "annual"')[
+        self._name = self._co_df["co_name"].iloc[0]
+        self._first_annual = self._co_df.query('report_type == "annual"')[
             "period_end"
         ].min()
-        self._LAST_ANNUAL = self._COMP_DF.query('report_type == "annual"')[
+        self._last_annual = self._co_df.query('report_type == "annual"')[
             "period_end"
         ].max()
-        self._LAST_QUARTERLY = self._COMP_DF.query('report_type == "quarterly"')[
+        self._last_quarterly = self._co_df.query('report_type == "quarterly"')[
             "period_end"
         ].max()
 
     def info(self) -> dict:
         """Return a dictionay with company info."""
         company_info = {
-            "Name": self._NAME,
-            "CVM ID": self._cvm_id,
-            "Fiscal ID (CNPJ)": self._fiscal_id,
-            "Total Accounting Rows": len(self._COMP_DF.index),
+            "Name": self._name,
+            "CVM ID": self._co_id,
+            "Fiscal ID (CNPJ)": self._co_fiscal_id,
+            "Total Accounting Rows": len(self._co_df.index),
             "Selected Tax Rate": self._tax_rate,
             "Selected Accounting Method": self._acc_method,
             "Selected Accounting Unit": self._acc_unit,
-            "First Annual Report": self._FIRST_ANNUAL.strftime("%Y-%m-%d"),
-            "Last Annual Report": self._LAST_ANNUAL.strftime("%Y-%m-%d"),
-            "Last Quarterly Report": self._LAST_QUARTERLY.strftime("%Y-%m-%d"),
+            "First Annual Report": self._first_annual.strftime("%Y-%m-%d"),
+            "Last Annual Report": self._last_annual.strftime("%Y-%m-%d"),
+            "Last Quarterly Report": self._last_quarterly.strftime("%Y-%m-%d"),
         }
         return company_info
 
@@ -298,7 +303,7 @@ class Company:
         if acc_level not in {None, 2, 3, 4}:
             raise ValueError("acc_level expects None, 2, 3 or 4")
 
-        df = self._COMP_DF.query("acc_method == @self._acc_method").copy()
+        df = self._co_df.query("acc_method == @self._acc_method").copy()
 
         # Set language
         class MyDict(dict):
@@ -382,17 +387,17 @@ class Company:
         return report_df
 
     def _calculate_ttm(self, dfi: pd.DataFrame) -> pd.DataFrame:
-        if self._LAST_ANNUAL > self._LAST_QUARTERLY:
+        if self._last_annual > self._last_quarterly:
             return dfi.query('report_type == "annual"').copy()
 
-        df1 = dfi.query("period_end == @self._LAST_QUARTERLY").copy()
+        df1 = dfi.query("period_end == @self._last_quarterly").copy()
         df1.query("period_begin == period_begin.min()", inplace=True)
 
-        df2 = dfi.query("period_reference == @self._LAST_QUARTERLY").copy()
+        df2 = dfi.query("period_reference == @self._last_quarterly").copy()
         df2.query("period_begin == period_begin.min()", inplace=True)
         df2["acc_value"] = -df2["acc_value"]
 
-        df3 = dfi.query("period_end == @self._LAST_ANNUAL").copy()
+        df3 = dfi.query("period_end == @self._last_annual").copy()
 
         df_ttm = (
             pd.concat([df1, df2, df3], ignore_index=True)[["acc_code", "acc_value"]]
@@ -403,7 +408,7 @@ class Company:
         df1.drop(columns="acc_value", inplace=True)
         df_ttm = pd.merge(df1, df_ttm)
         df_ttm["report_type"] = "quarterly"
-        df_ttm["period_begin"] = self._LAST_QUARTERLY - pd.DateOffset(years=1)
+        df_ttm["period_begin"] = self._last_quarterly - pd.DateOffset(years=1)
 
         df_annual = dfi.query('report_type == "annual"').copy()
 
@@ -531,22 +536,22 @@ class Company:
 
     def _make_report(self, dfi: pd.DataFrame) -> pd.DataFrame:
         # keep only last quarterly fs
-        if self._LAST_ANNUAL > self._LAST_QUARTERLY:
+        if self._last_annual > self._last_quarterly:
             df = dfi.query('report_type == "annual"').copy()
             df.query(
-                "period_order == -1 or \
-                 period_end == @self._LAST_ANNUAL",
+                "period_order == 'PREVIOUS' or \
+                 period_end == @self._last_annual",
                 inplace=True,
             )
         else:
             df = dfi.query(
                 'report_type == "annual" or \
-                 period_end == @self._LAST_QUARTERLY'
+                 period_end == @self._last_quarterly'
             ).copy()
             df.query(
-                "period_order == -1 or \
-                 period_end == @self._LAST_QUARTERLY or \
-                 period_end == @self._LAST_ANNUAL",
+                "period_order == 'PREVIOUS' or \
+                 period_end == @self._last_quarterly or \
+                 period_end == @self._last_annual",
                 inplace=True,
             )
 
@@ -560,7 +565,7 @@ class Company:
             year_cols = ["acc_value", "acc_code"]
             df_year = df.query("period_end == @period")[year_cols].copy()
             period_str = period.strftime("%Y-%m-%d")
-            if period == self._LAST_QUARTERLY:
+            if period == self._last_quarterly:
                 period_str += " (ttm)"
             df_year.rename(columns={"acc_value": period_str}, inplace=True)
             dfo = pd.merge(dfo, df_year, how="left", on=["acc_code"])
