@@ -48,7 +48,7 @@ class Company:
         self.tax_rate = tax_rate
         self.language = language
         self._initialized = True
-        # Only set company dataframe after object is fully initialized
+        # Only set company dataframe after identifier, acc_method, and acc_unit
         self._set_co_df()
 
     @property
@@ -264,12 +264,18 @@ class Company:
             co_df["acc_value"],
             co_df["acc_value"] / self._acc_unit,
         )
+
         self._name = co_df["co_name"].iloc[0]
         expr = 'report_type == "annual"'
         self._first_annual = co_df.query(expr)["period_end"].min()
         self._last_annual = co_df.query(expr)["period_end"].max()
         expr = 'report_type == "quarterly"'
         self._last_quarterly = co_df.query(expr)["period_end"].max()
+
+        # Drop columns that are already company properties
+        co_df.drop(
+            columns=["co_name", "co_id", "co_fiscal_id", "acc_method"], inplace=True
+        )
         # Set company data frame
         self._co_df = co_df
 
