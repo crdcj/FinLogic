@@ -48,7 +48,7 @@ class Company:
         self.tax_rate = tax_rate
         self.language = language
         self._initialized = True
-        # Only set company dataframe after identifier, acc_method, and acc_unit
+        # Only set company dataframe after identifier, acc_method and acc_unit are set
         self._set_co_df()
 
     @property
