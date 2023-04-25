@@ -13,7 +13,7 @@ Abreviations used in code:
 from typing import Literal
 import numpy as np
 import pandas as pd
-from . import config as c
+from . import config as cf
 
 
 class Company:
@@ -78,7 +78,7 @@ class Company:
     def identifier(self, identifier: int | str):
         # Create custom data frame for ID selection
         df = (
-            c.finlogic_df[["co_id", "co_fiscal_id"]]
+            cf.finlogic_df[["co_id", "co_fiscal_id"]]
             .drop_duplicates()
             .astype({"co_id": int, "co_fiscal_id": str})
         )
@@ -232,29 +232,28 @@ class Company:
         This method creates a data frame with the company's financial
         statements.
         """
-        # Create custom data frame for company selection
+        original_data_types = {
+            "co_name": str,
+            "co_id": "UInt32",
+            "co_fiscal_id": str,
+            "report_type": str,
+            "report_version": "UInt8",
+            "period_reference": "datetime64[ns]",
+            "period_begin": "datetime64[ns]",
+            "period_end": "datetime64[ns]",
+            "period_order": str,
+            "acc_code": str,
+            "acc_name": str,
+            "acc_method": str,
+            "acc_fixed": bool,
+            "acc_value": float,
+            "equity_statement_column": str,
+        }
+        # Create the company data frame
         expr = "co_id == @self._co_id and acc_method == @self._acc_method"
         co_df = (
-            c.finlogic_df.query(expr)
-            .astype(
-                {
-                    "co_name": str,
-                    "co_id": "UInt32",
-                    "co_fiscal_id": str,
-                    "report_type": str,
-                    "report_version": "UInt8",
-                    "period_reference": "datetime64[ns]",
-                    "period_begin": "datetime64[ns]",
-                    "period_end": "datetime64[ns]",
-                    "period_order": str,
-                    "acc_code": str,
-                    "acc_name": str,
-                    "acc_method": str,
-                    "acc_fixed": bool,
-                    "acc_value": float,
-                    "equity_statement_column": str,
-                }
-            )
+            cf.finlogic_df.query(expr)
+            .astype(original_data_types)
             .sort_values(by="acc_code", ignore_index=True)
         )
 
@@ -381,7 +380,7 @@ class Company:
                 return "(pt) " + key
 
         if self._language == "English":
-            _pten_dict = dict(c.language_df.values)
+            _pten_dict = dict(cf.language_df.values)
             _pten_dict = MyDict(_pten_dict)
             df["acc_name"] = df["acc_name"].map(_pten_dict)
 
