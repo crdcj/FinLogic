@@ -84,7 +84,6 @@ def update_remote_file(url: str) -> Path:
         ts_server,
     ]
     cvm_df.to_pickle(CVM_DF_PATH)
-    print(f"    {cf.CHECKMARK} {raw_path.name} downloaded.")
     return raw_path
 
 
@@ -93,6 +92,13 @@ def update_remote_files(urls: str) -> List[Path]:
     with ThreadPoolExecutor() as executor:
         results = executor.map(update_remote_file, urls)
     updated_raw_paths = [r for r in results if r is not None]
+    # Print updated files
+    if updated_raw_paths:
+        print("Updated files:")
+        for raw_path in updated_raw_paths:
+            print(f"    {cf.CHECKMARK} {raw_path.name} updated.")
+    else:
+        print("No file was updated.")
     return updated_raw_paths
 
 
