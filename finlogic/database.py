@@ -82,10 +82,14 @@ def update_database(
     # urls = urls[:1]  # Test
     raw_paths = cv.update_remote_files(urls)
     print(f"Number of financial statements updated = {len(raw_paths)}")
+
     print("\nProcessing financial statements...")
     processed_filepaths = cv.process_annual_files(
         workers, raw_paths, asynchronous=asynchronous
     )
+    for processed_filepath in processed_filepaths:
+        print(f"    {cf.CHECKMARK} {processed_filepath.name} processed.")
+
     print("\nConsolidating processed files...")
     consolidate_finlogic_df(processed_filepaths)
     print('Updating "language" database...')

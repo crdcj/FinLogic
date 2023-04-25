@@ -54,21 +54,21 @@ def list_urls() -> List[str]:
 
 def update_remote_file(url: str) -> Path:
     """Update raw file from CVM portal. Return a Path if file is updated."""
-    raw_path = Path(cf.RAW_DIR, url[-23:])  # filename = url final
+    raw_filepath = Path(cf.RAW_DIR, url[-23:])  # filename = url final
     with requests.Session() as s:
         r = s.get(url, stream=True)
         if r.status_code != requests.codes.ok:
             return None
 
-    if Path.exists(raw_path):
-        local_file_size = raw_path.stat().st_size
+    if Path.exists(raw_filepath):
+        local_file_size = raw_filepath.stat().st_size
     else:
         local_file_size = 0
     url_file_size = int(r.headers["Content-Length"])
     if local_file_size == url_file_size:
         # File is already updated
         return None
-    with raw_path.open(mode="wb") as f:
+    with raw_filepath.open(mode="wb") as f:
         f.write(r.content)
 
     # headers["Last-Modified"] -> 'Wed, 23 Jun 2021 12:19:24 GMT'
@@ -78,34 +78,34 @@ def update_remote_file(url: str) -> Path:
     # Store URL files metadata in a DataFrame
     cvm_df = get_cvm_df()
     cvm_df.loc[pd.Timestamp.now()] = [
-        raw_path.name,
+        raw_filepath.name,
         r.headers["Content-Length"],
         r.headers["ETag"],
         ts_server,
     ]
     cvm_df.to_pickle(CVM_DF_PATH)
-    return raw_path
+    return raw_filepath
 
 
 def update_remote_files(urls: str) -> List[Path]:
     """Update local CVM raw files asynchronously."""
     with ThreadPoolExecutor() as executor:
         results = executor.map(update_remote_file, urls)
-    updated_raw_paths = [r for r in results if r is not None]
+    updated_raw_filepaths = [r for r in results if r is not None]
     # Print updated files
-    if updated_raw_paths:
+    if updated_raw_filepaths:
         print("Updated files:")
-        for raw_path in updated_raw_paths:
-            print(f"    {cf.CHECKMARK} {raw_path.name} updated.")
+        for raw_filepath in updated_raw_filepaths:
+            print(f"    {cf.CHECKMARK} {raw_filepath.name} updated.")
     else:
         print("No file was updated.")
-    return updated_raw_paths
+    return updated_raw_filepaths
 
 
-def process_annual_df(raw_path: Path) -> Path:
+def process_annual_df(raw_filepath: Path) -> Path:
     """Read annual file, process it, save the result and return the file path."""
     df = pd.DataFrame()
-    annual_zipfile = zf.ZipFile(raw_path)
+    annual_zipfile = zf.ZipFile(raw_filepath)
     child_filenames = annual_zipfile.namelist()
 
     df_list = []
@@ -125,7 +125,7 @@ def process_annual_df(raw_path: Path) -> Path:
         child_df = child_df.drop(columns=["MOEDA"])
 
         # There are two types of CVM files: DFP (annual) and ITR (quarterly).
-        if raw_path.name.startswith("dfp"):
+        if raw_filepath.name.startswith("dfp"):
             child_df["report_type"] = "annual"
         else:
             child_df["report_type"] = "quarterly"
@@ -244,18 +244,17 @@ def format_annual_df(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def process_annual_file(raw_path: Path) -> Path:
+def process_annual_file(raw_filepath: Path) -> Path:
     """Process the annual file and return the path to the processed file."""
-    df = process_annual_df(raw_path)
+    df = process_annual_df(raw_filepath)
     df = format_annual_df(df)
-    processed_filepath = cf.PROCESSED_DIR / raw_path.with_suffix(".pkl.zst").name
+    processed_filepath = cf.PROCESSED_DIR / raw_filepath.with_suffix(".pkl.zst").name
     df.to_pickle(processed_filepath)
-    print(f"    {cf.CHECKMARK} {raw_path.name} processed.")
     return processed_filepath
 
 
 def process_annual_files(
-    workers: int, raw_paths: List[Path], asynchronous: bool
+    workers: int, raw_filepaths: List[Path], asynchronous: bool
 ) -> List[Path]:
     """
     Execute function 'process_raw_file' and return
@@ -263,9 +262,10 @@ def process_annual_files(
     """
     if asynchronous:
         with ProcessPoolExecutor(max_workers=workers) as executor:
-            results = executor.map(process_annual_file, raw_paths)
-        processed_paths = [r for r in results]
+            results = executor.map(process_annual_file, raw_filepaths)
+        processed_filepaths = [r for r in results]
     else:
-        processed_paths = [process_annual_file(raw_path) for raw_path in raw_paths]
-
-    return processed_paths
+        processed_filepaths = [
+            process_annual_file(raw_filepath) for raw_filepath in raw_filepaths
+        ]
+    return processed_filepaths
