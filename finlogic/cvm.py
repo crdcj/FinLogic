@@ -91,15 +91,8 @@ def update_remote_files(urls: str) -> List[Path]:
     """Update local CVM raw files asynchronously."""
     with ThreadPoolExecutor() as executor:
         results = executor.map(update_remote_file, urls)
-    updated_raw_filepaths = [r for r in results if r is not None]
-    # Print updated files
-    if updated_raw_filepaths:
-        print("Updated files:")
-        for raw_filepath in updated_raw_filepaths:
-            print(f"    {cf.CHECKMARK} {raw_filepath.name} updated.")
-    else:
-        print("No file was updated.")
-    return updated_raw_filepaths
+    updated_filepaths = [r for r in results if r is not None]
+    return updated_filepaths
 
 
 def process_annual_df(raw_filepath: Path) -> Path:
@@ -110,7 +103,6 @@ def process_annual_df(raw_filepath: Path) -> Path:
 
     df_list = []
     for child_filename in child_filenames[1:]:
-        # print(f"    {child_filename}")
         child_file = annual_zipfile.open(child_filename)
 
         # Only "DT_INI_EXERC" and "COLUNA_DF" have missing values.
@@ -170,9 +162,8 @@ def format_annual_df(df: pd.DataFrame) -> pd.DataFrame:
     }
     df = df.astype(adjust_data_types)
     # currency_unit values are ['MIL', 'UNIDADE']
-    df["currency_unit"] = (
-        df["currency_unit"].map({"UNIDADE": 1, "MIL": 1000}).astype(int)
-    )
+    map_dict = {"UNIDADE": 1, "MIL": 1000}
+    df["currency_unit"] = df["currency_unit"].map(map_dict).astype(int)
 
     # Do not ajust acc_value for 3.99 codes.
     df["acc_value"] = df["acc_value"].where(
@@ -182,9 +173,8 @@ def format_annual_df(df: pd.DataFrame) -> pd.DataFrame:
     df.drop(columns=["currency_unit"], inplace=True)
 
     # "period_order" values are: 'ÚLTIMO', 'PENÚLTIMO'
-    df["period_order"] = df["period_order"].map(
-        {"ÚLTIMO": "LAST", "PENÚLTIMO": "PREVIOUS"}
-    )
+    map_dict = {"ÚLTIMO": "LAST", "PENÚLTIMO": "PREVIOUS"}
+    df["period_order"] = df["period_order"].map(map_dict)
     """
     acc_method -> Financial Statemen Type
     Consolidated and Separate Financial Statements (IAS 27/2003)
