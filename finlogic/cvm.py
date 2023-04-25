@@ -9,6 +9,18 @@ from . import config as cf
 URL_DFP = "http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/"
 URL_ITR = "http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/"
 
+CVM_DF_PATH = cf.DATA_PATH / "cvm_df.pkl"
+
+
+def get_cvm_df() -> pd.DataFrame:
+    """Get CVM files metadata."""
+    if CVM_DF_PATH.is_file():
+        cvm_df = pd.read_pickle(CVM_DF_PATH)
+    else:
+        columns = ["filename", "file_size", "etag", "last_modified"]
+        cvm_df = pd.DataFrame(columns=columns)
+    return cvm_df
+
 
 def list_urls() -> List[str]:
     """Update the CVM Portal file base.
@@ -63,13 +75,15 @@ def update_remote_file(url: str) -> Path:
     ts_server = pd.to_datetime(
         r.headers["Last-Modified"], format="%a, %d %b %Y %H:%M:%S %Z"
     )
-    # Store URL files metadata
-    cf.cvm_df.loc[pd.Timestamp.now()] = [
+    # Store URL files metadata in a DataFrame
+    cvm_df = get_cvm_df()
+    cvm_df.loc[pd.Timestamp.now()] = [
         raw_path.name,
         r.headers["Content-Length"],
         r.headers["ETag"],
         ts_server,
     ]
+    cvm_df.to_pickle(CVM_DF_PATH)
     print(f"    {cf.CHECKMARK} {raw_path.name} downloaded.")
     return raw_path
 
@@ -78,7 +92,6 @@ def update_remote_files(urls: str) -> List[Path]:
     """Update local CVM raw files asynchronously."""
     with ThreadPoolExecutor() as executor:
         results = executor.map(update_remote_file, urls)
-    cf.cvm_df.to_pickle(cf.CVM_DF_PATH)
     updated_raw_paths = [r for r in results if r is not None]
     return updated_raw_paths
 

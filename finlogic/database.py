@@ -109,6 +109,7 @@ def database_info() -> dict:
         print("Finlogic Database is empty")
         return
 
+    cvm_df = cv.get_cvm_df()
     file_date_unix = round(cf.FINLOGIC_DF_PATH.stat().st_mtime, 0)
     memory_size = cf.finlogic_df.memory_usage(index=True, deep=True).sum()
     statements_cols = ["co_id", "report_version", "report_type", "period_reference"]
@@ -119,9 +120,9 @@ def database_info() -> dict:
     info_dict = {
         "Path": cf.DATA_PATH,
         "File size (MB)": round(cf.FINLOGIC_DF_PATH.stat().st_size / 1024**2, 1),
-        "Last update call": cf.cvm_df.index.max().round("1s").isoformat(),
+        "Last update call": cvm_df.index.max().round("1s").isoformat(),
         "Last modified": pd.Timestamp.fromtimestamp(file_date_unix).isoformat(),
-        "Last updated data": cf.cvm_df["last_modified"].max().isoformat(),
+        "Last updated data": cvm_df["last_modified"].max().isoformat(),
         "Memory size (MB)": round(memory_size / 1024**2, 1),
         "Accounting rows": len(cf.finlogic_df.index),
         "Unique accounting codes": cf.finlogic_df["acc_code"].nunique(),
