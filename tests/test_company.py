@@ -1,6 +1,8 @@
 import unittest
 import finlogic as fl
 
+print(fl.__version__)
+
 
 class TestCompany(unittest.TestCase):
     def setUp(self):
