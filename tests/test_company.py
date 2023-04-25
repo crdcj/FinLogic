@@ -1,13 +1,30 @@
 import unittest
 import finlogic as fl
 
-print(fl.__version__)
-
 
 class TestCompany(unittest.TestCase):
     def setUp(self):
         self.petro_sep = fl.Company(9512, acc_method="separate", acc_unit="billion")
         self.petro_con = fl.Company(9512, acc_method="consolidated", acc_unit="billion")
+
+    def test_identifier(self):
+        """Test the identifier method of the Company class.""" ""
+        test_cvm_id = 4170
+        test_fiscal_id = "33.592.510/0001-54"
+        self.petro_sep.identifier = test_cvm_id
+        self.assertEqual(self.petro_sep._co_id, test_cvm_id)
+        self.assertEqual(self.petro_sep._co_fiscal_id, test_fiscal_id)
+
+        self.petro_sep.identifier = test_fiscal_id
+        self.assertEqual(self.petro_sep._co_id, test_cvm_id)
+        self.assertEqual(self.petro_sep._co_fiscal_id, test_fiscal_id)
+
+        invalid_identifier = 99999999  # Use an invalid identifier here
+
+        with self.assertRaises(
+            KeyError, msg="Should raise a KeyError with an invalid identifier"
+        ):
+            self.petro_sep.identifier = invalid_identifier
 
     def test_info(self):
         """Test the info method of the Company class."""
