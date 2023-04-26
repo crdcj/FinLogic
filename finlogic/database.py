@@ -92,30 +92,34 @@ def update_database(asynchronous: bool = False, cpu_usage: float = 0.75):
     if updated_raw_filepaths:
         print("Updated files:")
         for updated_filepath in updated_raw_filepaths:
-            print(f"    {cf.CHECKMARK} {updated_filepath.name} updated.")
+            print(f"    {cf.CHECKMARK} {updated_filepath.stem} updated.")
     else:
         print("All files are up to date.")
 
     # Get filestems from updated files
-    filestems_updated = [filepath.steam for filepath in updated_raw_filepaths]
-
+    filestems_updated = [filepath.stem for filepath in updated_raw_filepaths]
+    filestems_updated.sort()
     # Get existing filestems in raw folder
-    filestems_in_raw_folder = [filepath.stem for filepath in cf.RAW_DIR.glob("*.zip")]
-
+    filepaths_in_raw_folder = [filepath for filepath in cf.RAW_DIR.glob("*.zip")]
+    filestems_in_raw_folder = [filepath.stem for filepath in filepaths_in_raw_folder]
+    filestems_in_raw_folder.sort()
     # Get existing filestems in processed folder
+    #  Filename example: dfp_cia_aberta_2018.pkl.zst
     filestems_in_processed_folder = [
-        filepath.stem for filepath in cf.PROCESSED_DIR.glob("*.zst")
+        filepath.stem.split(".")[0] for filepath in cf.PROCESSED_DIR.glob("*.zst")
     ]
+    filestems_in_processed_folder.sort()
 
+    filestems_not_in_processed_folder = list(
+        set(filestems_in_raw_folder) - set(filestems_in_processed_folder)
+    )
     filestems_to_process = list(
-        set(filestems_updated)
-        - set(filestems_in_raw_folder)
-        - set(filestems_in_processed_folder)
+        set(filestems_updated) | set(filestems_not_in_processed_folder)
     )
 
     filepaths_to_process = [
         filepath
-        for filepath in updated_raw_filepaths
+        for filepath in filepaths_in_raw_folder
         if filepath.stem in filestems_to_process
     ]
     print("\nProcessing raw files...")
@@ -123,7 +127,7 @@ def update_database(asynchronous: bool = False, cpu_usage: float = 0.75):
         workers, filepaths_to_process, asynchronous=asynchronous
     )
     for processed_filepath in processed_filepaths:
-        print(f"    {cf.CHECKMARK} {processed_filepath.stem} processed.")
+        print(f"    {cf.CHECKMARK} {processed_filepath.stem.split('.')[0]} processed.")
 
     print("\nBuilding FinLogic Database...")
     build_finlogic_df()
