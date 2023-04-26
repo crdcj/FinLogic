@@ -14,12 +14,6 @@ INTERIM_DIR = DATA_PATH / "interim"
 
 CHECKMARK = "\033[32m\u2714\033[0m"
 
-# Start/load main dataframe
-if FINLOGIC_DF_PATH.is_file():
-    finlogic_df = pd.read_pickle(FINLOGIC_DF_PATH)
-else:
-    finlogic_df = pd.DataFrame()
-
 # Start/load language file data
 if LANGUAGE_DF_PATH.is_file():
     language_df = pd.read_csv(LANGUAGE_DF_PATH)

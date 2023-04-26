@@ -77,7 +77,9 @@ class Company:
     @identifier.setter
     def identifier(self, identifier: int | str):
         # Create custom data frame for ID selection
-        df = cf.finlogic_df[["co_id", "co_fiscal_id"]].drop_duplicates()
+        df = cf.finlogic_df[["co_id", "co_fiscal_id"]].drop_duplicates(
+            ignore_index=True
+        )
         if identifier in df["co_id"].to_list():
             self._co_id = identifier
             mask = df["co_id"] == identifier
