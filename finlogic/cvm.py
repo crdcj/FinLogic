@@ -52,23 +52,23 @@ def list_urls() -> List[str]:
     return urls
 
 
-def update_remote_file(url: str) -> Path:
+def update_raw_file(url: str) -> Path:
     """Update raw file from CVM portal. Return a Path if file is updated."""
-    raw_filepath = Path(cf.RAW_DIR, url[-23:])  # filename = url final
+    cvm_filepath = Path(cf.RAW_DIR, url[-23:])  # filename = url final
     with requests.Session() as s:
         r = s.get(url, stream=True)
         if r.status_code != requests.codes.ok:
             return None
 
-    if Path.exists(raw_filepath):
-        local_file_size = raw_filepath.stat().st_size
+    if Path.exists(cvm_filepath):
+        local_file_size = cvm_filepath.stat().st_size
     else:
         local_file_size = 0
     url_file_size = int(r.headers["Content-Length"])
     if local_file_size == url_file_size:
         # File is already updated
         return None
-    with raw_filepath.open(mode="wb") as f:
+    with cvm_filepath.open(mode="wb") as f:
         f.write(r.content)
 
     # headers["Last-Modified"] -> 'Wed, 23 Jun 2021 12:19:24 GMT'
@@ -78,27 +78,27 @@ def update_remote_file(url: str) -> Path:
     # Store URL files metadata in a DataFrame
     cvm_df = get_cvm_df()
     cvm_df.loc[pd.Timestamp.now()] = [
-        raw_filepath.name,
+        cvm_filepath.name,
         r.headers["Content-Length"],
         r.headers["ETag"],
         ts_server,
     ]
     cvm_df.to_pickle(CVM_DF_PATH)
-    return raw_filepath
+    return cvm_filepath
 
 
-def update_remote_files(urls: str) -> List[Path]:
+def update_raw_files(urls: str) -> List[Path]:
     """Update local CVM raw files asynchronously."""
     with ThreadPoolExecutor() as executor:
-        results = executor.map(update_remote_file, urls)
+        results = executor.map(update_raw_file, urls)
     updated_filepaths = [r for r in results if r is not None]
     return updated_filepaths
 
 
-def process_annual_df(raw_filepath: Path) -> Path:
+def pre_process_file(cvm_filepath: Path) -> Path:
     """Read annual file, process it, save the result and return the file path."""
     df = pd.DataFrame()
-    annual_zipfile = zf.ZipFile(raw_filepath)
+    annual_zipfile = zf.ZipFile(cvm_filepath)
     child_filenames = annual_zipfile.namelist()
 
     df_list = []
@@ -117,7 +117,7 @@ def process_annual_df(raw_filepath: Path) -> Path:
         child_df = child_df.drop(columns=["MOEDA"])
 
         # There are two types of CVM files: DFP (annual) and ITR (quarterly).
-        if raw_filepath.name.startswith("dfp"):
+        if cvm_filepath.name.startswith("dfp"):
             child_df["report_type"] = "annual"
         else:
             child_df["report_type"] = "quarterly"
@@ -132,7 +132,7 @@ def process_annual_df(raw_filepath: Path) -> Path:
     return df
 
 
-def format_annual_df(df: pd.DataFrame) -> pd.DataFrame:
+def format_df(df: pd.DataFrame) -> pd.DataFrame:
     """Process a raw dataframe and return a formatted dataframe."""
     columns_translation = {
         "CNPJ_CIA": "co_fiscal_id",
@@ -234,28 +234,28 @@ def format_annual_df(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def process_annual_file(raw_filepath: Path) -> Path:
+def process_file(cvm_filepath: Path) -> Path:
     """Process the annual file and return the path to the processed file."""
-    df = process_annual_df(raw_filepath)
-    df = format_annual_df(df)
-    processed_filepath = cf.PROCESSED_DIR / raw_filepath.with_suffix(".pkl.zst").name
+    df = pre_process_file(cvm_filepath)
+    df = format_df(df)
+    processed_filepath = cf.PROCESSED_DIR / cvm_filepath.with_suffix(".pkl.zst").name
     df.to_pickle(processed_filepath)
     return processed_filepath
 
 
-def process_annual_files(
-    workers: int, raw_filepaths: List[Path], asynchronous: bool
+def process_files(
+    workers: int, cvm_filepaths: List[Path], asynchronous: bool
 ) -> List[Path]:
     """
-    Execute function 'process_raw_file' and return
+    Execute function 'pre_process_file' and return
     a list with filenames for the processed files.
     """
     if asynchronous:
         with ProcessPoolExecutor(max_workers=workers) as executor:
-            results = executor.map(process_annual_file, raw_filepaths)
+            results = executor.map(process_file, cvm_filepaths)
         processed_filepaths = [r for r in results]
     else:
         processed_filepaths = [
-            process_annual_file(raw_filepath) for raw_filepath in raw_filepaths
+            process_file(cvm_filepath) for cvm_filepath in cvm_filepaths
         ]
     return processed_filepaths

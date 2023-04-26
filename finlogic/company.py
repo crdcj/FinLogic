@@ -9,6 +9,14 @@ Classes:
 Abreviations used in code:
     dfi = input dataframe
     dfo = output dataframe
+
+RuntimeWarning:
+    Pandas query + numexpr module -> Engine has switched to 'python' because
+    numexpr does not support extension array dtypes (category not supported
+    yet). Please set your engine to python manually. That means that the query
+    method has to use engine='python' to work with category dtype. N.B. Only
+    FinLogic Dataframe uses category dtype for efficiency.
+
 """
 from typing import Literal
 import numpy as np
@@ -77,7 +85,9 @@ class Company:
     @identifier.setter
     def identifier(self, identifier: int | str):
         # Create custom data frame for ID selection
-        df = cf.finlogic_df[["co_id", "co_fiscal_id"]].drop_duplicates()
+        df = pd.read_pickle(cf.FINLOGIC_DF_PATH)[
+            ["co_id", "co_fiscal_id"]
+        ].drop_duplicates(ignore_index=True)
         if identifier in df["co_id"].to_list():
             self._co_id = identifier
             mask = df["co_id"] == identifier
@@ -228,12 +238,12 @@ class Company:
         This method creates a data frame with the company's financial
         statements.
         """
-        original_data_types = {
+        basic_data_types = {
             "co_name": str,
-            "co_id": "UInt32",
+            "co_id": int,
             "co_fiscal_id": str,
             "report_type": str,
-            "report_version": "UInt8",
+            "report_version": int,
             "period_reference": "datetime64[ns]",
             "period_begin": "datetime64[ns]",
             "period_end": "datetime64[ns]",
@@ -246,10 +256,13 @@ class Company:
             "equity_statement_column": str,
         }
         # Create the company data frame
-        expr = "co_id == @self._co_id and acc_method == @self._acc_method"
         co_df = (
-            cf.finlogic_df.query(expr)
-            .astype(original_data_types)
+            pd.read_pickle(cf.FINLOGIC_DF_PATH)
+            .query(
+                "co_id == @self._co_id and acc_method == @self._acc_method",
+                engine="python",
+            )
+            .astype(basic_data_types)
             .sort_values(by="acc_code", ignore_index=True)
         )
 
