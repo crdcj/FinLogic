@@ -9,6 +9,14 @@ Classes:
 Abreviations used in code:
     dfi = input dataframe
     dfo = output dataframe
+
+RuntimeWarning:
+    Pandas query + numexpr module -> Engine has switched to 'python' because
+    numexpr does not support extension array dtypes (category not supported
+    yet). Please set your engine to python manually. That means that the query
+    method has to use engine='python' to work with category dtype. N.B. Only
+    FinLogic Dataframe uses category dtype for efficiency.
+
 """
 from typing import Literal
 import numpy as np
@@ -250,7 +258,10 @@ class Company:
         # Create the company data frame
         co_df = (
             pd.read_pickle(cf.FINLOGIC_DF_PATH)
-            .query("co_id == @self._co_id and acc_method == @self._acc_method")
+            .query(
+                "co_id == @self._co_id and acc_method == @self._acc_method",
+                engine="python",
+            )
             .astype(basic_data_types)
             .sort_values(by="acc_code", ignore_index=True)
         )

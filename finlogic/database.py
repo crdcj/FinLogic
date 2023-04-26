@@ -7,6 +7,7 @@ about the database itself.
 """
 
 import os
+from typing import List
 from pathlib import Path
 import pandas as pd
 from . import config as cf
@@ -62,6 +63,37 @@ def build_finlogic_df():
     finlogic_df.to_pickle(cf.FINLOGIC_DF_PATH)
 
 
+def determine_files_to_process(updated_raw_filepaths) -> List[Path]:
+    # Get filestems from updated files
+    filestems_updated = [filepath.stem for filepath in updated_raw_filepaths]
+    filestems_updated.sort()
+    # Get existing filestems in raw folder
+    filepaths_in_raw_folder = [filepath for filepath in cf.RAW_DIR.glob("*.zip")]
+    filestems_in_raw_folder = [filepath.stem for filepath in filepaths_in_raw_folder]
+    filestems_in_raw_folder.sort()
+    # Get existing filestems in processed folder
+    #  Filename example: dfp_cia_aberta_2018.pkl.zst
+    filestems_in_processed_folder = [
+        filepath.stem.split(".")[0] for filepath in cf.PROCESSED_DIR.glob("*.zst")
+    ]
+    filestems_in_processed_folder.sort()
+
+    filestems_not_in_processed_folder = list(
+        set(filestems_in_raw_folder) - set(filestems_in_processed_folder)
+    )
+    filestems_to_process = list(
+        set(filestems_updated) | set(filestems_not_in_processed_folder)
+    )
+
+    filepaths_to_process = [
+        filepath
+        for filepath in filepaths_in_raw_folder
+        if filepath.stem in filestems_to_process
+    ]
+    filepaths_to_process.sort()
+    return filepaths_to_process
+
+
 def update_database(asynchronous: bool = False, cpu_usage: float = 0.75):
     """Verify changes in remote files and update them in Finlogic Database.
 
@@ -96,32 +128,7 @@ def update_database(asynchronous: bool = False, cpu_usage: float = 0.75):
     else:
         print("All files are up to date.")
 
-    # Get filestems from updated files
-    filestems_updated = [filepath.stem for filepath in updated_raw_filepaths]
-    filestems_updated.sort()
-    # Get existing filestems in raw folder
-    filepaths_in_raw_folder = [filepath for filepath in cf.RAW_DIR.glob("*.zip")]
-    filestems_in_raw_folder = [filepath.stem for filepath in filepaths_in_raw_folder]
-    filestems_in_raw_folder.sort()
-    # Get existing filestems in processed folder
-    #  Filename example: dfp_cia_aberta_2018.pkl.zst
-    filestems_in_processed_folder = [
-        filepath.stem.split(".")[0] for filepath in cf.PROCESSED_DIR.glob("*.zst")
-    ]
-    filestems_in_processed_folder.sort()
-
-    filestems_not_in_processed_folder = list(
-        set(filestems_in_raw_folder) - set(filestems_in_processed_folder)
-    )
-    filestems_to_process = list(
-        set(filestems_updated) | set(filestems_not_in_processed_folder)
-    )
-
-    filepaths_to_process = [
-        filepath
-        for filepath in filepaths_in_raw_folder
-        if filepath.stem in filestems_to_process
-    ]
+    filepaths_to_process = determine_files_to_process(updated_raw_filepaths)
     print("\nProcessing raw files...")
     processed_filepaths = cv.process_files(
         workers, filepaths_to_process, asynchronous=asynchronous
@@ -200,7 +207,7 @@ def search_company(company_name: str) -> pd.DataFrame:
     company_name = company_name.upper()
     df = (
         pd.read_pickle(cf.FINLOGIC_DF_PATH)
-        .query("co_name.str.contains(@company_name)")
+        .query("co_name.str.contains(@company_name)", engine="python")
         .sort_values(by="co_name")
         .drop_duplicates(subset="co_id", ignore_index=True)[
             ["co_name", "co_id", "co_fiscal_id"]
