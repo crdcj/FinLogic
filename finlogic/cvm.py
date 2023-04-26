@@ -52,7 +52,7 @@ def list_urls() -> List[str]:
     return urls
 
 
-def update_cvm_file(url: str) -> Path:
+def update_raw_file(url: str) -> Path:
     """Update raw file from CVM portal. Return a Path if file is updated."""
     cvm_filepath = Path(cf.RAW_DIR, url[-23:])  # filename = url final
     with requests.Session() as s:
@@ -87,15 +87,15 @@ def update_cvm_file(url: str) -> Path:
     return cvm_filepath
 
 
-def update_cvm_files(urls: str) -> List[Path]:
+def update_raw_files(urls: str) -> List[Path]:
     """Update local CVM raw files asynchronously."""
     with ThreadPoolExecutor() as executor:
-        results = executor.map(update_cvm_file, urls)
+        results = executor.map(update_raw_file, urls)
     updated_filepaths = [r for r in results if r is not None]
     return updated_filepaths
 
 
-def process_cvm_file(cvm_filepath: Path) -> Path:
+def pre_process_file(cvm_filepath: Path) -> Path:
     """Read annual file, process it, save the result and return the file path."""
     df = pd.DataFrame()
     annual_zipfile = zf.ZipFile(cvm_filepath)
@@ -132,7 +132,7 @@ def process_cvm_file(cvm_filepath: Path) -> Path:
     return df
 
 
-def format_annual_df(df: pd.DataFrame) -> pd.DataFrame:
+def format_df(df: pd.DataFrame) -> pd.DataFrame:
     """Process a raw dataframe and return a formatted dataframe."""
     columns_translation = {
         "CNPJ_CIA": "co_fiscal_id",
@@ -234,28 +234,28 @@ def format_annual_df(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def build_annual_file(cvm_filepath: Path) -> Path:
+def process_file(cvm_filepath: Path) -> Path:
     """Process the annual file and return the path to the processed file."""
-    df = process_cvm_file(cvm_filepath)
-    df = format_annual_df(df)
+    df = pre_process_file(cvm_filepath)
+    df = format_df(df)
     processed_filepath = cf.PROCESSED_DIR / cvm_filepath.with_suffix(".pkl.zst").name
     df.to_pickle(processed_filepath)
     return processed_filepath
 
 
-def build_annual_files(
+def process_files(
     workers: int, cvm_filepaths: List[Path], asynchronous: bool
 ) -> List[Path]:
     """
-    Execute function 'process_raw_file' and return
+    Execute function 'pre_process_file' and return
     a list with filenames for the processed files.
     """
     if asynchronous:
         with ProcessPoolExecutor(max_workers=workers) as executor:
-            results = executor.map(build_annual_file, cvm_filepaths)
+            results = executor.map(process_file, cvm_filepaths)
         processed_filepaths = [r for r in results]
     else:
         processed_filepaths = [
-            build_annual_file(cvm_filepath) for cvm_filepath in cvm_filepaths
+            process_file(cvm_filepath) for cvm_filepath in cvm_filepaths
         ]
     return processed_filepaths

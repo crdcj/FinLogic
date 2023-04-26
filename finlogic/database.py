@@ -27,9 +27,12 @@ def get_finlogic_df() -> pd.DataFrame:
     return finlogic_df
 
 
-def consolidate_finlogic_df(filepaths: list):
+def build_finlogic_df():
+    # Get all files in processed folder
+    filepaths = list(cf.PROCESSED_DIR.glob("*.zst"))
     # Guard clause: if no raw file was update, there is nothing to consolidate
     if not filepaths:
+        print("No processed files to build FinLogic Database.")
         return
     # Concatenate all processed files into a single dataframe
     finlogic_df = pd.concat(
@@ -84,7 +87,7 @@ def update_database(asynchronous: bool = False, cpu_usage: float = 0.75):
     print("Updating CVM files...")
     urls = cv.list_urls()
     # urls = urls[:1]  # Test
-    updated_raw_filepaths = cv.update_cvm_files(urls)
+    updated_raw_filepaths = cv.update_raw_files(urls)
     print(f"Number of CVM files updated = {len(updated_raw_filepaths)}")
     if updated_raw_filepaths:
         print("Updated files:")
@@ -93,43 +96,37 @@ def update_database(asynchronous: bool = False, cpu_usage: float = 0.75):
     else:
         print("All files are up to date.")
 
-    # Get updated years
-    years_updated = [
-        filepath.name.split("_")[3].split(".")[0] for filepath in updated_raw_filepaths
-    ]
-    years_updated.sort()
-    years_updated = set(years_updated)
+    # Get filestems from updated files
+    filestems_updated = [filepath.steam for filepath in updated_raw_filepaths]
 
-    # Get existing years in raw folder
-    raw_filenames = [filepath.name for filepath in cf.RAW_DIR.glob("*.zip")]
-    years_in_raw_folder = [
-        filename.split("_")[3].split(".")[0] for filename in raw_filenames
-    ]
-    years_in_raw_folder.sort()
-    years_in_raw_folder = set(years_in_raw_folder)
+    # Get existing filestems in raw folder
+    filestems_in_raw_folder = [filepath.stem for filepath in cf.RAW_DIR.glob("*.zip")]
 
-    # Get exisiting years in finlogic_df
-    years_in_db = (
-        pd.read_pickle(cf.FINLOGIC_DF_PATH)["period_reference"]
-        .dt.year.unique()
-        .tolist()
+    # Get existing filestems in processed folder
+    filestems_in_processed_folder = [
+        filepath.stem for filepath in cf.PROCESSED_DIR.glob("*.zst")
+    ]
+
+    filestems_to_process = list(
+        set(filestems_updated)
+        - set(filestems_in_raw_folder)
+        - set(filestems_in_processed_folder)
     )
 
-    print("\nProcessing those files...")
-    processed_filepaths = cv.process_annual_files(
-        workers, updated_raw_filepaths, asynchronous=asynchronous
+    filepaths_to_process = [
+        filepath
+        for filepath in updated_raw_filepaths
+        if filepath.stem in filestems_to_process
+    ]
+    print("\nProcessing raw files...")
+    processed_filepaths = cv.process_files(
+        workers, filepaths_to_process, asynchronous=asynchronous
     )
     for processed_filepath in processed_filepaths:
         print(f"    {cf.CHECKMARK} {processed_filepath.stem} processed.")
 
-    # Get the years in processed folder
-    processed_filenames = [filepath.name for filepath in cf.PROCESSED_DIR.glob("*zst")]
-    processed_years = file_years = [
-        filename.split("_")[3].split(".")[0] for filename in filenames
-    ]
-
-    print("\nConsolidating processed files...")
-    consolidate_finlogic_df(processed_filepaths)
+    print("\nBuilding FinLogic Database...")
+    build_finlogic_df()
     print('Updating "language" database...')
     process_language_df()
     print(f"{cf.CHECKMARK} FinLogic database updated!")
