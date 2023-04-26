@@ -77,19 +77,15 @@ class Company:
     @identifier.setter
     def identifier(self, identifier: int | str):
         # Create custom data frame for ID selection
-        df = (
-            cf.finlogic_df[["co_id", "co_fiscal_id"]]
-            .drop_duplicates()
-            .astype({"co_id": int, "co_fiscal_id": str})
-        )
-        if identifier in df["co_id"].values:
+        df = cf.finlogic_df[["co_id", "co_fiscal_id"]].drop_duplicates()
+        if identifier in df["co_id"].to_list():
             self._co_id = identifier
-            self._co_fiscal_id = df.loc[
-                df["co_id"] == identifier, "co_fiscal_id"
-            ].item()
-        elif identifier in df["co_fiscal_id"].values:
+            mask = df["co_id"] == identifier
+            self._co_fiscal_id = df.loc[mask, "co_fiscal_id"].item()
+        elif identifier in df["co_fiscal_id"].to_list():
             self._co_fiscal_id = identifier
-            self._co_id = df.loc[df["co_fiscal_id"] == identifier, "co_id"].item()
+            mask = df["co_fiscal_id"] == identifier
+            self._co_id = df.loc[mask, "co_id"].item()
         else:
             raise KeyError("Company 'identifier' not found in FinLogic Database")
         self._identifier = identifier
