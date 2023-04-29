@@ -116,11 +116,11 @@ def pre_process_file(cvm_filepath: Path) -> Path:
         # Currency column has only one value (BRL) so it is not necessary.
         child_df = child_df.drop(columns=["MOEDA"])
 
-        # There are two types of CVM files: DFP (annual) and ITR (quarterly).
+        # There are two types of CVM files: DFP (ANNUAL) and ITR (QUARTERLY).
         if cvm_filepath.name.startswith("dfp"):
-            child_df["report_type"] = "annual"
+            child_df["report_type"] = "ANNUAL"
         else:
-            child_df["report_type"] = "quarterly"
+            child_df["report_type"] = "QUARTERLY"
 
         df_list.append(child_df)
 
@@ -198,7 +198,7 @@ def format_df(df: pd.DataFrame) -> pd.DataFrame:
     if == 'Ind' -> separate statement
     """
     df["acc_method"] = (
-        df["report_group"].str[3:6].map({"Con": "consolidated", "Ind": "separate"})
+        df["report_group"].str[3:6].map({"Con": "CONSOLIDATED", "Ind": "SEPARATE"})
     )
     # 'GRUPO_DFP' data can be inferred from 'acc_code'
     df.drop(columns=["report_group"], inplace=True)

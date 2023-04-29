@@ -121,7 +121,8 @@ class Company:
     @acc_method.setter
     def acc_method(self, value: Literal["consolidated", "separate"]):
         if value in {"consolidated", "separate"}:
-            self._acc_method = value
+            # Set accounting method to upper case as in FinLogic Database
+            self._acc_method = value.upper()
         else:
             raise ValueError("acc_method expects 'consolidated' or 'separate'")
         # If object was already initialized, reset company dataframe
@@ -274,10 +275,10 @@ class Company:
         )
 
         self._name = co_df["co_name"].iloc[0]
-        expr = 'report_type == "annual"'
+        expr = 'report_type == "ANNUAL"'
         self._first_annual = co_df.query(expr)["period_end"].min()
         self._last_annual = co_df.query(expr)["period_end"].max()
-        expr = 'report_type == "quarterly"'
+        expr = 'report_type == "QUARTERLY"'
         self._last_quarterly = co_df.query(expr)["period_end"].max()
 
         # Drop columns that are already company properties
@@ -306,7 +307,7 @@ class Company:
     def _build_report(self, dfi: pd.DataFrame) -> pd.DataFrame:
         # keep only last quarterly fs
         if self._last_annual > self._last_quarterly:
-            df = dfi.query('report_type == "annual"').copy()
+            df = dfi.query('report_type == "ANNUAL"').copy()
             df.query(
                 "period_order == 'PREVIOUS' or \
                  period_end == @self._last_annual",
@@ -314,7 +315,7 @@ class Company:
             )
         else:
             df = dfi.query(
-                'report_type == "annual" or \
+                'report_type == "ANNUAL" or \
                  period_end == @self._last_quarterly'
             ).copy()
             df.query(
@@ -456,7 +457,7 @@ class Company:
 
     def _calculate_ttm(self, dfi: pd.DataFrame) -> pd.DataFrame:
         if self._last_annual > self._last_quarterly:
-            return dfi.query('report_type == "annual"').copy()
+            return dfi.query('report_type == "ANNUAL"').copy()
 
         df1 = dfi.query("period_end == @self._last_quarterly").copy()
         df1.query("period_begin == period_begin.min()", inplace=True)
@@ -475,10 +476,10 @@ class Company:
         )
         df1.drop(columns="acc_value", inplace=True)
         df_ttm = pd.merge(df1, df_ttm)
-        df_ttm["report_type"] = "quarterly"
+        df_ttm["report_type"] = "QUARTERLY"
         df_ttm["period_begin"] = self._last_quarterly - pd.DateOffset(years=1)
 
-        df_annual = dfi.query('report_type == "annual"').copy()
+        df_annual = dfi.query('report_type == "ANNUAL"').copy()
 
         return pd.concat([df_annual, df_ttm], ignore_index=True)
 
