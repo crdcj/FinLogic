@@ -4,6 +4,7 @@ import pandas as pd
 base_dir = Path(__file__).parent
 DATA_PATH = base_dir / "data"
 FINLOGIC_DF_PATH = DATA_PATH / "finlogic_df.pkl.zst"
+FINLOGIC_DB_PATH = DATA_PATH / "finlogic.db"
 
 LANGUAGE_DF_PATH = DATA_PATH / "interim/pten_df.csv.zst"
 URL_LANGUAGE = "https://raw.githubusercontent.com/fe-lipe-c/finlogic_datasets/master/data/pten_df.csv"  # noqa

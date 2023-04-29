@@ -246,10 +246,7 @@ def process_file(cvm_filepath: Path) -> Path:
 def process_files(
     workers: int, cvm_filepaths: List[Path], asynchronous: bool
 ) -> List[Path]:
-    """
-    Execute function 'pre_process_file' and return
-    a list with filenames for the processed files.
-    """
+    """Execute 'pre_process_file' and return a list with processed filenames."""
     if asynchronous:
         with ProcessPoolExecutor(max_workers=workers) as executor:
             results = executor.map(process_file, cvm_filepaths)
