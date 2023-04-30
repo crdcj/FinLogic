@@ -1,16 +1,16 @@
 from pathlib import Path
 import pandas as pd
+import duckdb as ddb
 
 base_dir = Path(__file__).parent
 DATA_PATH = base_dir / "data"
-FINLOGIC_DF_PATH = DATA_PATH / "finlogic_df.pkl.zst"
 FINLOGIC_DB_PATH = DATA_PATH / "finlogic.db"
+con = ddb.connect(database=f"{FINLOGIC_DB_PATH}")
 
 LANGUAGE_DF_PATH = DATA_PATH / "interim/pten_df.csv.zst"
 URL_LANGUAGE = "https://raw.githubusercontent.com/fe-lipe-c/finlogic_datasets/master/data/pten_df.csv"  # noqa
 
 RAW_DIR = DATA_PATH / "raw"
-PROCESSED_DIR = DATA_PATH / "processed"
 INTERIM_DIR = DATA_PATH / "interim"
 
 CHECKMARK = "\033[32m\u2714\033[0m"
