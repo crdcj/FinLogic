@@ -35,42 +35,7 @@ SQL_CREATE_TABLE = """
 
 def db_execute(sql_statement: str):
     """Execute a command in FinLogic Database."""
-    cfg.conn.execute(sql_statement)
-
-
-def build_finlogic_df():
-    # Get all files in processed folder
-    filepaths = list(cfg.PROCESSED_DIR.glob("*.zst"))
-    # Guard clause: if no raw file was update, there is nothing to consolidate
-    if not filepaths:
-        print("No processed files to build FinLogic Database.")
-        return
-    # Concatenate all processed files into a single dataframe
-    finlogic_df = pd.concat(
-        [pd.read_pickle(filepath) for filepath in filepaths],
-        ignore_index=True,
-    )
-    # Most values in datetime and string columns are the same.
-    # So these remaining columns can be converted to category.
-    columns = finlogic_df.select_dtypes(include=["datetime64[ns]", "object"]).columns
-    finlogic_df[columns] = finlogic_df[columns].astype("category")
-    # Keep only the newest 'report_version' in df if values are repeated
-    cols = [
-        "co_id",
-        "report_type",
-        "period_reference",
-        "report_version",
-        "period_order",
-        "acc_method",
-        "acc_code",
-    ]
-    finlogic_df.sort_values(by=cols, ignore_index=True, inplace=True)
-    cols = finlogic_df.columns.tolist()
-    cols_remove = ["report_version", "acc_value", "acc_fixed"]
-    [cols.remove(col) for col in cols_remove]
-    # Ascending order --> last is the newest report_version
-    finlogic_df.drop_duplicates(cols, keep="last", inplace=True)
-    finlogic_df.to_pickle(cfg.FINLOGIC_DF_PATH)
+    return cfg.con.execute(sql_statement)
 
 
 def get_filenames_to_load(filenames_updated) -> List[str]:
@@ -85,11 +50,6 @@ def get_filenames_to_load(filenames_updated) -> List[str]:
     return filenames_to_process
 
 
-def reset_db():
-    """Create FinLogic Database if it doesn't exist."""
-    cfg.con.execute(SQL_CREATE_TABLE)
-
-
 def load_cvm_data(filename: str):
     """Read, format and load a cvm file in FinLogic Database."""
     df = cvm.process_cvm_file(filename)
@@ -100,12 +60,12 @@ def load_cvm_data(filename: str):
 
 def update_cvm_data(filename: str):
     """Read, format and load a cvm file in FinLogic Database."""
-    sql_tmp_table = SQL_CREATE_TABLE.replace("reports", "tmp_table")
+    sql_tmp_table = SQL_CREATE_TABLE.replace("TABLE reports", "TEMP TABLE tmp_table")
     db_execute(sql_tmp_table)
 
     df = cvm.process_cvm_file(filename)
     # Insert the dataframe in the database
-    sql_update_db = """
+    sql_update_data = """
         INSERT    INTO tmp_table
         SELECT    *
         FROM      df;
@@ -119,17 +79,17 @@ def update_cvm_data(filename: str):
 
         DROP      TABLE tmp_table;
     """
-    db_execute(sql_update_db)
+    db_execute(sql_update_data)
 
 
 def build_db():
     """Build FinLogic Database from scratch."""
     print("Building FinLogic Database...")
     filenames_in_raw_folder = [filepath.name for filepath in cfg.RAW_DIR.glob("*.zip")]
+    filenames_in_raw_folder.sort()
     for filename in filenames_in_raw_folder:
         load_cvm_data(filename)
-        print(f"    {cfg.CHECKMARK} {filename} loaded in FinLogic Database.")
-    print(f"{cfg.CHECKMARK} FinLogic Database built!")
+        print(f"    {cfg.CHECKMARK} {filename} loaded.")
 
 
 def update_database():
@@ -143,12 +103,13 @@ def update_database():
     print("Updating CVM files...")
     urls = cvm.list_urls()
     # urls = urls[:1]  # Test
-    updated_cvm_filenames = cvm.update_raw_files(urls)
+    updated_cvm_filenames = cvm.update_cvm_files(urls)
+    assert 1 == 2
     print(f"Number of CVM files updated = {len(updated_cvm_filenames)}")
     if updated_cvm_filenames:
         print("Updated files:")
-        for updated_filepath in updated_cvm_filenames:
-            print(f"    {cfg.CHECKMARK} {updated_filepath.stem} updated.")
+        for updated_filename in updated_cvm_filenames:
+            print(f"    {cfg.CHECKMARK} {updated_filename} updated.")
     else:
         print("All files are up to date.")
 
@@ -158,8 +119,8 @@ def update_database():
     db_size = cfg.FINLOGIC_DB_PATH.stat().st_size / 1024**2
     # Rebuilt database when it is smaller than 1 MB
     if db_size < 1:
-        print("FinLogic Database is empty and will be rebuilt.")
-        reset_db()
+        print("FinLogic Database is empty and will be built.")
+        db_execute(SQL_CREATE_TABLE)
         print("Loading all files in FinLogic Database...")
         build_db()
 

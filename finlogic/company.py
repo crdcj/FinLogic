@@ -285,6 +285,22 @@ class Company:
         co_df.drop(
             columns=["co_name", "co_id", "co_fiscal_id", "acc_method"], inplace=True
         )
+
+        # Keep only the newest 'report_version' in df
+        cols = [
+            "report_type",
+            "report_version",
+            "period_reference",
+            "period_order",
+            "acc_code",
+        ]
+        co_df.sort_values(by=cols, ignore_index=True, inplace=True)
+        cols = co_df.columns.tolist()
+        cols_remove = ["report_version", "acc_value", "acc_fixed"]
+        [cols.remove(col) for col in cols_remove]
+        # Ascending order --> last is the newest report_version
+        co_df.drop_duplicates(cols, keep="last", inplace=True, ignore_index=True)
+
         # Set company data frame
         self._co_df = co_df
 
