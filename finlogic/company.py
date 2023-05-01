@@ -22,6 +22,7 @@ from typing import Literal
 import numpy as np
 import pandas as pd
 from . import config as cf
+from .database import con
 
 
 class Company:
@@ -85,9 +86,11 @@ class Company:
     @identifier.setter
     def identifier(self, identifier: int | str):
         # Create custom data frame for ID selection
-        df = pd.read_pickle(cf.FINLOGIC_DF_PATH)[
-            ["co_id", "co_fiscal_id"]
-        ].drop_duplicates(ignore_index=True)
+        query = """
+            SELECT DISTINCT co_id, co_fiscal_id
+            FROM reports
+        """
+        df = con.execute(query).df()
         if identifier in df["co_id"].to_list():
             self._co_id = identifier
             mask = df["co_id"] == identifier
@@ -239,33 +242,14 @@ class Company:
         This method creates a data frame with the company's financial
         statements.
         """
-        basic_data_types = {
-            "co_name": str,
-            "co_id": int,
-            "co_fiscal_id": str,
-            "report_type": str,
-            "report_version": int,
-            "period_reference": "datetime64[ns]",
-            "period_begin": "datetime64[ns]",
-            "period_end": "datetime64[ns]",
-            "period_order": str,
-            "acc_code": str,
-            "acc_name": str,
-            "acc_method": str,
-            "acc_fixed": bool,
-            "acc_value": float,
-            "equity_statement_column": str,
-        }
         # Create the company data frame
-        co_df = (
-            pd.read_pickle(cf.FINLOGIC_DF_PATH)
-            .query(
-                "co_id == @self._co_id and acc_method == @self._acc_method",
-                engine="python",
-            )
-            .astype(basic_data_types)
-            .sort_values(by="acc_code", ignore_index=True)
-        )
+        query = f"""
+            SELECT *
+            FROM reports
+            WHERE co_id = {self._co_id}
+            AND acc_method = '{self._acc_method}'            
+        """
+        co_df = con.execute(query).df().sort_values(by="acc_code", ignore_index=True)
 
         # Change acc_unit only for accounts different from 3.99
         co_df["acc_value"] = np.where(
