@@ -63,7 +63,7 @@ def load_cvm_file(filename: str):
 
 def update_cvm_file(filename: str):
     """Read, format and load a cvm file in FinLogic Database."""
-    sql_tmp_table = cfg.SQL_CREATE_MAIN_TABLE.replace(
+    sql_tmp_table = SQL_CREATE_MAIN_TABLE.replace(
         "TABLE reports", "TEMP TABLE tmp_table"
     )
     con.execute(sql_tmp_table)
@@ -120,7 +120,7 @@ def update_database():
     print('\nUpdating "language" database...')
     process_language_df()
 
-    db_size = cfg.FINLOGIC_DB_PATH.stat().st_size / 1024**2
+    db_size = FINLOGIC_DB_PATH.stat().st_size / 1024**2
     # Rebuilt database when it is smaller than 1 MB
     if db_size < 1:
         print("FinLogic Database is empty and will be built.")
