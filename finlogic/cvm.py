@@ -95,9 +95,10 @@ def update_cvm_files(urls: str) -> List[Path]:
     return updated_filenames
 
 
-def read_cvm_file(cvm_filepath: Path) -> Path:
+def read_cvm_file(cvm_filename: str) -> pd.DataFrame:
     """Read annual file, process it, save the result and return the file path."""
     df = pd.DataFrame()
+    cvm_filepath = Path(cf.RAW_DIR, cvm_filename)
     annual_zipfile = zf.ZipFile(cvm_filepath)
     child_filenames = annual_zipfile.namelist()
 
@@ -203,11 +204,4 @@ def format_df(df: pd.DataFrame) -> pd.DataFrame:
     cols.remove("acc_value")
     df.drop_duplicates(subset=cols, keep="last", inplace=True)
 
-    return df
-
-
-def process_cvm_file(cvm_filepath: Path) -> pd.DataFrame:
-    """Process the annual file and return the path to the processed file."""
-    df = read_cvm_file(cvm_filepath)
-    df = format_df(df)
     return df

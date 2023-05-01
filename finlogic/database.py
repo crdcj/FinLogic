@@ -5,9 +5,6 @@ allows updating, processing and consolidating financial statements, as well as
 searching for company names in the FinLogic Database and retrieving information
 about the database itself.
 """
-
-import os
-from concurrent.futures import ProcessPoolExecutor
 from typing import List
 from pathlib import Path
 import pandas as pd
@@ -15,19 +12,20 @@ from . import config as cfg
 from . import cvm
 
 
-def insert_cvm_files(
-    workers: int, cvm_filepaths: List[Path], asynchronous: bool
-) -> List[Path]:
+def db_execute(sql_statement: str):
+    """Execute a command in FinLogic Database."""
+    cfg.conn.execute(sql_statement)
+
+
+def ingest_files(filenames: List[str]):
     """Execute 'read_cvm_file' and return a list with processed filenames."""
-    if asynchronous:
-        with ProcessPoolExecutor(max_workers=workers) as executor:
-            results = executor.map(cvm.process_cvm_file, cvm_filepaths)
-        processed_filepaths = [r for r in results]
-    else:
-        processed_filepaths = [
-            cvm.process_cvm_file(cvm_filepath) for cvm_filepath in cvm_filepaths
-        ]
-    return processed_filepaths
+    for filename in filenames:
+        filepath = cfg.RAW_DIR / filename
+        df = cvm.read_cvm_file(filepath)
+        if df.empty:
+            continue
+        df = cvm.process_cvm_df(df)
+        print(f"{filename} loaded in FinLogic Database.")
 
 
 def build_finlogic_df():
@@ -65,40 +63,71 @@ def build_finlogic_df():
     finlogic_df.to_pickle(cfg.FINLOGIC_DF_PATH)
 
 
-def get_filenames_to_process(filenames_updated) -> List[Path]:
+def get_filenames_to_ingest(filenames_updated) -> List[str]:
     # Get existing filestems in raw folder
     filenames_in_raw_folder = [filepath.name for filepath in cfg.RAW_DIR.glob("*.zip")]
     # Get filenames in finlogic database
     sql = "SELECT DISTINCT source_file FROM reports"
-    filenames_in_db = cfg.con.execute(sql).df()["source_file"].tolist()
-    filenames_not_in_db = list(set(filenames_in_raw_folder) - set(filenames_in_db))
-    filenames_to_process = list(set(filenames_updated) | set(filenames_not_in_db))
+    filenames_in_db = db_execute(sql).df()["source_file"].tolist()
+    filenames_not_in_db = set(filenames_in_raw_folder) - set(filenames_in_db)
+    filenames_to_process = list(set(filenames_updated) | filenames_not_in_db)
     filenames_to_process.sort()
     return filenames_to_process
 
 
-def update_database(asynchronous: bool = False, cpu_usage: float = 0.75):
+def initialize_database():
+    """Create FinLogic Database if it doesn't exist."""
+    db_size = cfg.FINLOGIC_DB_PATH.stat().st_size / 1024**2
+    # Initialize database only if it is smaller than 1 MB
+    if db_size > 1:
+        return False
+    sql_create_table = """
+        CREATE OR REPLACE TABLE reports (
+            co_name VARCHAR,
+            co_id UINTEGER NOT NULL,
+            co_fiscal_id VARCHAR,
+            report_type VARCHAR NOT NULL,
+            report_version UTINYINT NOT NULL,
+            period_reference DATE NOT NULL,
+            period_begin DATE,
+            period_end DATE NOT NULL,
+            period_order VARCHAR NOT NULL,
+            acc_method VARCHAR NOT NULL,
+            acc_code VARCHAR NOT NULL,
+            acc_name VARCHAR,
+            acc_fixed BOOLEAN NOT NULL,
+            acc_value DOUBLE,
+            equity_statement_column VARCHAR,
+            source_file VARCHAR NOT NULL
+        )
+    """
+    cfg.con.execute(sql_create_table)
+    print(f"{cfg.CHECKMARK} FinLogic Database initialized!")
+    return True
+
+
+def build_db():
+    """Build FinLogic Database from scratch."""
+    print("Building FinLogic Database...")
+    filenames_in_raw_folder = [filepath.name for filepath in cfg.RAW_DIR.glob("*.zip")]
+    for filename in filenames_in_raw_folder:
+        filepath = cfg.RAW_DIR / filename
+        df = cvm.read_cvm_file(filepath)
+        df = cvm.format_df(df)
+        # Insert the data into the table
+        db_execute("annual_dataframe", df)
+        db_execute("INSERT INTO reports SELECT * FROM annual_dataframe")
+    print(f"{cfg.CHECKMARK} FinLogic Database built!")
+
+
+def update_database():
     """Verify changes in remote files and update them in Finlogic Database.
 
     Args:
-        asynchronous: Generate the database by processing raw files
-            asynchronously. Works only on Linux and Mac. Default is False.
-        cpu_usage: A number between 0 and 1, where 1 represents 100% CPU usage.
-            This argument will define the number of cpu cores used for data
-            processing when function asynchronous mode is set to 'True'. Default
-            is 0.75.
 
     Returns:
         None
     """
-    # Create data folders if they do not exist.
-    Path.mkdir(cfg.RAW_DIR, parents=True, exist_ok=True)
-    Path.mkdir(cfg.PROCESSED_DIR, parents=True, exist_ok=True)
-
-    # Define the number of cpu cores for parallel data processing.
-    workers = int(os.cpu_count() * cpu_usage)
-    if workers < 1:
-        workers = 1
     print("Updating CVM files...")
     urls = cvm.list_urls()
     # urls = urls[:1]  # Test
@@ -111,13 +140,16 @@ def update_database(asynchronous: bool = False, cpu_usage: float = 0.75):
     else:
         print("All files are up to date.")
 
-    filepaths_to_process = get_filenames_to_process(updated_cvm_filenames)
+    filenames_to_ingest = get_filenames_to_ingest(updated_cvm_filenames)
     print("\nProcessing raw files...")
-    processed_filepaths = cvm.process_files(
-        workers, filepaths_to_process, asynchronous=asynchronous
-    )
-    for processed_filepath in processed_filepaths:
-        print(f"    {cfg.CHECKMARK} {processed_filepath.stem.split('.')[0]} processed.")
+
+    if initialize_database():
+        print("Loading all files in FinLogic Database...")
+        filenames_to_ingest = updated_cvm_filenames
+
+    ingest_files(filenames_to_ingest)
+    for ingested_filename in ingested_filenames:
+        print(f"    {cfg.CHECKMARK} {ingested_filename} processed.")
 
     print("\nBuilding FinLogic Database...")
     build_finlogic_df()
@@ -138,8 +170,8 @@ def database_info() -> dict:
     Returns:
         A dictionary containing the FinLogic Database information.
     """
-    finlogic_df = get_finlogic_df()
-    if finlogic_df.empty:
+    number_of_rows = db_execute("SELECT COUNT(*) FROM reports").fetchall()[0][0]
+    if number_of_rows == 0:
         print("Finlogic Database is empty")
         return
 
