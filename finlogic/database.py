@@ -8,10 +8,11 @@ about the database itself.
 from typing import List
 from pathlib import Path
 import pandas as pd
+import duckdb as ddb
 from . import config as cfg
 from . import cvm
 
-SQL_CREATE_TABLE = """
+SQL_CREATE_MAIN_TABLE = """
     CREATE OR REPLACE TABLE reports (
         co_name VARCHAR,
         co_id UINTEGER NOT NULL,
@@ -32,36 +33,41 @@ SQL_CREATE_TABLE = """
     )
 """
 
+# FinLogic Database connection
+con = ddb.connect(database=f"{cfg.FINLOGIC_DB_PATH}")
 
-def db_execute(sql_statement: str):
-    """Execute a command in FinLogic Database."""
-    return cfg.con.execute(sql_statement)
+# Initialize FinLogic Database main table.
+# Create reports table if there is no table in the database
+table_names = con.execute("PRAGMA show_tables;").fetchall()
+if not table_names:
+    con.execute(SQL_CREATE_MAIN_TABLE)
 
 
 def get_filenames_to_load(filenames_updated) -> List[str]:
     # Get existing filestems in raw folder
-    filenames_in_raw_folder = [filepath.name for filepath in cfg.RAW_DIR.glob("*.zip")]
+    filenames_in_raw_folder = [filepath.name for filepath in cfg.CVM_DIR.glob("*.zip")]
     # Get filenames in finlogic database
     sql = "SELECT DISTINCT source_file FROM reports"
-    filenames_in_db = db_execute(sql).df()["source_file"].tolist()
+    filenames_in_db = con.execute(sql).df()["source_file"].tolist()
     filenames_not_in_db = set(filenames_in_raw_folder) - set(filenames_in_db)
     filenames_to_process = list(set(filenames_updated) | filenames_not_in_db)
     filenames_to_process.sort()
     return filenames_to_process
 
 
-def load_cvm_data(filename: str):
+def load_cvm_file(filename: str):
     """Read, format and load a cvm file in FinLogic Database."""
     df = cvm.process_cvm_file(filename)
     # Insert the data in the database
-    cfg.con.register("annual_dataframe", df)
-    db_execute("INSERT INTO reports SELECT * FROM annual_dataframe")
+    con.execute("INSERT INTO reports SELECT * FROM df")
 
 
-def update_cvm_data(filename: str):
+def update_cvm_file(filename: str):
     """Read, format and load a cvm file in FinLogic Database."""
-    sql_tmp_table = SQL_CREATE_TABLE.replace("TABLE reports", "TEMP TABLE tmp_table")
-    db_execute(sql_tmp_table)
+    sql_tmp_table = cfg.SQL_CREATE_MAIN_TABLE.replace(
+        "TABLE reports", "TEMP TABLE tmp_table"
+    )
+    con.execute(sql_tmp_table)
 
     df = cvm.process_cvm_file(filename)
     # Insert the dataframe in the database
@@ -79,16 +85,16 @@ def update_cvm_data(filename: str):
 
         DROP      TABLE tmp_table;
     """
-    db_execute(sql_update_data)
+    con.execute(sql_update_data)
 
 
 def build_db():
     """Build FinLogic Database from scratch."""
     print("Building FinLogic Database...")
-    filenames_in_raw_folder = [filepath.name for filepath in cfg.RAW_DIR.glob("*.zip")]
+    filenames_in_raw_folder = [filepath.name for filepath in cfg.CVM_DIR.glob("*.zip")]
     filenames_in_raw_folder.sort()
     for filename in filenames_in_raw_folder:
-        load_cvm_data(filename)
+        load_cvm_file(filename)
         print(f"    {cfg.CHECKMARK} {filename} loaded.")
 
 
@@ -104,7 +110,6 @@ def update_database():
     urls = cvm.list_urls()
     # urls = urls[:1]  # Test
     updated_cvm_filenames = cvm.update_cvm_files(urls)
-    assert 1 == 2
     print(f"Number of CVM files updated = {len(updated_cvm_filenames)}")
     if updated_cvm_filenames:
         print("Updated files:")
@@ -113,14 +118,13 @@ def update_database():
     else:
         print("All files are up to date.")
 
-    print('Updating "language" database...')
+    print('\nUpdating "language" database...')
     process_language_df()
 
     db_size = cfg.FINLOGIC_DB_PATH.stat().st_size / 1024**2
     # Rebuilt database when it is smaller than 1 MB
     if db_size < 1:
         print("FinLogic Database is empty and will be built.")
-        db_execute(SQL_CREATE_TABLE)
         print("Loading all files in FinLogic Database...")
         build_db()
 
@@ -128,10 +132,10 @@ def update_database():
         print("\nUpdate CVM data in FinLogic Database...")
         filenames_to_load = get_filenames_to_load(updated_cvm_filenames)
         for filename in filenames_to_load:
-            update_cvm_data(filename)
+            update_cvm_file(filename)
             print(f"    {cfg.CHECKMARK} {filename} updated in FinLogic Database.")
 
-    print(f"{cfg.CHECKMARK} FinLogic database updated!")
+    print(f"\n{cfg.CHECKMARK} FinLogic database updated!")
 
 
 def database_info() -> dict:
@@ -146,7 +150,7 @@ def database_info() -> dict:
     Returns:
         A dictionary containing the FinLogic Database information.
     """
-    number_of_rows = db_execute("SELECT COUNT(*) FROM reports").fetchall()[0][0]
+    number_of_rows = con.execute("SELECT COUNT(*) FROM reports").fetchall()[0][0]
     if number_of_rows == 0:
         print("Finlogic Database is empty")
         return

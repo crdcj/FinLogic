@@ -54,7 +54,7 @@ def list_urls() -> List[str]:
 
 def update_cvm_file(url: str) -> Path:
     """Update raw file from CVM portal. Return a Path if file is updated."""
-    cvm_filepath = Path(cf.RAW_DIR, url[-23:])  # filename = url final
+    cvm_filepath = Path(cf.CVM_DIR, url[-23:])  # filename = url final
     with requests.Session() as s:
         r = s.get(url, stream=True)
         if r.status_code != requests.codes.ok:
@@ -98,7 +98,7 @@ def update_cvm_files(urls: str) -> List[Path]:
 def read_cvm_file(cvm_filename: str) -> pd.DataFrame:
     """Read annual file, process it, save the result and return the file path."""
     df = pd.DataFrame()
-    cvm_filepath = Path(cf.RAW_DIR, cvm_filename)
+    cvm_filepath = Path(cf.CVM_DIR, cvm_filename)
     annual_zipfile = zf.ZipFile(cvm_filepath)
     child_filenames = annual_zipfile.namelist()
 
