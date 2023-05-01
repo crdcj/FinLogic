@@ -133,8 +133,8 @@ def read_cvm_file(cvm_filename: str) -> pd.DataFrame:
     return df
 
 
-def format_df(df: pd.DataFrame) -> pd.DataFrame:
-    """Process a raw dataframe and return a formatted dataframe."""
+def format_cvm_df(df: pd.DataFrame) -> pd.DataFrame:
+    """Format a cvm dataframe."""
     columns_translation = {
         "DENOM_CIA": "co_name",
         "CD_CVM": "co_id",
@@ -204,4 +204,11 @@ def format_df(df: pd.DataFrame) -> pd.DataFrame:
     cols.remove("acc_value")
     df.drop_duplicates(subset=cols, keep="last", inplace=True)
 
+    return df
+
+
+def process_cvm_file(cvm_filename: str) -> pd.DataFrame:
+    """Read and format a CVM file."""
+    df = read_cvm_file(cvm_filename)
+    df = format_cvm_df(df)
     return df
