@@ -12,6 +12,10 @@ import duckdb as ddb
 from . import config as cfg
 from . import cvm
 
+# Start FinLogic Database connection
+FINLOGIC_DB_PATH = cfg.DATA_PATH / "finlogic.db"
+con = ddb.connect(database=f"{FINLOGIC_DB_PATH}")
+# Initialize FinLogic Database main table.
 SQL_CREATE_MAIN_TABLE = """
     CREATE OR REPLACE TABLE reports (
         co_name VARCHAR,
@@ -32,11 +36,6 @@ SQL_CREATE_MAIN_TABLE = """
         source_file VARCHAR NOT NULL
     )
 """
-
-# FinLogic Database connection
-con = ddb.connect(database=f"{cfg.FINLOGIC_DB_PATH}")
-
-# Initialize FinLogic Database main table.
 # Create reports table if there is no table in the database
 table_names = con.execute("PRAGMA show_tables;").fetchall()
 if not table_names:
@@ -57,7 +56,7 @@ def get_filenames_to_load(filenames_updated) -> List[str]:
 
 def load_cvm_file(filename: str):
     """Read, format and load a cvm file in FinLogic Database."""
-    df = cvm.process_cvm_file(filename)
+    df = cvm.process_cvm_file(filename)  # noqa
     # Insert the data in the database
     con.execute("INSERT INTO reports SELECT * FROM df")
 
@@ -69,7 +68,7 @@ def update_cvm_file(filename: str):
     )
     con.execute(sql_tmp_table)
 
-    df = cvm.process_cvm_file(filename)
+    df = cvm.process_cvm_file(filename)  # noqa
     # Insert the dataframe in the database
     sql_update_data = """
         INSERT    INTO tmp_table
@@ -156,23 +155,27 @@ def database_info() -> dict:
         return
 
     cvm_df = cvm.get_cvm_df()
-    file_date_unix = round(cfg.FINLOGIC_DF_PATH.stat().st_mtime, 0)
-    memory_size = finlogic_df.memory_usage(index=True, deep=True).sum()
-    statements_cols = ["co_id", "report_version", "report_type", "period_reference"]
-    statements_num = len(finlogic_df.drop_duplicates(subset=statements_cols).index)
-    first_statement = finlogic_df["period_end"].astype("datetime64[ns]").min()
-    last_statement = finlogic_df["period_end"].astype("datetime64[ns]").max()
+    file_date_unix = round(FINLOGIC_DB_PATH.stat().st_mtime, 0)
+    query = """
+        SELECT DISTINCT co_id, report_version, report_type, period_reference
+        FROM reports;
+    """
+    statements_num = con.execute(query).df().shape[0]
+    query = "SELECT MIN(period_end) FROM reports"
+    first_statement = con.execute(query).fetchall()[0][0]
+    query = "SELECT MAX(period_end) FROM reports"
+    last_statement = con.execute(query).fetchall()[0][0]
+    query = "SELECT COUNT(DISTINCT co_id) FROM reports"
+    number_of_companies = con.execute(query).fetchall()[0][0]
 
     info_dict = {
         "Path": cfg.DATA_PATH,
-        "File size (MB)": round(cfg.FINLOGIC_DF_PATH.stat().st_size / 1024**2, 1),
+        "File size (MB)": round(FINLOGIC_DB_PATH.stat().st_size / 1024**2, 1),
         "Last update call": cvm_df.index.max().round("1s").isoformat(),
         "Last modified": pd.Timestamp.fromtimestamp(file_date_unix).isoformat(),
         "Last updated data": cvm_df["last_modified"].max().isoformat(),
-        "Memory size (MB)": round(memory_size / 1024**2, 1),
-        "Accounting rows": len(finlogic_df.index),
-        "Unique accounting codes": finlogic_df["acc_code"].nunique(),
-        "Number of companies": finlogic_df["co_id"].nunique(),
+        "Accounting rows": number_of_rows,
+        "Number of companies": number_of_companies,
         "Unique financial statements": statements_num,
         "First financial statement": first_statement.strftime("%Y-%m-%d"),
         "Last financial statement": last_statement.strftime("%Y-%m-%d"),
@@ -198,17 +201,13 @@ def search_company(company_name: str) -> pd.DataFrame:
             'co_name', 'co_id', and 'co_fiscal_id' for each unique company that
             matches the search criteria.
     """
-
-    company_name = company_name.upper()
-    df = (
-        pd.read_pickle(cfg.FINLOGIC_DF_PATH)
-        .query("co_name.str.contains(@company_name)", engine="python")
-        .sort_values(by="co_name")
-        .drop_duplicates(subset="co_id", ignore_index=True)[
-            ["co_name", "co_id", "co_fiscal_id"]
-        ]
-    )
-    return df
+    query = f"""
+        SELECT DISTINCT co_name, co_id, co_fiscal_id
+        FROM reports
+        WHERE UPPER(co_name) LIKE '%{company_name.upper()}%'
+        ORDER BY co_name;
+    """
+    return con.execute(query).df()
 
 
 def process_language_df():
