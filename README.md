@@ -1,10 +1,9 @@
 [![PyPI version](https://img.shields.io/pypi/v/finlogic.svg)](https://pypi.python.org/pypi/finlogic)
-<!-- [![Anaconda-Server Badge](https://anaconda.org/conda-forge/finlogic/badges/version.svg)](https://anaconda.org/conda-forge/finlogic)" -->
 [![PyPI Downloads](https://img.shields.io/pypi/dm/finlogic.svg)](https://pypi.python.org/pypi/finlogic)
 [![Python Version](https://img.shields.io/pypi/pyversions/finlogic)](https://www.python.org/)
 [![Anaconda License](https://anaconda.org/conda-forge/finlogic/badges/license.svg)](https://anaconda.org/conda-forge/finlogic)
 [![Code Style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-
+<!-- [![Anaconda-Server Badge](https://anaconda.org/conda-forge/finlogic/badges/version.svg)](https://anaconda.org/conda-forge/finlogic)" -->
 ## FinLogic: finance data analysis toolkit for listed Brazilian companies
 
 <table border=1 cellpadding=10><tr><td>
