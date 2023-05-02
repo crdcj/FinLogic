@@ -1,4 +1,4 @@
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from typing import List
 import zipfile as zf
 from pathlib import Path
@@ -52,9 +52,9 @@ def list_urls() -> List[str]:
     return urls
 
 
-def update_raw_file(url: str) -> Path:
+def update_cvm_file(url: str) -> Path:
     """Update raw file from CVM portal. Return a Path if file is updated."""
-    cvm_filepath = Path(cf.RAW_DIR, url[-23:])  # filename = url final
+    cvm_filepath = Path(cf.CVM_DIR, url[-23:])  # filename = url final
     with requests.Session() as s:
         r = s.get(url, stream=True)
         if r.status_code != requests.codes.ok:
@@ -84,20 +84,21 @@ def update_raw_file(url: str) -> Path:
         ts_server,
     ]
     cvm_df.to_pickle(CVM_DF_PATH)
-    return cvm_filepath
+    return cvm_filepath.name
 
 
-def update_raw_files(urls: str) -> List[Path]:
+def update_cvm_files(urls: str) -> List[Path]:
     """Update local CVM raw files asynchronously."""
     with ThreadPoolExecutor() as executor:
-        results = executor.map(update_raw_file, urls)
-    updated_filepaths = [r for r in results if r is not None]
-    return updated_filepaths
+        results = executor.map(update_cvm_file, urls)
+    updated_filenames = [r for r in results if r is not None]
+    return updated_filenames
 
 
-def pre_process_file(cvm_filepath: Path) -> Path:
+def read_cvm_file(cvm_filename: str) -> pd.DataFrame:
     """Read annual file, process it, save the result and return the file path."""
     df = pd.DataFrame()
+    cvm_filepath = Path(cf.CVM_DIR, cvm_filename)
     annual_zipfile = zf.ZipFile(cvm_filepath)
     child_filenames = annual_zipfile.namelist()
 
@@ -118,49 +119,44 @@ def pre_process_file(cvm_filepath: Path) -> Path:
 
         # There are two types of CVM files: DFP (ANNUAL) and ITR (QUARTERLY).
         if cvm_filepath.name.startswith("dfp"):
-            child_df["report_type"] = "ANNUAL"
+            child_df["TIPO"] = "ANNUAL"
         else:
-            child_df["report_type"] = "QUARTERLY"
+            child_df["TIPO"] = "QUARTERLY"
 
         df_list.append(child_df)
 
     df = pd.concat(df_list, ignore_index=True)
-
+    df["ARQUIVO"] = cvm_filepath.name
     # Convert string columns to categorical.
     columns = df.select_dtypes(include="object").columns
     df[columns] = df[columns].astype("category")
     return df
 
 
-def format_df(df: pd.DataFrame) -> pd.DataFrame:
-    """Process a raw dataframe and return a formatted dataframe."""
+def format_cvm_df(df: pd.DataFrame) -> pd.DataFrame:
+    """Format a cvm dataframe."""
     columns_translation = {
-        "CNPJ_CIA": "co_fiscal_id",
-        "DT_REFER": "period_reference",
-        "VERSAO": "report_version",
         "DENOM_CIA": "co_name",
         "CD_CVM": "co_id",
-        "GRUPO_DFP": "report_group",
-        "ESCALA_MOEDA": "currency_unit",
-        "ORDEM_EXERC": "period_order",
+        "CNPJ_CIA": "co_fiscal_id",
+        "TIPO": "report_type",
+        "VERSAO": "report_version",
+        "DT_REFER": "period_reference",
+        "DT_INI_EXERC": "period_begin",
         "DT_FIM_EXERC": "period_end",
+        "ORDEM_EXERC": "period_order",
         "CD_CONTA": "acc_code",
         "DS_CONTA": "acc_name",
-        "VL_CONTA": "acc_value",
         "ST_CONTA_FIXA": "acc_fixed",
-        "DT_INI_EXERC": "period_begin",
+        "VL_CONTA": "acc_value",
         "COLUNA_DF": "equity_statement_column",
+        "ARQUIVO": "data_source",
+        # Columns below will be dropped after processing.
+        "GRUPO_DFP": "report_group",
+        "ESCALA_MOEDA": "currency_unit",
     }
-    df.rename(columns=columns_translation, inplace=True)
+    df = df.rename(columns=columns_translation)[columns_translation.values()]
 
-    adjust_data_types = {
-        "co_id": "UInt32",  # max. value = 600_000
-        "report_version": "UInt8",  # values are 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
-        "period_begin": "datetime64[ns]",
-        "period_end": "datetime64[ns]",
-        "period_reference": "datetime64[ns]",
-    }
-    df = df.astype(adjust_data_types)
     # currency_unit values are ['MIL', 'UNIDADE']
     map_dict = {"UNIDADE": 1, "MIL": 1000}
     df["currency_unit"] = df["currency_unit"].map(map_dict).astype(int)
@@ -197,65 +193,22 @@ def format_df(df: pd.DataFrame) -> pd.DataFrame:
     if == 'Con' -> consolidated statement
     if == 'Ind' -> separate statement
     """
-    df["acc_method"] = (
-        df["report_group"].str[3:6].map({"Con": "CONSOLIDATED", "Ind": "SEPARATE"})
-    )
+    map_dict = {"Con": "CONSOLIDATED", "Ind": "SEPARATE"}
+    df.insert(9, "acc_method", df["report_group"].str[3:6].map(map_dict))
     # 'GRUPO_DFP' data can be inferred from 'acc_code'
     df.drop(columns=["report_group"], inplace=True)
     # Correct/harmonize some account texts.
     df["acc_name"].replace(to_replace=["\xa0ON\xa0", "On"], value="ON", inplace=True)
-    # Remove duplicated accounts
-    cols = list(df.columns)
-    # cols.remove("acc_value")
-    df.drop_duplicates(cols, keep="last", inplace=True)
-    columns_order = [
-        "co_name",
-        "co_id",
-        "co_fiscal_id",
-        "report_type",
-        "report_version",
-        "period_reference",
-        "period_begin",
-        "period_end",
-        "period_order",
-        "acc_code",
-        "acc_name",
-        "acc_method",
-        "acc_fixed",
-        "acc_value",
-        "equity_statement_column",
-    ]
-    df = df[columns_order]
-    # Most values in datetime and string columns are the same.
-    # So these remaining columns can be converted to category.
-    columns = df.select_dtypes(include=["datetime64[ns]", "object"]).columns
-    df[columns] = df[columns].astype("category")
+    # From 20_636_037 rows 2_383 were duplicated on 2023-04-30 -> remove duplicates
+    cols = df.columns.tolist()
+    cols.remove("acc_value")
+    df.drop_duplicates(subset=cols, keep="last", inplace=True)
 
     return df
 
 
-def process_file(cvm_filepath: Path) -> Path:
-    """Process the annual file and return the path to the processed file."""
-    df = pre_process_file(cvm_filepath)
-    df = format_df(df)
-    processed_filepath = cf.PROCESSED_DIR / cvm_filepath.with_suffix(".pkl.zst").name
-    df.to_pickle(processed_filepath)
-    return processed_filepath
-
-
-def process_files(
-    workers: int, cvm_filepaths: List[Path], asynchronous: bool
-) -> List[Path]:
-    """
-    Execute function 'pre_process_file' and return
-    a list with filenames for the processed files.
-    """
-    if asynchronous:
-        with ProcessPoolExecutor(max_workers=workers) as executor:
-            results = executor.map(process_file, cvm_filepaths)
-        processed_filepaths = [r for r in results]
-    else:
-        processed_filepaths = [
-            process_file(cvm_filepath) for cvm_filepath in cvm_filepaths
-        ]
-    return processed_filepaths
+def process_cvm_file(cvm_filename: str) -> pd.DataFrame:
+    """Read and format a CVM file."""
+    df = read_cvm_file(cvm_filename)
+    df = format_cvm_df(df)
+    return df

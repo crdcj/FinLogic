@@ -5,142 +5,136 @@ allows updating, processing and consolidating financial statements, as well as
 searching for company names in the FinLogic Database and retrieving information
 about the database itself.
 """
-
-import os
 from typing import List
 from pathlib import Path
 import pandas as pd
-from . import config as cf
-from . import cvm as cv
+import duckdb as ddb
+from . import config as cfg
+from . import cvm
 
-
-def get_finlogic_df() -> pd.DataFrame:
-    """Returns the FinLogic Database as a Pandas DataFrame.
-
-    Returns:
-        A Pandas DataFrame containing the FinLogic Database.
-    """
-    # Start/load main dataframe
-    if cf.FINLOGIC_DF_PATH.is_file():
-        finlogic_df = pd.read_pickle(cf.FINLOGIC_DF_PATH)
-    else:
-        finlogic_df = pd.DataFrame()
-    return finlogic_df
-
-
-def build_finlogic_df():
-    # Get all files in processed folder
-    filepaths = list(cf.PROCESSED_DIR.glob("*.zst"))
-    # Guard clause: if no raw file was update, there is nothing to consolidate
-    if not filepaths:
-        print("No processed files to build FinLogic Database.")
-        return
-    # Concatenate all processed files into a single dataframe
-    finlogic_df = pd.concat(
-        [pd.read_pickle(filepath) for filepath in filepaths],
-        ignore_index=True,
+# Start FinLogic Database connection
+FINLOGIC_DB_PATH = cfg.DATA_PATH / "finlogic.db"
+con = ddb.connect(database=f"{FINLOGIC_DB_PATH}")
+# Initialize FinLogic Database main table.
+SQL_CREATE_MAIN_TABLE = """
+    CREATE OR REPLACE TABLE reports (
+        co_name VARCHAR,
+        co_id UINTEGER NOT NULL,
+        co_fiscal_id VARCHAR,
+        report_type VARCHAR NOT NULL,
+        report_version UTINYINT NOT NULL,
+        period_reference DATE NOT NULL,
+        period_begin DATE,
+        period_end DATE NOT NULL,
+        period_order VARCHAR NOT NULL,
+        acc_method VARCHAR NOT NULL,
+        acc_code VARCHAR NOT NULL,
+        acc_name VARCHAR,
+        acc_fixed BOOLEAN NOT NULL,
+        acc_value DOUBLE,
+        equity_statement_column VARCHAR,
+        source_file VARCHAR NOT NULL
     )
-    # Most values in datetime and string columns are the same.
-    # So these remaining columns can be converted to category.
-    columns = finlogic_df.select_dtypes(include=["datetime64[ns]", "object"]).columns
-    finlogic_df[columns] = finlogic_df[columns].astype("category")
-    # Keep only the newest 'report_version' in df if values are repeated
-    cols = [
-        "co_id",
-        "report_type",
-        "period_reference",
-        "report_version",
-        "period_order",
-        "acc_method",
-        "acc_code",
-    ]
-    finlogic_df.sort_values(by=cols, ignore_index=True, inplace=True)
-    cols = finlogic_df.columns.tolist()
-    cols_remove = ["report_version", "acc_value", "acc_fixed"]
-    [cols.remove(col) for col in cols_remove]
-    # Ascending order --> last is the newest report_version
-    finlogic_df.drop_duplicates(cols, keep="last", inplace=True)
-    finlogic_df.to_pickle(cf.FINLOGIC_DF_PATH)
+"""
+# Create reports table if there is no table in the database
+table_names = con.execute("PRAGMA show_tables;").fetchall()
+if not table_names:
+    con.execute(SQL_CREATE_MAIN_TABLE)
 
 
-def determine_files_to_process(updated_raw_filepaths) -> List[Path]:
-    # Get filestems from updated files
-    filestems_updated = [filepath.stem for filepath in updated_raw_filepaths]
-    filestems_updated.sort()
+def get_filenames_to_load(filenames_updated) -> List[str]:
     # Get existing filestems in raw folder
-    filepaths_in_raw_folder = [filepath for filepath in cf.RAW_DIR.glob("*.zip")]
-    filestems_in_raw_folder = [filepath.stem for filepath in filepaths_in_raw_folder]
-    filestems_in_raw_folder.sort()
-    # Get existing filestems in processed folder
-    #  Filename example: dfp_cia_aberta_2018.pkl.zst
-    filestems_in_processed_folder = [
-        filepath.stem.split(".")[0] for filepath in cf.PROCESSED_DIR.glob("*.zst")
-    ]
-    filestems_in_processed_folder.sort()
+    filenames_in_raw_folder = [filepath.name for filepath in cfg.CVM_DIR.glob("*.zip")]
+    # Get filenames in finlogic database
+    sql = "SELECT DISTINCT source_file FROM reports"
+    filenames_in_db = con.execute(sql).df()["source_file"].tolist()
+    filenames_not_in_db = set(filenames_in_raw_folder) - set(filenames_in_db)
+    filenames_to_process = list(set(filenames_updated) | filenames_not_in_db)
+    filenames_to_process.sort()
+    return filenames_to_process
 
-    filestems_not_in_processed_folder = list(
-        set(filestems_in_raw_folder) - set(filestems_in_processed_folder)
+
+def load_cvm_file(filename: str):
+    """Read, format and load a cvm file in FinLogic Database."""
+    df = cvm.process_cvm_file(filename)  # noqa
+    # Insert the data in the database
+    con.execute("INSERT INTO reports SELECT * FROM df")
+
+
+def update_cvm_file(filename: str):
+    """Read, format and load a cvm file in FinLogic Database."""
+    sql_tmp_table = SQL_CREATE_MAIN_TABLE.replace(
+        "TABLE reports", "TEMP TABLE tmp_table"
     )
-    filestems_to_process = list(
-        set(filestems_updated) | set(filestems_not_in_processed_folder)
-    )
+    con.execute(sql_tmp_table)
 
-    filepaths_to_process = [
-        filepath
-        for filepath in filepaths_in_raw_folder
-        if filepath.stem in filestems_to_process
-    ]
-    filepaths_to_process.sort()
-    return filepaths_to_process
+    df = cvm.process_cvm_file(filename)  # noqa
+    # Insert the dataframe in the database
+    sql_update_data = """
+        INSERT    INTO tmp_table
+        SELECT    *
+        FROM      df;
+
+        INSERT    INTO reports
+        SELECT    *
+        FROM      tmp_table
+        EXCEPT   
+        SELECT    *
+        FROM      reports;
+
+        DROP      TABLE tmp_table;
+    """
+    con.execute(sql_update_data)
 
 
-def update_database(asynchronous: bool = False, cpu_usage: float = 0.75):
+def build_db():
+    """Build FinLogic Database from scratch."""
+    print("Building FinLogic Database...")
+    filenames_in_raw_folder = [filepath.name for filepath in cfg.CVM_DIR.glob("*.zip")]
+    filenames_in_raw_folder.sort()
+    for filename in filenames_in_raw_folder:
+        load_cvm_file(filename)
+        print(f"    {cfg.CHECKMARK} {filename} loaded.")
+
+
+def update_database():
     """Verify changes in remote files and update them in Finlogic Database.
 
     Args:
-        asynchronous: Generate the database by processing raw files
-            asynchronously. Works only on Linux and Mac. Default is False.
-        cpu_usage: A number between 0 and 1, where 1 represents 100% CPU usage.
-            This argument will define the number of cpu cores used for data
-            processing when function asynchronous mode is set to 'True'. Default
-            is 0.75.
 
     Returns:
         None
     """
-    # Create data folders if they do not exist.
-    Path.mkdir(cf.RAW_DIR, parents=True, exist_ok=True)
-    Path.mkdir(cf.PROCESSED_DIR, parents=True, exist_ok=True)
-
-    # Define the number of cpu cores for parallel data processing.
-    workers = int(os.cpu_count() * cpu_usage)
-    if workers < 1:
-        workers = 1
     print("Updating CVM files...")
-    urls = cv.list_urls()
+    urls = cvm.list_urls()
     # urls = urls[:1]  # Test
-    updated_raw_filepaths = cv.update_raw_files(urls)
-    print(f"Number of CVM files updated = {len(updated_raw_filepaths)}")
-    if updated_raw_filepaths:
+    updated_cvm_filenames = cvm.update_cvm_files(urls)
+    print(f"Number of CVM files updated = {len(updated_cvm_filenames)}")
+    if updated_cvm_filenames:
         print("Updated files:")
-        for updated_filepath in updated_raw_filepaths:
-            print(f"    {cf.CHECKMARK} {updated_filepath.stem} updated.")
+        for updated_filename in updated_cvm_filenames:
+            print(f"    {cfg.CHECKMARK} {updated_filename} updated.")
     else:
         print("All files are up to date.")
 
-    filepaths_to_process = determine_files_to_process(updated_raw_filepaths)
-    print("\nProcessing raw files...")
-    processed_filepaths = cv.process_files(
-        workers, filepaths_to_process, asynchronous=asynchronous
-    )
-    for processed_filepath in processed_filepaths:
-        print(f"    {cf.CHECKMARK} {processed_filepath.stem.split('.')[0]} processed.")
-
-    print("\nBuilding FinLogic Database...")
-    build_finlogic_df()
-    print('Updating "language" database...')
+    print('\nUpdating "language" database...')
     process_language_df()
-    print(f"{cf.CHECKMARK} FinLogic database updated!")
+
+    db_size = FINLOGIC_DB_PATH.stat().st_size / 1024**2
+    # Rebuilt database when it is smaller than 1 MB
+    if db_size < 1:
+        print("FinLogic Database is empty and will be built.")
+        print("Loading all files in FinLogic Database...")
+        build_db()
+
+    else:
+        print("\nUpdate CVM data in FinLogic Database...")
+        filenames_to_load = get_filenames_to_load(updated_cvm_filenames)
+        for filename in filenames_to_load:
+            update_cvm_file(filename)
+            print(f"    {cfg.CHECKMARK} {filename} updated in FinLogic Database.")
+
+    print(f"\n{cfg.CHECKMARK} FinLogic database updated!")
 
 
 def database_info() -> dict:
@@ -155,29 +149,33 @@ def database_info() -> dict:
     Returns:
         A dictionary containing the FinLogic Database information.
     """
-    finlogic_df = get_finlogic_df()
-    if finlogic_df.empty:
+    number_of_rows = con.execute("SELECT COUNT(*) FROM reports").fetchall()[0][0]
+    if number_of_rows == 0:
         print("Finlogic Database is empty")
         return
 
-    cvm_df = cv.get_cvm_df()
-    file_date_unix = round(cf.FINLOGIC_DF_PATH.stat().st_mtime, 0)
-    memory_size = finlogic_df.memory_usage(index=True, deep=True).sum()
-    statements_cols = ["co_id", "report_version", "report_type", "period_reference"]
-    statements_num = len(finlogic_df.drop_duplicates(subset=statements_cols).index)
-    first_statement = finlogic_df["period_end"].astype("datetime64[ns]").min()
-    last_statement = finlogic_df["period_end"].astype("datetime64[ns]").max()
+    cvm_df = cvm.get_cvm_df()
+    file_date_unix = round(FINLOGIC_DB_PATH.stat().st_mtime, 0)
+    query = """
+        SELECT DISTINCT co_id, report_version, report_type, period_reference
+        FROM reports;
+    """
+    statements_num = con.execute(query).df().shape[0]
+    query = "SELECT MIN(period_end) FROM reports"
+    first_statement = con.execute(query).fetchall()[0][0]
+    query = "SELECT MAX(period_end) FROM reports"
+    last_statement = con.execute(query).fetchall()[0][0]
+    query = "SELECT COUNT(DISTINCT co_id) FROM reports"
+    number_of_companies = con.execute(query).fetchall()[0][0]
 
     info_dict = {
-        "Path": cf.DATA_PATH,
-        "File size (MB)": round(cf.FINLOGIC_DF_PATH.stat().st_size / 1024**2, 1),
+        "Path": cfg.DATA_PATH,
+        "File size (MB)": round(FINLOGIC_DB_PATH.stat().st_size / 1024**2, 1),
         "Last update call": cvm_df.index.max().round("1s").isoformat(),
         "Last modified": pd.Timestamp.fromtimestamp(file_date_unix).isoformat(),
         "Last updated data": cvm_df["last_modified"].max().isoformat(),
-        "Memory size (MB)": round(memory_size / 1024**2, 1),
-        "Accounting rows": len(finlogic_df.index),
-        "Unique accounting codes": finlogic_df["acc_code"].nunique(),
-        "Number of companies": finlogic_df["co_id"].nunique(),
+        "Accounting rows": number_of_rows,
+        "Number of companies": number_of_companies,
         "Unique financial statements": statements_num,
         "First financial statement": first_statement.strftime("%Y-%m-%d"),
         "Last financial statement": last_statement.strftime("%Y-%m-%d"),
@@ -203,21 +201,17 @@ def search_company(company_name: str) -> pd.DataFrame:
             'co_name', 'co_id', and 'co_fiscal_id' for each unique company that
             matches the search criteria.
     """
-
-    company_name = company_name.upper()
-    df = (
-        pd.read_pickle(cf.FINLOGIC_DF_PATH)
-        .query("co_name.str.contains(@company_name)", engine="python")
-        .sort_values(by="co_name")
-        .drop_duplicates(subset="co_id", ignore_index=True)[
-            ["co_name", "co_id", "co_fiscal_id"]
-        ]
-    )
-    return df
+    query = f"""
+        SELECT DISTINCT co_name, co_id, co_fiscal_id
+        FROM reports
+        WHERE UPPER(co_name) LIKE '%{company_name.upper()}%'
+        ORDER BY co_name;
+    """
+    return con.execute(query).df()
 
 
 def process_language_df():
     """Process language dataframe."""
-    language_df = pd.read_csv(cf.URL_LANGUAGE)
-    Path.mkdir(cf.INTERIM_DIR, parents=True, exist_ok=True)
-    language_df.to_csv(cf.LANGUAGE_DF_PATH, compression="zstd", index=False)
+    language_df = pd.read_csv(cfg.URL_LANGUAGE)
+    Path.mkdir(cfg.INTERIM_DIR, parents=True, exist_ok=True)
+    language_df.to_csv(cfg.LANGUAGE_DF_PATH, compression="zstd", index=False)
