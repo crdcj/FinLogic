@@ -1,5 +1,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/finlogic.svg)](https://pypi.python.org/pypi/finlogic)
-[![Anaconda-Server Badge](https://anaconda.org/conda-forge/finlogic/badges/version.svg)](https://anaconda.org/conda-forge/finlogic)
+
+<!-- [![Anaconda-Server Badge](https://anaconda.org/conda-forge/finlogic/badges/version.svg)](https://anaconda.org/conda-forge/finlogic)" -->
+
 [![PyPI Downloads](https://img.shields.io/pypi/dm/finlogic.svg)](https://pypi.python.org/pypi/finlogic)
 [![Python Version](https://img.shields.io/pypi/pyversions/finlogic)](https://www.python.org/)
 [![Anaconda License](https://anaconda.org/conda-forge/finlogic/badges/license.svg)](https://anaconda.org/conda-forge/finlogic)
@@ -33,10 +35,12 @@ https://github.com/crdcj/FinLogic
 Binary installers for the latest released version are available at the [Python
 Package Index (PyPI)](https://pypi.org/project/finlogic) and on [Conda](https://anaconda.org/conda-forge/finlogic).
 
+<!--
 ```sh
 # Conda:
 conda install -c conda-forge finlogic
 ```
+-->
 
 ```sh
 # or PyPI:
