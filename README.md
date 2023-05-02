@@ -3,7 +3,9 @@
 [![Python Version](https://img.shields.io/pypi/pyversions/finlogic)](https://www.python.org/)
 [![Anaconda License](https://anaconda.org/conda-forge/finlogic/badges/license.svg)](https://anaconda.org/conda-forge/finlogic)
 [![Code Style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 <!-- [![Anaconda-Server Badge](https://anaconda.org/conda-forge/finlogic/badges/version.svg)](https://anaconda.org/conda-forge/finlogic)" -->
+
 ## FinLogic: finance data analysis toolkit for listed Brazilian companies
 
 <table border=1 cellpadding=10><tr><td>
@@ -20,7 +22,7 @@
 
 ---
 
-**FinLogic** offers a Pythonic way to analyze financial data of listed companies in Brazil from information made publicly avaible by local securities market authority (CVM). This finance tool is built on top of Pandas.
+**FinLogic** offers a Pythonic way to analyze financial data of listed companies in Brazil from information made publicly avaible by local securities market authority (CVM). This toolkit uses DuckDB as the OLAP database management system and Pandas to built the accountting database and process the data from it.
 
 ---
 
