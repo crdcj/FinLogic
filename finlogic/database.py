@@ -5,7 +5,7 @@ allows updating, processing and consolidating financial statements, as well as
 searching for company names in the FinLogic Database and retrieving information
 about the database itself.
 """
-from typing import List
+from typing import List, Literal
 from pathlib import Path
 import pandas as pd
 import duckdb as ddb
@@ -98,7 +98,7 @@ def build_db():
 
 
 def update_database():
-    """Verify changes in remote files and update them in Finlogic Database.
+    """Verify changes in CVM files and update them in Finlogic Database.
 
     Args:
 
@@ -123,8 +123,8 @@ def update_database():
     db_size = FINLOGIC_DB_PATH.stat().st_size / 1024**2
     # Rebuilt database when it is smaller than 1 MB
     if db_size < 1:
-        print("FinLogic Database is empty and will be built.")
-        print("Loading all files in FinLogic Database...")
+        print("FinLogic Database is empty.")
+        print("Loading all CVM files in FinLogic Database...")
         build_db()
 
     else:
@@ -184,7 +184,9 @@ def database_info() -> dict:
     return info_dict
 
 
-def search_company(company_name: str) -> pd.DataFrame:
+def search_company(
+    value: str, search_by: Literal["co_id", "co_fiscal_id", "co_name"] = "co_name"
+) -> pd.DataFrame:
     """Search for a company name in FinLogic Database.
 
     This function searches the 'co_name' column in the FinLogic Database for
@@ -201,10 +203,12 @@ def search_company(company_name: str) -> pd.DataFrame:
             'co_name', 'co_id', and 'co_fiscal_id' for each unique company that
             matches the search criteria.
     """
+    if search_by == "co_name":
+        value = value.upper()
     query = f"""
         SELECT DISTINCT co_name, co_id, co_fiscal_id
         FROM reports
-        WHERE UPPER(co_name) LIKE '%{company_name.upper()}%'
+        WHERE UPPER({search_by}) LIKE '%{value}%'
         ORDER BY co_name;
     """
     return con.execute(query).df()
