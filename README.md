@@ -1,28 +1,15 @@
 [![PyPI version](https://img.shields.io/pypi/v/finlogic.svg)](https://pypi.python.org/pypi/finlogic)
-[![PyPI Downloads](https://img.shields.io/pypi/dm/finlogic.svg)](https://pypi.python.org/pypi/finlogic)
-[![Python Version](https://img.shields.io/pypi/pyversions/finlogic)](https://www.python.org/)
-[![Anaconda License](https://anaconda.org/conda-forge/finlogic/badges/license.svg)](https://anaconda.org/conda-forge/finlogic)
-[![Code Style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Made with Python](https://img.shields.io/badge/Python->=3.10-blue?logo=python&logoColor=white)](https://python.org "Go to Python homepage")
+[![License](https://img.shields.io/badge/License-MIT-blue)](#license)
+[![Code Style: black](https://img.shields.io/badge/code%20style-black-blue.svg)](https://github.com/psf/black)
 
 <!-- [![Anaconda-Server Badge](https://anaconda.org/conda-forge/finlogic/badges/version.svg)](https://anaconda.org/conda-forge/finlogic)" -->
 
-## FinLogic: finance data analysis toolkit for listed Brazilian companies
-
-<table border=1 cellpadding=10><tr><td>
-
-#### \*\*\* IMPORTANT LEGAL DISCLAIMER \*\*\*
+## FinLogic: finance toolkit for listed Brazilian companies.
 
 ---
 
-**FinLogic** is **not** affiliated, endorsed or vetted by the Securities and Exchange Commission of Brazil (CVM). It's an open-source tool that uses CVM publicly available data and is intended for research and educational purposes. This finance tool is distributed under the **MIT License** (see the [LICENSE](./LICENSE) file in the release for details).
-
----
-
-</td></tr></table>
-
----
-
-**FinLogic** offers a Pythonic way to analyze financial data of listed companies in Brazil from information made publicly avaible by local securities market authority (CVM). This toolkit uses DuckDB as the OLAP database management system and Pandas to built the accountting database and process the data from it.
+**FinLogic** offers a Pythonic way to analyze financial data of listed companies in Brazil from information made publicly avaible by local securities market authority (CVM). FinLogic uses DuckDB as an OLAP accounting database management system and Pandas to process the data to and from the database.
 
 ---
 
@@ -34,6 +21,11 @@ https://github.com/crdcj/FinLogic
 Binary installers for the latest released version are available at the [Python
 Package Index (PyPI)](https://pypi.org/project/finlogic) and on [Conda](https://anaconda.org/conda-forge/finlogic).
 
+```sh
+# PyPI:
+pip install finlogic
+```
+
 <!--
 ```sh
 # Conda:
@@ -41,14 +33,10 @@ conda install -c conda-forge finlogic
 ```
 -->
 
-```sh
-# or PyPI:
-pip install finlogic
-```
-
 ### Requirements
 
 - [Python](https://www.python.org) \>= 3.10
+- [DuckDB](https://github.com/pydata/pandas) \>= 0.7.0)
 - [Pandas](https://github.com/pydata/pandas) \>= 1.4.0)
 - [Requests](http://docs.python-requests.org/en/master/) \>= 2.27.0
 - [Zstandard](https://pypi.org/project/zstandard/) \>= 0.17.0
@@ -206,3 +194,15 @@ The Company Class allows you to easily access financial data from Brazilian comp
 P.S.: All contributors are welcome, from beginner to advanced.
 
 **Felipe Costa and Carlos Carvalho**
+
+<table border=1 cellpadding=10><tr><td>
+
+#### \*\*\* IMPORTANT LEGAL DISCLAIMER \*\*\*
+
+---
+
+**FinLogic** is **not** affiliated, endorsed or vetted by the Securities and Exchange Commission of Brazil (CVM). It's an open-source tool that uses CVM publicly available data and is intended for research and educational purposes. This finance tool is distributed under the **MIT License** (see the [LICENSE](./LICENSE) file in the release for details).
+
+---
+
+</td></tr></table>
