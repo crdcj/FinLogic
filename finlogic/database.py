@@ -185,7 +185,7 @@ def database_info() -> dict:
 
 
 def search_company(
-    value: str, search_by: Literal["co_id", "co_fiscal_id", "co_name"] = "co_name"
+    value: str, by: Literal["name", "id", "fiscal_id"] = "co_name"
 ) -> pd.DataFrame:
     """Search for a company name in FinLogic Database.
 
@@ -203,12 +203,15 @@ def search_company(
             'co_name', 'co_id', and 'co_fiscal_id' for each unique company that
             matches the search criteria.
     """
-    if search_by == "co_name":
-        value = value.upper()
+    if by == "id":
+        sql_expression = f"= {value}"
+    else:
+        # Names are stored in uppercase
+        sql_expression = f"LIKE '%{value.upper()}%'"
     query = f"""
-        SELECT DISTINCT co_name, co_id, co_fiscal_id
+        SELECT DISTINCT co_name AS name, co_id AS id, co_fiscal_id AS fiscal_id
         FROM reports
-        WHERE UPPER({search_by}) LIKE '%{value}%'
+        WHERE co_{by} {sql_expression}
         ORDER BY co_name;
     """
     return con.execute(query).df()
