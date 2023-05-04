@@ -18,7 +18,7 @@ class TestDatabase(unittest.TestCase):
         1   PETROLEO BRASILEIRO S.A. PETROBRAS   9512  33.000.167/0001-01
         """
         # Check the results
-        self.assertEqual(set(search_result["co_id"]), {9512, 24295})
+        self.assertEqual(set(search_result["id"]), {9512, 24295})
 
 
 if __name__ == "__main__":

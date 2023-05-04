@@ -9,7 +9,7 @@
 
 ---
 
-**FinLogic** offers a Pythonic way to analyze financial data of listed companies in Brazil from information made publicly avaible by local securities market authority (CVM). FinLogic uses DuckDB as an OLAP accounting database management system and Pandas to process the data to and from the database.
+**FinLogic** offers a Pythonic way to analyze financial data of listed companies in Brazil from information made publicly avaible by local securities market authority (CVM). FinLogic uses DuckDB as an OLAP database management system and Pandas to process the data to and from the locally builted accounting database (aprox. 21 million rows).
 
 ---
 
@@ -47,9 +47,8 @@ conda install -c conda-forge finlogic
 
 ### Create FinLogic Local Database
 
-The 'update_database' function is responsible for downloading raw financial files from CVM, processesing aprox. 18 millions rows of accounting values and storing it into a single Pandas DataFrame compressed file for local data analysis.
-In the firt run, the process can take 3 minutes depending on CVM Server connection and local CPU power. The database generation needs at least 8 GB of free memory and a quad core processor is recommended.
-For subsequent updates, only updated CVM files will be processed and inserted into the database, which will be faster.
+The 'update_database' function is responsible for downloading raw financial files from CVM, processesing aprox. 21 millions rows of accounting values and loading it into FinLogic Database for local data analysis.
+In the firt run, the process can take more than 1 minute depending on CVM Server connection and local CPU power. For subsequent updates, only updated CVM files will be processed and loaded into the database, which will be a lot faster.
 
 ```python
 >>> import finlogic as fl
@@ -65,27 +64,26 @@ FinLogic database updated ✅
 >>> fl.database_info()
 ```
 
-| FinLogic Database Info      |                                   Value |
-| :-------------------------- | --------------------------------------: |
-| Database Path               | /home/crcj/repos/FinLogic/finlogic/data |
-| File Size (MB)              |                                    39.0 |
-| Last Update Call            |                     2022-04-20 07:29:08 |
-| Finlogic Last Modified      |                     2022-04-20 07:31:48 |
-| CVM Last Update             |                     2022-04-17 13:09:01 |
-| Size in Memory (MB)         |                                   626.3 |
-| Accounting Rows             |                              18,757,249 |
-| Unique Accounting Codes     |                                   2,008 |
-| Companies                   |                                   1,093 |
-| Unique Financial Statements |                                  12,139 |
-| First Financial Statement   |                              2009-01-31 |
-| Last Financial Statement    |                              2022-03-31 |
+| FinLogic Database Info      |                       Value |
+| :-------------------------- | --------------------------: |
+| Data path                   | /.../FinLogic/finlogic/data |
+| File size (MB)              |                       301.0 |
+| Last update call            |         2022-04-20 07:29:08 |
+| Last modified               |         2022-04-20 07:31:48 |
+| Last updated data           |         2022-04-17 13:09:01 |
+| Accounting rows             |                  18,757,249 |
+| Unique accounting codes     |                       2,008 |
+| Number of companies         |                       1,037 |
+| Unique Financial Statements |                      13,172 |
+| First Financial Statement   |                  2009-01-31 |
+| Last Financial Statement    |                  2023-03-31 |
 
 ```python
 # Search for a company in database:
 >>> fl.search_company('petro')
 ```
 
-|     | co_name                                | co_id | co_fiscal_id       |
+|     | name                                   |    id | fiscal_id          |
 | --: | :------------------------------------- | ----: | :----------------- |
 |   0 | 3R PETROLEUM ÓLEO E GÁS S.A.           | 25291 | 12.091.809/0001-55 |
 |   1 | PETRO RIO S.A.                         | 22187 | 10.629.105/0001-68 |

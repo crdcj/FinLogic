@@ -5,7 +5,7 @@ allows updating, processing and consolidating financial statements, as well as
 searching for company names in the FinLogic Database and retrieving information
 about the database itself.
 """
-from typing import List
+from typing import List, Literal
 from pathlib import Path
 import pandas as pd
 import duckdb as ddb
@@ -98,7 +98,7 @@ def build_db():
 
 
 def update_database():
-    """Verify changes in remote files and update them in Finlogic Database.
+    """Verify changes in CVM files and update them in Finlogic Database.
 
     Args:
 
@@ -123,8 +123,8 @@ def update_database():
     db_size = FINLOGIC_DB_PATH.stat().st_size / 1024**2
     # Rebuilt database when it is smaller than 1 MB
     if db_size < 1:
-        print("FinLogic Database is empty and will be built.")
-        print("Loading all files in FinLogic Database...")
+        print("FinLogic Database is empty.")
+        print("Loading all CVM files in FinLogic Database...")
         build_db()
 
     else:
@@ -169,7 +169,7 @@ def database_info() -> dict:
     number_of_companies = con.execute(query).fetchall()[0][0]
 
     info_dict = {
-        "Path": cfg.DATA_PATH,
+        "Data path": f"{cfg.DATA_PATH}",
         "File size (MB)": round(FINLOGIC_DB_PATH.stat().st_size / 1024**2, 1),
         "Last update call": cvm_df.index.max().round("1s").isoformat(),
         "Last modified": pd.Timestamp.fromtimestamp(file_date_unix).isoformat(),
@@ -184,27 +184,41 @@ def database_info() -> dict:
     return info_dict
 
 
-def search_company(company_name: str) -> pd.DataFrame:
+def search_company(
+    search_value: str, search_by: Literal["name", "id", "fiscal_id"] = "name"
+) -> pd.DataFrame:
     """Search for a company name in FinLogic Database.
 
-    This function searches the 'co_name' column in the FinLogic Database for
+    This function searches the specified column in the FinLogic Database for
     company names that contain the provided expression. It returns a DataFrame
     containing the search results, with each row representing a unique company
     that matches the search criteria.
 
     Args:
-        company_name (str): A string to search for in the FinLogic Database
-            'co_name' column.
+        search_value (str): The search expression.
+        search_by (str): The column where the search will be performed. Valid values
+            are 'name', 'id', and 'fiscal_id'. Defaults to 'name'.
 
     Returns:
         pd.DataFrame: A DataFrame containing the search results, with columns
-            'co_name', 'co_id', and 'co_fiscal_id' for each unique company that
+            'name', 'id', and 'fiscal_id' for each unique company that
             matches the search criteria.
     """
+    match search_by:
+        case "id":
+            sql_condition = f"= {search_value}"
+        case "fiscal_id":
+            sql_condition = f"LIKE '%{search_value}%'"
+        case "name":
+            # Company name is stored in uppercase in the database
+            sql_condition = f"LIKE '%{search_value.upper()}%'"
+        case _:
+            raise ValueError("Invalid value for 'search_by' argument.")
+
     query = f"""
-        SELECT DISTINCT co_name, co_id, co_fiscal_id
+        SELECT DISTINCT co_name AS name, co_id AS id, co_fiscal_id AS fiscal_id
         FROM reports
-        WHERE UPPER(co_name) LIKE '%{company_name.upper()}%'
+        WHERE co_{search_by} {sql_condition}
         ORDER BY co_name;
     """
     return con.execute(query).df()
