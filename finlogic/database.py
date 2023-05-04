@@ -169,7 +169,7 @@ def database_info() -> dict:
     number_of_companies = con.execute(query).fetchall()[0][0]
 
     info_dict = {
-        "Path": cfg.DATA_PATH,
+        "Data path": f"{cfg.DATA_PATH}",
         "File size (MB)": round(FINLOGIC_DB_PATH.stat().st_size / 1024**2, 1),
         "Last update call": cvm_df.index.max().round("1s").isoformat(),
         "Last modified": pd.Timestamp.fromtimestamp(file_date_unix).isoformat(),
