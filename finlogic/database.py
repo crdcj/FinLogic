@@ -185,33 +185,40 @@ def database_info() -> dict:
 
 
 def search_company(
-    value: str, by: Literal["name", "id", "fiscal_id"] = "co_name"
+    search_value: str, search_by: Literal["name", "id", "fiscal_id"] = "name"
 ) -> pd.DataFrame:
     """Search for a company name in FinLogic Database.
 
-    This function searches the 'co_name' column in the FinLogic Database for
+    This function searches the specified column in the FinLogic Database for
     company names that contain the provided expression. It returns a DataFrame
     containing the search results, with each row representing a unique company
     that matches the search criteria.
 
     Args:
-        company_name (str): A string to search for in the FinLogic Database
-            'co_name' column.
+        search_value (str): The search expression.
+        search_by (str): The column where the search will be performed. Valid values
+            are 'name', 'id', and 'fiscal_id'. Defaults to 'name'.
 
     Returns:
         pd.DataFrame: A DataFrame containing the search results, with columns
-            'co_name', 'co_id', and 'co_fiscal_id' for each unique company that
+            'name', 'id', and 'fiscal_id' for each unique company that
             matches the search criteria.
     """
-    if by == "id":
-        sql_expression = f"= {value}"
-    else:
-        # Names are stored in uppercase
-        sql_expression = f"LIKE '%{value.upper()}%'"
+    match search_by:
+        case "id":
+            sql_condition = f"= {search_value}"
+        case "fiscal_id":
+            sql_condition = f"LIKE '%{search_value}%'"
+        case "name":
+            # Company name is stored in uppercase in the database
+            sql_condition = f"LIKE '%{search_value.upper()}%'"
+        case _:
+            raise ValueError("Invalid value for 'search_by' argument.")
+
     query = f"""
         SELECT DISTINCT co_name AS name, co_id AS id, co_fiscal_id AS fiscal_id
         FROM reports
-        WHERE co_{by} {sql_expression}
+        WHERE co_{search_by} {sql_condition}
         ORDER BY co_name;
     """
     return con.execute(query).df()
