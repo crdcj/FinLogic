@@ -23,7 +23,6 @@ classifiers = [
 dependencies = [
     "pandas>=1.4.0",
     "requests>=2.27.0",
-    "zstandard>=0.17.0",
     "duckdb>=0.7.0",
 ]
 

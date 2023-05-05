@@ -134,7 +134,7 @@ def update_database():
             update_cvm_file(filename)
             print(f"    {cfg.CHECKMARK} {filename} updated in FinLogic Database.")
 
-    print(f"\n{cfg.CHECKMARK} FinLogic database updated!")
+    print(f"\n{cfg.CHECKMARK} FinLogic Database updated!")
 
 
 def database_info() -> dict:

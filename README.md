@@ -39,7 +39,6 @@ conda install -c conda-forge finlogic
 - [DuckDB](https://github.com/pydata/pandas) \>= 0.7.0)
 - [Pandas](https://github.com/pydata/pandas) \>= 1.4.0)
 - [Requests](http://docs.python-requests.org/en/master/) \>= 2.27.0
-- [Zstandard](https://pypi.org/project/zstandard/) \>= 0.17.0
 
 ---
 
