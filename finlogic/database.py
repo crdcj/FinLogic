@@ -134,7 +134,7 @@ def update_database():
             update_cvm_file(filename)
             print(f"    {cfg.CHECKMARK} {filename} updated in FinLogic Database.")
 
-    print(f"\n{cfg.CHECKMARK} FinLogic database updated!")
+    print(f"\n{cfg.CHECKMARK} FinLogic Database updated!")
 
 
 def database_info() -> dict:
@@ -228,4 +228,4 @@ def process_language_df():
     """Process language dataframe."""
     language_df = pd.read_csv(cfg.URL_LANGUAGE)
     Path.mkdir(cfg.INTERIM_DIR, parents=True, exist_ok=True)
-    language_df.to_csv(cfg.LANGUAGE_DF_PATH, compression="zstd", index=False)
+    language_df.to_csv(cfg.LANGUAGE_DF_PATH, index=False)
