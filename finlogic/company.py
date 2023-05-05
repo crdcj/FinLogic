@@ -244,12 +244,12 @@ class Company:
         """
         # Create the company data frame
         query = f"""
-            SELECT *
-            FROM reports
-            WHERE co_id = {self._co_id}
-            AND acc_method = '{self._acc_method}'            
+            SELECT  *
+            FROM    reports
+            WHERE   co_id = {self._co_id} AND acc_method = '{self._acc_method}'
+            ORDER   BY acc_code, period_reference, period_end
         """
-        co_df = con.execute(query).df().sort_values(by="acc_code", ignore_index=True)
+        co_df = con.execute(query).df()
 
         # Change acc_unit only for accounts different from 3.99
         co_df["acc_value"] = np.where(

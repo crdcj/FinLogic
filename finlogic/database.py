@@ -44,7 +44,7 @@ if not table_names:
 
 def get_filenames_to_load(filenames_updated) -> List[str]:
     # Get existing filestems in raw folder
-    filenames_in_raw_folder = [filepath.name for filepath in cfg.CVM_DIR.glob("*.zip")]
+    filenames_in_raw_folder = [filepath.name for filepath in cvm.CVM_DIR.glob("*.zip")]
     # Get filenames in finlogic database
     sql = "SELECT DISTINCT source_file FROM reports"
     filenames_in_db = con.execute(sql).df()["source_file"].tolist()
@@ -90,7 +90,7 @@ def update_cvm_file(filename: str):
 def build_db():
     """Build FinLogic Database from scratch."""
     print("Building FinLogic Database...")
-    filenames_in_raw_folder = [filepath.name for filepath in cfg.CVM_DIR.glob("*.zip")]
+    filenames_in_raw_folder = [filepath.name for filepath in cvm.CVM_DIR.glob("*.zip")]
     filenames_in_raw_folder.sort()
     for filename in filenames_in_raw_folder:
         load_cvm_file(filename)
