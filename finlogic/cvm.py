@@ -4,25 +4,30 @@ import zipfile as zf
 from pathlib import Path
 import pandas as pd
 import requests
-from . import config as cf
+from . import config as cfg
+from .config import fldb as fldb
 
 URL_DFP = "http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/"
 URL_ITR = "http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/"
 
-CVM_DIR = cf.DATA_PATH / "cvm"
-CVM_DF_PATH = cf.DATA_PATH / "cvm_df.pkl"
+CVM_DIR = cfg.DATA_PATH / "cvm"
 # Create CVM_DIR if it does not exist
 Path.mkdir(CVM_DIR, parents=True, exist_ok=True)
 
+SQL_CREATE_CVM_TABLE = """
+    CREATE OR REPLACE TABLE cvm_files (
+        filename VARCHAR NOT NULL,
+        filesize UINTEGER NOT NULL,
+        etag VARCHAR NOT NULL,
+        last_modified TIMESTAMP,
+        last_accessed TIMESTAMP NOT NULL,
+    )
+"""
 
-def get_cvm_df() -> pd.DataFrame:
-    """Get CVM files metadata."""
-    if CVM_DF_PATH.is_file():
-        cvm_df = pd.read_pickle(CVM_DF_PATH)
-    else:
-        columns = ["filename", "file_size", "etag", "last_modified"]
-        cvm_df = pd.DataFrame(columns=columns)
-    return cvm_df
+# Create cvm table in case it does not exist
+table_names = fldb.execute("PRAGMA show_tables").df()["name"].tolist()
+if "cvm_files" not in table_names:
+    fldb.execute(SQL_CREATE_CVM_TABLE)
 
 
 def list_urls() -> List[str]:
@@ -64,11 +69,11 @@ def update_cvm_file(url: str) -> Path:
             return None
 
     if Path.exists(cvm_filepath):
-        local_file_size = cvm_filepath.stat().st_size
+        local_filesize = cvm_filepath.stat().st_size
     else:
-        local_file_size = 0
-    url_file_size = int(r.headers["Content-Length"])
-    if local_file_size == url_file_size:
+        local_filesize = 0
+    url_filesize = int(r.headers["Content-Length"])
+    if local_filesize == url_filesize:
         # File is already updated
         return None
     with cvm_filepath.open(mode="wb") as f:
@@ -79,14 +84,14 @@ def update_cvm_file(url: str) -> Path:
         r.headers["Last-Modified"], format="%a, %d %b %Y %H:%M:%S %Z"
     )
     # Store URL files metadata in a DataFrame
-    cvm_df = get_cvm_df()
-    cvm_df.loc[pd.Timestamp.now()] = [
-        cvm_filepath.name,
-        r.headers["Content-Length"],
-        r.headers["ETag"],
-        ts_server,
-    ]
-    cvm_df.to_pickle(CVM_DF_PATH)
+    # cvm_df = get_cvm_df()
+    # cvm_df.loc[pd.Timestamp.now()] = [
+    #     cvm_filepath.name,
+    #     r.headers["Content-Length"],
+    #     r.headers["ETag"],
+    #     ts_server,
+    # ]
+    # cvm_df.to_pickle(CVM_DF_PATH)
     return cvm_filepath.name
 
 
