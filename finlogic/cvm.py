@@ -1,4 +1,5 @@
-from concurrent.futures import ThreadPoolExecutor
+"""CVM Portal data management."""
+import re
 from typing import List
 import zipfile as zf
 from pathlib import Path
@@ -7,8 +8,8 @@ import requests
 from . import config as cfg
 from .config import fldb as fldb
 
-URL_DFP = "http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/"
-URL_ITR = "http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/"
+URL_DFP = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/"
+URL_ITR = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/"
 
 CVM_DIR = cfg.DATA_PATH / "cvm"
 # Create CVM_DIR if it does not exist
@@ -16,8 +17,8 @@ Path.mkdir(CVM_DIR, parents=True, exist_ok=True)
 
 SQL_CREATE_CVM_TABLE = """
     CREATE OR REPLACE TABLE cvm_files (
-        filename VARCHAR NOT NULL,
-        filesize UINTEGER NOT NULL,
+        name VARCHAR NOT NULL,
+        size UINTEGER NOT NULL,
         etag VARCHAR NOT NULL,
         last_modified TIMESTAMP,
         last_accessed TIMESTAMP NOT NULL,
@@ -29,35 +30,37 @@ table_names = fldb.execute("PRAGMA show_tables").df()["name"].tolist()
 if "cvm_files" not in table_names:
     fldb.execute(SQL_CREATE_CVM_TABLE)
 
+cvm_df = fldb.execute("SELECT * FROM cvm_files").df()
+# Keep only the last_modified files
+cvm_df = (
+    cvm_df.sort_values("last_modified")
+    .drop_duplicates(subset=["name"], keep="last")
+    .sort_values("name", ignore_index=True)
+)
 
-def list_urls() -> List[str]:
-    """Update the CVM Portal file base.
+
+def get_available_file_urls(cvm_url) -> List[str]:
+    """Return a list of available CVM files.
+
     Urls with CVM raw files:
-    http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/
-    http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/
+    https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/
+    https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/
     Links example:
     http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_2020.zip
     http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/itr_cia_aberta_2020.zip
-    Throughout 2021, there are already DFs for the year 2022 because the
-    company's social calendar may not necessarily coincide with the official
-    calendar. Because of this, 2 is added to the current year (the second limit
-    of the range function is exclusive)
     """
-    first_year = 2010  # First year avaible at CVM Portal.
-    # Next year files will appear during current year.
-    last_year = pd.Timestamp.now().year + 1
-    years = list(range(first_year, last_year + 1))
-    first_year_itr = last_year - 3
-    urls = []
-    for year in years:
-        filename = f"dfp_cia_aberta_{year}.zip"
-        url = f"{URL_DFP}{filename}"
-        urls.append(url)
-        if year >= first_year_itr:
-            filename = f"itr_cia_aberta_{year}.zip"
-            url = f"{URL_ITR}{filename}"
-            urls.append(url)
-    return urls
+    available_files = []
+    r = requests.get(cvm_url)
+    if r.status_code != 200:
+        return available_files
+    # Use a regular expression to match and extract all the file links
+    matches = re.findall(r'href="(.+\.zip)"', r.text)
+    # Add matches to the file list
+    available_files.extend(matches)
+    available_files.sort()
+    # Add the base url to the filename
+    available_file_urls = [cvm_url + filename for filename in available_files]
+    return available_file_urls
 
 
 def update_cvm_file(url: str) -> Path:
@@ -68,38 +71,47 @@ def update_cvm_file(url: str) -> Path:
         if r.status_code != requests.codes.ok:
             return None
 
-    if Path.exists(cvm_filepath):
-        local_filesize = cvm_filepath.stat().st_size
-    else:
-        local_filesize = 0
-    url_filesize = int(r.headers["Content-Length"])
-    if local_filesize == url_filesize:
-        # File is already updated
-        return None
-    with cvm_filepath.open(mode="wb") as f:
-        f.write(r.content)
+        # headers["Last-Modified"] -> 'Wed, 23 Jun 2021 12:19:24 GMT'
+        last_modified = pd.to_datetime(
+            r.headers["Last-Modified"], format="%a, %d %b %Y %H:%M:%S %Z"
+        )
 
-    # headers["Last-Modified"] -> 'Wed, 23 Jun 2021 12:19:24 GMT'
-    ts_server = pd.to_datetime(
-        r.headers["Last-Modified"], format="%a, %d %b %Y %H:%M:%S %Z"
-    )
-    # Store URL files metadata in a DataFrame
-    # cvm_df = get_cvm_df()
-    # cvm_df.loc[pd.Timestamp.now()] = [
-    #     cvm_filepath.name,
-    #     r.headers["Content-Length"],
-    #     r.headers["ETag"],
-    #     ts_server,
-    # ]
-    # cvm_df.to_pickle(CVM_DF_PATH)
+        url_data = {
+            "name": cvm_filepath.name,
+            "size": int(r.headers["Content-Length"]),
+            "etag": r.headers["ETag"],
+            "last_modified": last_modified,
+            "last_accessed": pd.Timestamp.now(),
+        }
+        # Get the last etag for this filename from cvm_df
+        last_etag = cvm_df.loc[cvm_df["name"] == url_data["name"], "etag"].values[0]
+
+        # Store URL files metadata in database
+        sql = f"""
+            INSERT INTO cvm_files
+            VALUES (
+                '{url_data["name"]}',
+                {url_data["size"]},
+                '{url_data["etag"]}',
+                '{url_data["last_modified"]}',
+                '{url_data["last_accessed"]}'
+            )
+        """
+        fldb.execute(sql)
+        # Auto commit?
+        # fldb.commit()
+        # Download file
+        with cvm_filepath.open(mode="wb") as f:
+            f.write(r.content)
+
     return cvm_filepath.name
 
 
 def update_cvm_files(urls: str) -> List[Path]:
-    """Update local CVM raw files asynchronously."""
-    with ThreadPoolExecutor() as executor:
-        results = executor.map(update_cvm_file, urls)
-    updated_filenames = [r for r in results if r is not None]
+    """Update CVM raw files."""
+    updated_filenames = []
+    for url in urls:
+        updated_filenames.append(update_cvm_file(url))
     return updated_filenames
 
 
