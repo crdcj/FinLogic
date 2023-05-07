@@ -14,6 +14,9 @@ from .config import fldb as fldb
 
 CHECKMARK = "\033[32m\u2714\033[0m"
 
+URL_DFP = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/"
+URL_ITR = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/"
+
 # Initialize FinLogic Database reports table.
 SQL_CREATE_REPORTS_TABLE = """
     CREATE OR REPLACE TABLE reports (
@@ -40,6 +43,10 @@ table_names = fldb.execute("PRAGMA show_tables").df()["name"].tolist()
 if "reports" not in table_names:
     fldb.execute(SQL_CREATE_REPORTS_TABLE)
 
+SQL_CREATE_TMP_TABLE = SQL_CREATE_REPORTS_TABLE.replace(
+    "TABLE reports", "TEMP TABLE tmp_table"
+)
+
 
 def get_filenames_to_load(filenames_updated) -> List[str]:
     # Get existing filestems in raw folder
@@ -54,18 +61,15 @@ def get_filenames_to_load(filenames_updated) -> List[str]:
 
 
 def load_cvm_file(filename: str):
-    """Read, format and load a cvm file in FinLogic Database."""
+    """Process and load a cvm file in FinLogic Database."""
     df = cvm.process_cvm_file(filename)  # noqa
     # Insert the data in the database
     fldb.execute("INSERT INTO reports SELECT * FROM df")
 
 
-def update_cvm_file(filename: str):
-    """Read, format and load a cvm file in FinLogic Database."""
-    sql_tmp_table = SQL_CREATE_REPORTS_TABLE.replace(
-        "TABLE reports", "TEMP TABLE tmp_table"
-    )
-    fldb.execute(sql_tmp_table)
+def update_cvm_data(filename: str):
+    """Proceses and load new cvm data in FinLogic Database."""
+    fldb.execute(SQL_CREATE_TMP_TABLE)
 
     df = cvm.process_cvm_file(filename)  # noqa
     # Insert the dataframe in the database
@@ -105,21 +109,23 @@ def update_database():
         None
     """
     print("Updating CVM files...")
-    urls = cvm.list_urls()
+    urls_dfp = cvm.get_available_file_urls(URL_DFP)
+    urls_itr = cvm.get_available_file_urls(URL_ITR)
+    # Get only the last 3 QUARTERLY reports
+    urls_itr = urls_itr[-3:]
+    urls = urls_dfp + urls_itr
     # urls = urls[:1]  # Test
-    updated_cvm_filenames = cvm.update_cvm_files(urls)
-    print(f"Number of CVM files updated = {len(updated_cvm_filenames)}")
-    if updated_cvm_filenames:
-        print("Updated files:")
-        for updated_filename in updated_cvm_filenames:
-            print(f"    {CHECKMARK} {updated_filename} updated.")
-    else:
-        print("All files are up to date.")
+    urls_data = cvm.update_cvm_files(urls)
+    urls_df = pd.DataFrame(urls_data)
+    print(f"Number of CVM files updated = {len(urls_data)}")
+    if not urls_data:
+        print("All files were already updated.")
 
     print('\nUpdating "language" database...')
     lng.process_language_df()
 
     db_size = cfg.FINLOGIC_DB_PATH.stat().st_size / 1024**2
+    return urls_df
     # Rebuilt database when it is smaller than 1 MB
     if db_size < 1:
         print("FinLogic Database is empty.")
@@ -128,9 +134,9 @@ def update_database():
 
     else:
         print("\nUpdate CVM data in FinLogic Database...")
-        filenames_to_load = get_filenames_to_load(updated_cvm_filenames)
+        filenames_to_load = get_filenames_to_load(urls_data)
         for filename in filenames_to_load:
-            update_cvm_file(filename)
+            update_cvm_data(filename)
             print(f"    {CHECKMARK} {filename} updated in FinLogic Database.")
 
     print(f"\n{CHECKMARK} FinLogic Database updated!")

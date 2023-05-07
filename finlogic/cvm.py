@@ -8,9 +8,7 @@ import requests
 from . import config as cfg
 from .config import fldb as fldb
 
-URL_DFP = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/"
-URL_ITR = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/"
-
+CHECKMARK = "\033[32m\u2714\033[0m"
 CVM_DIR = cfg.DATA_PATH / "cvm"
 # Create CVM_DIR if it does not exist
 Path.mkdir(CVM_DIR, parents=True, exist_ok=True)
@@ -63,56 +61,55 @@ def get_available_file_urls(cvm_url) -> List[str]:
     return available_file_urls
 
 
-def update_cvm_file(url: str) -> Path:
+def update_cvm_file(url: str, s) -> dict:
     """Update raw file from CVM portal. Return a Path if file is updated."""
-    cvm_filepath = Path(CVM_DIR, url[-23:])  # filename = url final
-    with requests.Session() as s:
-        r = s.get(url, stream=True)
-        if r.status_code != requests.codes.ok:
-            return None
+    filename = url[-23:]  # filename = end of url
+    filepath = Path(CVM_DIR, filename)
+    headers = s.head(url).headers
 
-        # headers["Last-Modified"] -> 'Wed, 23 Jun 2021 12:19:24 GMT'
-        last_modified = pd.to_datetime(
-            r.headers["Last-Modified"], format="%a, %d %b %Y %H:%M:%S %Z"
-        )
+    # headers["Last-Modified"] -> 'Wed, 23 Jun 2021 12:19:24 GMT'
+    last_modified = pd.to_datetime(
+        headers["Last-Modified"], format="%a, %d %b %Y %H:%M:%S %Z"
+    )
+    url_data = {
+        "name": filename,
+        "size": int(headers["Content-Length"]),
+        "etag": headers["ETag"],
+        "update_done": False,
+        "last_modified": last_modified,
+        "last_accessed": pd.Timestamp.now(),
+    }
 
-        url_data = {
-            "name": cvm_filepath.name,
-            "size": int(r.headers["Content-Length"]),
-            "etag": r.headers["ETag"],
-            "last_modified": last_modified,
-            "last_accessed": pd.Timestamp.now(),
-        }
-        # Get the last etag for this filename from cvm_df
-        last_etag = cvm_df.loc[cvm_df["name"] == url_data["name"], "etag"].values[0]
+    # Get the file dataframe from cvm_df
+    file_df = cvm_df.query(f"name == '{filename}'")
+    last_etag = ""
+    if not file_df.empty:
+        # Get the last etag in the file dataframe
+        last_etag = file_df["etag"].iloc[-1]
+    if last_etag == url_data["etag"]:
+        # File is the same, no need to update it
+        print(f"    - {filename} already updated.")
+        return url_data
+    r = s.get(url)
+    if r.status_code != requests.codes.ok:
+        return None
 
-        # Store URL files metadata in database
-        sql = f"""
-            INSERT INTO cvm_files
-            VALUES (
-                '{url_data["name"]}',
-                {url_data["size"]},
-                '{url_data["etag"]}',
-                '{url_data["last_modified"]}',
-                '{url_data["last_accessed"]}'
-            )
-        """
-        fldb.execute(sql)
-        # Auto commit?
-        # fldb.commit()
-        # Download file
-        with cvm_filepath.open(mode="wb") as f:
-            f.write(r.content)
+    # Save the file with Pathlib
+    filepath.write_bytes(r.content)
+    print(f"    {CHECKMARK} {filename} updated.")
+    url_data["update_done"] = True
 
-    return cvm_filepath.name
+    return url_data
 
 
-def update_cvm_files(urls: str) -> List[Path]:
+def update_cvm_files(urls: str) -> List[dict]:
     """Update CVM raw files."""
-    updated_filenames = []
+    s = requests.Session()
+    urls_data = []
     for url in urls:
-        updated_filenames.append(update_cvm_file(url))
-    return updated_filenames
+        urls_data.append(update_cvm_file(url, s))
+    s.close()
+    return urls_data
 
 
 def read_cvm_file(cvm_filename: str) -> pd.DataFrame:

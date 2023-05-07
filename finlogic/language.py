@@ -19,5 +19,4 @@ else:
 def process_language_df():
     """Process language dataframe."""
     language_df = pd.read_csv(URL_LANGUAGE)
-    Path.mkdir(INTERIM_DIR, parents=True, exist_ok=True)
     language_df.to_csv(LANGUAGE_DF_PATH, index=False)
