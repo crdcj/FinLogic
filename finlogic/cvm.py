@@ -6,7 +6,6 @@ from pathlib import Path
 import pandas as pd
 import requests
 from . import config as cfg
-from .config import fldb as fldb
 
 CHECKMARK = "\033[32m\u2714\033[0m"
 CVM_DIR = cfg.DATA_PATH / "cvm"
@@ -18,17 +17,18 @@ SQL_CREATE_CVM_TABLE = """
         name VARCHAR NOT NULL,
         size UINTEGER NOT NULL,
         etag VARCHAR NOT NULL,
+        updated BOOLEAN NOT NULL,
         last_modified TIMESTAMP,
         last_accessed TIMESTAMP NOT NULL,
     )
 """
-
 # Create cvm table in case it does not exist
-table_names = fldb.execute("PRAGMA show_tables").df()["name"].tolist()
+table_names = cfg.fldb.execute("PRAGMA show_tables").df()["name"].tolist()
 if "cvm_files" not in table_names:
-    fldb.execute(SQL_CREATE_CVM_TABLE)
+    cfg.fldb.execute(SQL_CREATE_CVM_TABLE)
 
-cvm_df = fldb.execute("SELECT * FROM cvm_files").df()
+
+cvm_df = cfg.fldb.execute("SELECT * FROM cvm_files").df()
 # Keep only the last_modified files
 cvm_df = (
     cvm_df.sort_values("last_modified")
@@ -75,7 +75,7 @@ def update_cvm_file(url: str, s) -> dict:
         "name": filename,
         "size": int(headers["Content-Length"]),
         "etag": headers["ETag"],
-        "update_done": False,
+        "updated": False,
         "last_modified": last_modified,
         "last_accessed": pd.Timestamp.now(),
     }
@@ -97,7 +97,7 @@ def update_cvm_file(url: str, s) -> dict:
     # Save the file with Pathlib
     filepath.write_bytes(r.content)
     print(f"    {CHECKMARK} {filename} updated.")
-    url_data["update_done"] = True
+    url_data["updated"] = True
 
     return url_data
 
