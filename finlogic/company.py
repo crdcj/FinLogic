@@ -21,8 +21,8 @@ RuntimeWarning:
 from typing import Literal
 import numpy as np
 import pandas as pd
-from . import config as cf
-from .database import con
+from .config import fldb
+from .language import language_df
 
 
 class Company:
@@ -90,7 +90,7 @@ class Company:
             SELECT DISTINCT co_id, co_fiscal_id
             FROM reports
         """
-        df = con.execute(query).df()
+        df = fldb.execute(query).df()
         if identifier in df["co_id"].to_list():
             self._co_id = identifier
             mask = df["co_id"] == identifier
@@ -249,7 +249,7 @@ class Company:
             WHERE   co_id = {self._co_id} AND acc_method = '{self._acc_method}'
             ORDER   BY acc_code, period_reference, period_end
         """
-        co_df = con.execute(query).df()
+        co_df = fldb.execute(query).df()
 
         # Change acc_unit only for accounts different from 3.99
         co_df["acc_value"] = np.where(
@@ -390,7 +390,7 @@ class Company:
                 return "(pt) " + key
 
         if self._language == "English":
-            _pten_dict = dict(cf.language_df.values)
+            _pten_dict = dict(language_df.values)
             _pten_dict = MyDict(_pten_dict)
             df["acc_name"] = df["acc_name"].map(_pten_dict)
 

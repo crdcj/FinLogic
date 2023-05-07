@@ -5,18 +5,17 @@ allows updating, processing and consolidating financial statements, as well as
 searching for company names in the FinLogic Database and retrieving information
 about the database itself.
 """
-from typing import List, Literal
-from pathlib import Path
+from typing import Literal
+import duckdb
 import pandas as pd
-import duckdb as ddb
 from . import config as cfg
 from . import cvm
+from . import language as lng
 
-# Start FinLogic Database connection
-FINLOGIC_DB_PATH = cfg.DATA_PATH / "finlogic.db"
-con = ddb.connect(database=f"{FINLOGIC_DB_PATH}")
-# Initialize FinLogic Database main table.
-SQL_CREATE_MAIN_TABLE = """
+CHECKMARK = "\033[32m\u2714\033[0m"
+
+# Initialize FinLogic Database reports table.
+SQL_CREATE_REPORTS_TABLE = """
     CREATE OR REPLACE TABLE reports (
         co_name VARCHAR,
         co_id UINTEGER NOT NULL,
@@ -36,37 +35,27 @@ SQL_CREATE_MAIN_TABLE = """
         source_file VARCHAR NOT NULL
     )
 """
-# Create reports table if there is no table in the database
-table_names = con.execute("PRAGMA show_tables;").fetchall()
-if not table_names:
-    con.execute(SQL_CREATE_MAIN_TABLE)
 
+# Create reports table in case it does not exist.
+table_names = cfg.fldb.execute("PRAGMA show_tables").df()["name"].tolist()
+if "reports" not in table_names:
+    cfg.fldb.execute(SQL_CREATE_REPORTS_TABLE)
 
-def get_filenames_to_load(filenames_updated) -> List[str]:
-    # Get existing filestems in raw folder
-    filenames_in_raw_folder = [filepath.name for filepath in cvm.CVM_DIR.glob("*.zip")]
-    # Get filenames in finlogic database
-    sql = "SELECT DISTINCT source_file FROM reports"
-    filenames_in_db = con.execute(sql).df()["source_file"].tolist()
-    filenames_not_in_db = set(filenames_in_raw_folder) - set(filenames_in_db)
-    filenames_to_process = list(set(filenames_updated) | filenames_not_in_db)
-    filenames_to_process.sort()
-    return filenames_to_process
+SQL_CREATE_TMP_TABLE = SQL_CREATE_REPORTS_TABLE.replace(
+    "TABLE reports", "TEMP TABLE tmp_table"
+)
 
 
 def load_cvm_file(filename: str):
-    """Read, format and load a cvm file in FinLogic Database."""
+    """Process and load a cvm file in FinLogic Database."""
     df = cvm.process_cvm_file(filename)  # noqa
     # Insert the data in the database
-    con.execute("INSERT INTO reports SELECT * FROM df")
+    cfg.fldb.execute("INSERT INTO reports SELECT * FROM df")
 
 
-def update_cvm_file(filename: str):
-    """Read, format and load a cvm file in FinLogic Database."""
-    sql_tmp_table = SQL_CREATE_MAIN_TABLE.replace(
-        "TABLE reports", "TEMP TABLE tmp_table"
-    )
-    con.execute(sql_tmp_table)
+def update_cvm_data(filename: str):
+    """Proceses and load new cvm data in FinLogic Database."""
+    cfg.fldb.execute(SQL_CREATE_TMP_TABLE)
 
     df = cvm.process_cvm_file(filename)  # noqa
     # Insert the dataframe in the database
@@ -84,7 +73,7 @@ def update_cvm_file(filename: str):
 
         DROP      TABLE tmp_table;
     """
-    con.execute(sql_update_data)
+    cfg.fldb.execute(sql_update_data)
 
 
 def build_db():
@@ -94,47 +83,55 @@ def build_db():
     filenames_in_raw_folder.sort()
     for filename in filenames_in_raw_folder:
         load_cvm_file(filename)
-        print(f"    {cfg.CHECKMARK} {filename} loaded.")
+        print(f"    {CHECKMARK} {filename} loaded.")
 
 
-def update_database():
+def update_database(rebuild: bool = False):
     """Verify changes in CVM files and update them in Finlogic Database.
 
     Args:
+        rebuild (bool, optional): If True, rebuilds the database from scratch.
 
     Returns:
         None
     """
-    print("Updating CVM files...")
-    urls = cvm.list_urls()
-    # urls = urls[:1]  # Test
-    updated_cvm_filenames = cvm.update_cvm_files(urls)
-    print(f"Number of CVM files updated = {len(updated_cvm_filenames)}")
-    if updated_cvm_filenames:
-        print("Updated files:")
-        for updated_filename in updated_cvm_filenames:
-            print(f"    {cfg.CHECKMARK} {updated_filename} updated.")
-    else:
-        print("All files are up to date.")
+    if rebuild:
+        # Close database connection
+        cfg.fldb.close()
+        # Delete database file
+        cfg.FINLOGIC_DB_PATH.unlink(missing_ok=True)
+        # Create a new database file and connect to it
+        cfg.fldb = duckdb.connect(database=f"{cfg.FINLOGIC_DB_PATH}")
+        # Create tables
+        cfg.fldb.execute(SQL_CREATE_REPORTS_TABLE)
 
     print('\nUpdating "language" database...')
-    process_language_df()
+    lng.process_language_df()
 
-    db_size = FINLOGIC_DB_PATH.stat().st_size / 1024**2
+    print("Updating CVM files...")
+    urls = cvm.get_all_files_urls()
+    # urls = urls[:1]  # Test
+    updated_filenames = cvm.update_cvm_files(urls)
+    print(f"Number of CVM files updated = {len(updated_filenames)}")
+    if not updated_filenames:
+        print("All files were already updated.")
+
+    print()
+    db_size = cfg.FINLOGIC_DB_PATH.stat().st_size / 1024**2
     # Rebuilt database when it is smaller than 1 MB
     if db_size < 1:
         print("FinLogic Database is empty.")
-        print("Loading all CVM files in FinLogic Database...")
         build_db()
-
     else:
-        print("\nUpdate CVM data in FinLogic Database...")
-        filenames_to_load = get_filenames_to_load(updated_cvm_filenames)
-        for filename in filenames_to_load:
-            update_cvm_file(filename)
-            print(f"    {cfg.CHECKMARK} {filename} updated in FinLogic Database.")
+        if not updated_filenames:
+            print("No new CVM files to load.")
+        else:
+            print("Load new CVM data in FinLogic Database...")
+            for filename in updated_filenames:
+                update_cvm_data(filename)
+                print(f"    {CHECKMARK} {filename} loaded in FinLogic Database.")
 
-    print(f"\n{cfg.CHECKMARK} FinLogic Database updated!")
+    print(f"\n{CHECKMARK} FinLogic Database updated!")
 
 
 def database_info() -> dict:
@@ -149,31 +146,29 @@ def database_info() -> dict:
     Returns:
         A dictionary containing the FinLogic Database information.
     """
-    number_of_rows = con.execute("SELECT COUNT(*) FROM reports").fetchall()[0][0]
+    number_of_rows = cfg.fldb.execute("SELECT COUNT(*) FROM reports").fetchall()[0][0]
     if number_of_rows == 0:
         print("Finlogic Database is empty")
         return
 
-    cvm_df = cvm.get_cvm_df()
-    file_date_unix = round(FINLOGIC_DB_PATH.stat().st_mtime, 0)
+    fldb_file_date_unix = round(cfg.FINLOGIC_DB_PATH.stat().st_mtime, 0)
+    fldb_file_date = pd.Timestamp.fromtimestamp(fldb_file_date_unix)
     query = """
         SELECT DISTINCT co_id, report_version, report_type, period_reference
         FROM reports;
     """
-    statements_num = con.execute(query).df().shape[0]
+    statements_num = cfg.fldb.execute(query).df().shape[0]
     query = "SELECT MIN(period_end) FROM reports"
-    first_statement = con.execute(query).fetchall()[0][0]
+    first_statement = cfg.fldb.execute(query).fetchall()[0][0]
     query = "SELECT MAX(period_end) FROM reports"
-    last_statement = con.execute(query).fetchall()[0][0]
+    last_statement = cfg.fldb.execute(query).fetchall()[0][0]
     query = "SELECT COUNT(DISTINCT co_id) FROM reports"
-    number_of_companies = con.execute(query).fetchall()[0][0]
+    number_of_companies = cfg.fldb.execute(query).fetchall()[0][0]
 
     info_dict = {
-        "Data path": f"{cfg.DATA_PATH}",
-        "File size (MB)": round(FINLOGIC_DB_PATH.stat().st_size / 1024**2, 1),
-        "Last update call": cvm_df.index.max().round("1s").isoformat(),
-        "Last modified": pd.Timestamp.fromtimestamp(file_date_unix).isoformat(),
-        "Last updated data": cvm_df["last_modified"].max().isoformat(),
+        "File path": f"{cfg.FINLOGIC_DB_PATH}",
+        "File size (MB)": round(cfg.FINLOGIC_DB_PATH.stat().st_size / 1024**2, 1),
+        "Last modified": f"{fldb_file_date}",
         "Accounting rows": number_of_rows,
         "Number of companies": number_of_companies,
         "Unique financial statements": statements_num,
@@ -221,11 +216,4 @@ def search_company(
         WHERE co_{search_by} {sql_condition}
         ORDER BY co_name;
     """
-    return con.execute(query).df()
-
-
-def process_language_df():
-    """Process language dataframe."""
-    language_df = pd.read_csv(cfg.URL_LANGUAGE)
-    Path.mkdir(cfg.INTERIM_DIR, parents=True, exist_ok=True)
-    language_df.to_csv(cfg.LANGUAGE_DF_PATH, index=False)
+    return cfg.fldb.execute(query).df()
