@@ -6,17 +6,13 @@ searching for company names in the FinLogic Database and retrieving information
 about the database itself.
 """
 from typing import Literal
-import pandas as pd
 import duckdb
+import pandas as pd
 from . import config as cfg
 from . import cvm
 from . import language as lng
 
-
 CHECKMARK = "\033[32m\u2714\033[0m"
-
-URL_DFP = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/"
-URL_ITR = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/"
 
 # Initialize FinLogic Database reports table.
 SQL_CREATE_REPORTS_TABLE = """
@@ -104,43 +100,36 @@ def update_database(rebuild: bool = False):
         cfg.fldb.close()
         # Delete database file
         cfg.FINLOGIC_DB_PATH.unlink(missing_ok=True)
-        # Create a new database file
+        # Create a new database file and connect to it
         cfg.fldb = duckdb.connect(database=f"{cfg.FINLOGIC_DB_PATH}")
         # Create tables
         cfg.fldb.execute(SQL_CREATE_REPORTS_TABLE)
-        cfg.fldb.execute(cvm.SQL_CREATE_CVM_TABLE)
 
     print('\nUpdating "language" database...')
     lng.process_language_df()
 
     print("Updating CVM files...")
-    urls_dfp = cvm.get_available_file_urls(URL_DFP)
-    urls_itr = cvm.get_available_file_urls(URL_ITR)
-    # Get only the last 3 QUARTERLY reports
-    urls_itr = urls_itr[-3:]
-    urls = urls_dfp + urls_itr
+    urls = cvm.get_all_files_urls()
     # urls = urls[:1]  # Test
-    urls_data = cvm.update_cvm_files(urls)
-    cvm_df_new = pd.DataFrame(urls_data)
-    print(f"Number of CVM files updated = {len(urls_data)}")
-    if not urls_data:
+    updated_filenames = cvm.update_cvm_files(urls)
+    print(f"Number of CVM files updated = {len(updated_filenames)}")
+    if not updated_filenames:
         print("All files were already updated.")
 
-    # Load cvm_df_new in cvm_files table
-    cfg.fldb.execute("INSERT INTO cvm_files SELECT * FROM cvm_df_new")
     db_size = cfg.FINLOGIC_DB_PATH.stat().st_size / 1024**2
     # Rebuilt database when it is smaller than 1 MB
     if db_size < 1:
         print("FinLogic Database is empty.")
-        print("Loading all CVM files in FinLogic Database...")
         build_db()
 
     else:
-        print("\nLoad new CVM data in FinLogic Database...")
-        filenames_to_load = cvm_df_new.query("updated == True")["filename"].tolist()
-        for filename in filenames_to_load:
-            update_cvm_data(filename)
-            print(f"    {CHECKMARK} {filename} loaded in FinLogic Database.")
+        if not updated_filenames:
+            print("No new CVM files to load.")
+        else:
+            print("\nLoad new CVM data in FinLogic Database...")
+            for filename in updated_filenames:
+                update_cvm_data(filename)
+                print(f"    {CHECKMARK} {filename} loaded in FinLogic Database.")
 
     print(f"\n{CHECKMARK} FinLogic Database updated!")
 
@@ -162,8 +151,8 @@ def database_info() -> dict:
         print("Finlogic Database is empty")
         return
 
-    cvm_df = cvm.get_cvm_df()
-    file_date_unix = round(cfg.FINLOGIC_DB_PATH.stat().st_mtime, 0)
+    fldb_file_date_unix = round(cfg.FINLOGIC_DB_PATH.stat().st_mtime, 0)
+    fldb_file_date = pd.Timestamp.fromtimestamp(fldb_file_date_unix)
     query = """
         SELECT DISTINCT co_id, report_version, report_type, period_reference
         FROM reports;
@@ -177,11 +166,9 @@ def database_info() -> dict:
     number_of_companies = cfg.fldb.execute(query).fetchall()[0][0]
 
     info_dict = {
-        "Data path": f"{cfg.DATA_PATH}",
+        "File path": f"{cfg.FINLOGIC_DB_PATH}",
         "File size (MB)": round(cfg.FINLOGIC_DB_PATH.stat().st_size / 1024**2, 1),
-        "Last update call": cvm_df.index.max().round("1s").isoformat(),
-        "Last modified": pd.Timestamp.fromtimestamp(file_date_unix).isoformat(),
-        "Last updated data": cvm_df["last_modified"].max().isoformat(),
+        "Last modified": f"{fldb_file_date}",
         "Accounting rows": number_of_rows,
         "Number of companies": number_of_companies,
         "Unique financial statements": statements_num,
