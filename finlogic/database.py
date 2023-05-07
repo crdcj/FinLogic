@@ -116,17 +116,17 @@ def update_database(rebuild: bool = False):
     if not updated_filenames:
         print("All files were already updated.")
 
+    print()
     db_size = cfg.FINLOGIC_DB_PATH.stat().st_size / 1024**2
     # Rebuilt database when it is smaller than 1 MB
     if db_size < 1:
         print("FinLogic Database is empty.")
         build_db()
-
     else:
         if not updated_filenames:
             print("No new CVM files to load.")
         else:
-            print("\nLoad new CVM data in FinLogic Database...")
+            print("Load new CVM data in FinLogic Database...")
             for filename in updated_filenames:
                 update_cvm_data(filename)
                 print(f"    {CHECKMARK} {filename} loaded in FinLogic Database.")
