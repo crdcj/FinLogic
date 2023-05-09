@@ -126,7 +126,7 @@ def format_cvm_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     df = df.drop(columns=["Currency"])
 
     # There are two types of CVM files: DFP (ANNUAL) and ITR (QUARTERLY).
-    # "report_type" should be positioned after "co_fiscal_id" -> position = 3.
+    # In database, "report_type" is positioned after "co_fiscal_id" -> position = 3
     if filepath.name.startswith("dfp"):
         df.insert(loc=3, column="report_type", value="ANNUAL")
     else:
@@ -191,8 +191,9 @@ def format_cvm_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     # Correct/harmonize some account texts.
     # df["acc_name"].replace(to_replace=["\xa0ON\xa0", "On"], value="ON", inplace=True)
 
-    # For example, in "itr_cia_aberta_2022.zip" 2_742 rows are duplicated.
-    # Few of them have different values in "acc_value". MARK THOSE ROWS AS ERRORS?
+    # In "itr_cia_aberta_2022.zip", as an example, 2742 rows are duplicated.
+    # Few of them have different values in "acc_value". Only one them will be kept.
+    # REMOVE ALL VALUES OR MARK THESE ROWS AS ERRORS?
     cols = df.columns.tolist()
     cols.remove("acc_value")
     df.drop_duplicates(subset=cols, keep="last", inplace=True, ignore_index=True)
