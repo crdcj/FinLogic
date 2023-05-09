@@ -84,6 +84,21 @@ def update_cvm_files(urls: str) -> List[str]:
     return updated_filenames
 
 
+def read_child_file(child_file: str) -> pd.DataFrame:
+    """Read a child file, process it and return a dataframe."""
+    # Only "DT_INI_EXERC" and "COLUNA_DF" have missing values.
+    df = pd.read_csv(
+        child_file,
+        sep=";",
+        encoding="iso-8859-1",
+        true_values=["S"],
+        false_values=["N"],
+    )
+    # Currency column has only one value (BRL) so it is not necessary.
+    df = df.drop(columns=["MOEDA"])
+    return df
+
+
 def read_cvm_file(cvm_filename: str) -> pd.DataFrame:
     """Read annual file, process it, save the result and return the file path."""
     df = pd.DataFrame()
@@ -94,27 +109,16 @@ def read_cvm_file(cvm_filename: str) -> pd.DataFrame:
     df_list = []
     for child_filename in child_filenames[1:]:
         child_file = annual_zipfile.open(child_filename)
-
-        # Only "DT_INI_EXERC" and "COLUNA_DF" have missing values.
-        child_df = pd.read_csv(
-            child_file,
-            sep=";",
-            encoding="iso-8859-1",
-            true_values=["S"],
-            false_values=["N"],
-        )
-        # Currency column has only one value (BRL) so it is not necessary.
-        child_df = child_df.drop(columns=["MOEDA"])
-
-        # There are two types of CVM files: DFP (ANNUAL) and ITR (QUARTERLY).
-        if cvm_filepath.name.startswith("dfp"):
-            child_df["TIPO"] = "ANNUAL"
-        else:
-            child_df["TIPO"] = "QUARTERLY"
-
+        child_df = read_child_file(child_file)
         df_list.append(child_df)
-
     df = pd.concat(df_list, ignore_index=True)
+
+    # There are two types of CVM files: DFP (ANNUAL) and ITR (QUARTERLY).
+    if cvm_filepath.name.startswith("dfp"):
+        child_df["TIPO"] = "ANNUAL"
+    else:
+        child_df["TIPO"] = "QUARTERLY"
+
     df["ARQUIVO"] = cvm_filepath.name
     # Convert string columns to categorical.
     columns = df.select_dtypes(include="object").columns
