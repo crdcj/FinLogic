@@ -3,6 +3,8 @@ dist/
 build/
 data/
 dev/
+venv/
+.venv/
 .vscode/
 finlogic.egg-info/
 # Jupyter Notebook extensions
