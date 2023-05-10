@@ -17,9 +17,9 @@ CHECKMARK = "\033[32m\u2714\033[0m"
 # Initialize FinLogic Database reports table.
 SQL_CREATE_REPORTS_TABLE = """
     CREATE OR REPLACE TABLE reports (
-        co_name VARCHAR,
-        co_id UINTEGER NOT NULL,
-        co_fiscal_id VARCHAR,
+        name_id VARCHAR,
+        cvm_id UINTEGER NOT NULL,
+        tax_id VARCHAR,
         report_type VARCHAR NOT NULL,
         report_version UTINYINT NOT NULL,
         period_reference DATE NOT NULL,
@@ -60,18 +60,18 @@ def update_cvm_data(filename: str):
     df = cvm.process_cvm_file(filename)  # noqa
     # Insert the dataframe in the database
     sql_update_data = """
-        INSERT    INTO tmp_table
-        SELECT    *
-        FROM      df;
+        INSERT INTO tmp_table
+        SELECT *
+          FROM df;
 
-        INSERT    INTO reports
-        SELECT    *
-        FROM      tmp_table
+        INSERT INTO reports
+        SELECT *
+          FROM tmp_table
         EXCEPT   
-        SELECT    *
-        FROM      reports;
+        SELECT *
+          FROM reports;
 
-        DROP      TABLE tmp_table;
+          DROP TABLE tmp_table;
     """
     cfg.fldb.execute(sql_update_data)
 
@@ -154,7 +154,7 @@ def database_info() -> dict:
     fldb_file_date_unix = round(cfg.FINLOGIC_DB_PATH.stat().st_mtime, 0)
     fldb_file_date = pd.Timestamp.fromtimestamp(fldb_file_date_unix)
     query = """
-        SELECT DISTINCT co_id, report_version, report_type, period_reference
+        SELECT DISTINCT cvm_id, report_version, report_type, period_reference
         FROM reports;
     """
     statements_num = cfg.fldb.execute(query).df().shape[0]
@@ -162,7 +162,7 @@ def database_info() -> dict:
     first_statement = cfg.fldb.execute(query).fetchall()[0][0]
     query = "SELECT MAX(period_end) FROM reports"
     last_statement = cfg.fldb.execute(query).fetchall()[0][0]
-    query = "SELECT COUNT(DISTINCT co_id) FROM reports"
+    query = "SELECT COUNT(DISTINCT cvm_id) FROM reports"
     number_of_companies = cfg.fldb.execute(query).fetchall()[0][0]
 
     info_dict = {
@@ -180,7 +180,7 @@ def database_info() -> dict:
 
 
 def search_company(
-    search_value: str, search_by: Literal["name", "id", "fiscal_id"] = "name"
+    search_value: str, search_by: Literal["name_id", "cvm_id", "tax_id"] = "name_id"
 ) -> pd.DataFrame:
     """Search for a company name in FinLogic Database.
 
@@ -191,29 +191,29 @@ def search_company(
 
     Args:
         search_value (str): The search expression.
-        search_by (str): The column where the search will be performed. Valid values
-            are 'name', 'id', and 'fiscal_id'. Defaults to 'name'.
+        search_by (str): The column where the id search will be performed. Valid
+            values are 'name_id', 'cvm_id', and 'tax_id'. Defaults to 'name_id'.
 
     Returns:
         pd.DataFrame: A DataFrame containing the search results, with columns
-            'name', 'id', and 'fiscal_id' for each unique company that
+            'name_id', 'cvm_id', and 'tax_id' for each unique company that
             matches the search criteria.
     """
     match search_by:
-        case "id":
-            sql_condition = f"= {search_value}"
-        case "fiscal_id":
-            sql_condition = f"LIKE '%{search_value}%'"
-        case "name":
+        case "name_id":
             # Company name is stored in uppercase in the database
             sql_condition = f"LIKE '%{search_value.upper()}%'"
+        case "cvm_id":
+            sql_condition = f"= {search_value}"
+        case "tax_id":
+            sql_condition = f"LIKE '%{search_value}%'"
         case _:
             raise ValueError("Invalid value for 'search_by' argument.")
 
     query = f"""
-        SELECT DISTINCT co_name AS name, co_id AS id, co_fiscal_id AS fiscal_id
-        FROM reports
-        WHERE co_{search_by} {sql_condition}
-        ORDER BY co_name;
+        SELECT DISTINCT name_id, cvm_id, tax_id
+          FROM reports
+         WHERE {search_by} {sql_condition}
+         ORDER BY name_id;
     """
     return cfg.fldb.execute(query).df()

@@ -13,12 +13,12 @@ class TestDatabase(unittest.TestCase):
         """Test the search_company method of the Database module."""
         search_result = fl.search_company("petrobras")
         """
-            co_name                            co_id  co_fiscal_id
+            name_id                            cvm_id  tax_id
         0   PETROBRAS DISTRIBUIDORA S/A         24295  34.274.233/0001-02
         1   PETROLEO BRASILEIRO S.A. PETROBRAS   9512  33.000.167/0001-01
         """
         # Check the results
-        self.assertEqual(set(search_result["id"]), {9512, 24295})
+        self.assertEqual(set(search_result["cvm_id"]), {9512, 24295})
 
 
 if __name__ == "__main__":
