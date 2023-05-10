@@ -86,21 +86,18 @@ class Company:
     @identifier.setter
     def identifier(self, identifier: int | str):
         # Create custom data frame for ID selection
-        query = """
-            SELECT DISTINCT co_id, co_fiscal_id
-            FROM reports
+        query = f"""
+            SELECT DISTINCT cvm_id, tax_id
+              FROM reports
+             WHERE CAST(cvm_id AS VARCHAR) = '{identifier}'
+                OR tax_id = '{identifier}'
         """
         df = fldb.execute(query).df()
-        if identifier in df["co_id"].to_list():
-            self._co_id = identifier
-            mask = df["co_id"] == identifier
-            self._co_fiscal_id = df.loc[mask, "co_fiscal_id"].item()
-        elif identifier in df["co_fiscal_id"].to_list():
-            self._co_fiscal_id = identifier
-            mask = df["co_fiscal_id"] == identifier
-            self._co_id = df.loc[mask, "co_id"].item()
+        if not df.empty:
+            self._cvm_id = df.loc[0, "cvm_id"]
+            self._tax_id = df.loc[0, "tax_id"]
         else:
-            raise KeyError("Company 'identifier' not found in FinLogic Database")
+            raise KeyError(f"Company 'identifier' {identifier} not found.")
         self._identifier = identifier
         # If object was already initialized, reset company dataframe
         if self._initialized:
@@ -244,10 +241,11 @@ class Company:
         """
         # Create the company data frame
         query = f"""
-            SELECT  *
-            FROM    reports
-            WHERE   co_id = {self._co_id} AND acc_method = '{self._acc_method}'
-            ORDER   BY acc_code, period_reference, period_end
+            SELECT *
+              FROM reports
+             WHERE cvm_id = {self._cvm_id}
+               AND acc_method = '{self._acc_method}'
+             ORDER BY acc_code, period_reference, period_end
         """
         co_df = fldb.execute(query).df()
 
@@ -258,7 +256,7 @@ class Company:
             co_df["acc_value"] / self._acc_unit,
         )
 
-        self._name = co_df["co_name"].iloc[0]
+        self._name = co_df["name_id"].iloc[0]
         expr = 'report_type == "ANNUAL"'
         self._first_annual = co_df.query(expr)["period_end"].min()
         self._last_annual = co_df.query(expr)["period_end"].max()
@@ -266,9 +264,7 @@ class Company:
         self._last_quarterly = co_df.query(expr)["period_end"].max()
 
         # Drop columns that are already company properties
-        co_df.drop(
-            columns=["co_name", "co_id", "co_fiscal_id", "acc_method"], inplace=True
-        )
+        co_df.drop(columns=["name_id", "cvm_id", "tax_id", "acc_method"], inplace=True)
 
         # Keep only the newest 'report_version' in df
         cols = [
@@ -292,8 +288,8 @@ class Company:
         """Return a dictionay with company info."""
         company_info = {
             "Name": self._name,
-            "CVM ID": self._co_id,
-            "Fiscal ID (CNPJ)": self._co_fiscal_id,
+            "CVM ID": self._cvm_id,
+            "Fiscal ID (CNPJ)": self._tax_id,
             "Total Accounting Rows": len(self._co_df.index),
             "Selected Tax Rate": self._tax_rate,
             "Selected Accounting Method": self._acc_method,

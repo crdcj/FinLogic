@@ -102,9 +102,9 @@ def read_cvm_file(cvm_filepath: Path) -> pd.DataFrame:
 def format_cvm_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     """Format a cvm dataframe."""
     columns_translation = {
-        "DENOM_CIA": "co_name",
-        "CD_CVM": "co_id",
-        "CNPJ_CIA": "co_fiscal_id",
+        "DENOM_CIA": "name_id",
+        "CD_CVM": "cvm_id",
+        "CNPJ_CIA": "tax_id",
         "VERSAO": "report_version",
         "DT_REFER": "period_reference",
         "DT_INI_EXERC": "period_begin",
@@ -126,7 +126,7 @@ def format_cvm_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     df = df.drop(columns=["Currency"])
 
     # There are two types of CVM files: DFP (ANNUAL) and ITR (QUARTERLY).
-    # In database, "report_type" is positioned after "co_fiscal_id" -> position = 3
+    # In database, "report_type" is positioned after "tax_id" -> position = 3
     if filepath.name.startswith("dfp"):
         df.insert(loc=3, column="report_type", value="ANNUAL")
     else:
@@ -134,8 +134,8 @@ def format_cvm_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
 
     df["data_source"] = filepath.name
 
-    # The are double spaces in co_name, acc_name and equity_statement_column.
-    columns = ["co_name", "acc_name", "equity_statement_column"]
+    # The are double spaces in name_id, acc_name and equity_statement_column.
+    columns = ["name_id", "acc_name", "equity_statement_column"]
     df[columns] = df[columns].apply(lambda x: x.str.replace("  ", " "))
     # Strip leading and trailing spaces from those columns.
     df[columns] = df[columns].apply(lambda x: x.str.strip())
