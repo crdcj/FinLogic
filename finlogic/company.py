@@ -87,7 +87,7 @@ class Company:
     def identifier(self, identifier: int | str):
         # Create custom data frame for ID selection
         query = f"""
-            SELECT DISTINCT cvm_id, tax_id
+            SELECT DISTINCT cvm_id, tax_id, name_id
               FROM reports
              WHERE CAST(cvm_id AS VARCHAR) = '{identifier}'
                 OR tax_id = '{identifier}'
@@ -95,7 +95,8 @@ class Company:
         df = fldb.execute(query).df()
         if not df.empty:
             self._cvm_id = df.loc[0, "cvm_id"]
-            self._tax_id = df.loc[0, "tax_id"]
+            self.tax_id = df.loc[0, "tax_id"]
+            self.name_id = df.loc[0, "name_id"]
         else:
             raise KeyError(f"Company 'identifier' {identifier} not found.")
         self._identifier = identifier
@@ -255,15 +256,13 @@ class Company:
             co_df["acc_value"],
             co_df["acc_value"] / self._acc_unit,
         )
-
-        self._name = co_df["name_id"].iloc[0]
         expr = 'report_type == "ANNUAL"'
         self._first_annual = co_df.query(expr)["period_end"].min()
         self._last_annual = co_df.query(expr)["period_end"].max()
         expr = 'report_type == "QUARTERLY"'
         self._last_quarterly = co_df.query(expr)["period_end"].max()
 
-        # Drop columns that are already company properties
+        # Drop columns that are already company atributes
         co_df.drop(columns=["name_id", "cvm_id", "tax_id", "acc_method"], inplace=True)
 
         # Keep only the newest 'report_version' in df
@@ -287,9 +286,9 @@ class Company:
     def info(self) -> dict:
         """Return a dictionay with company info."""
         company_info = {
-            "Name": self._name,
+            "Name": self.name_id,
             "CVM ID": self._cvm_id,
-            "Fiscal ID (CNPJ)": self._tax_id,
+            "Fiscal ID (CNPJ)": self.tax_id,
             "Total Accounting Rows": len(self._co_df.index),
             "Selected Tax Rate": self._tax_rate,
             "Selected Accounting Method": self._acc_method,

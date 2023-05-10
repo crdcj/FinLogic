@@ -13,11 +13,11 @@ class TestCompany(unittest.TestCase):
         test_tax_id = "33.592.510/0001-54"
         self.petro_sep.identifier = test_cvm_id
         self.assertEqual(self.petro_sep._cvm_id, test_cvm_id)
-        self.assertEqual(self.petro_sep._tax_id, test_tax_id)
+        self.assertEqual(self.petro_sep.tax_id, test_tax_id)
 
         self.petro_sep.identifier = test_tax_id
         self.assertEqual(self.petro_sep._cvm_id, test_cvm_id)
-        self.assertEqual(self.petro_sep._tax_id, test_tax_id)
+        self.assertEqual(self.petro_sep.tax_id, test_tax_id)
 
         invalid_identifier = 99999999  # Use an invalid identifier here
 
