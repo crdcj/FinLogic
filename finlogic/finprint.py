@@ -4,9 +4,8 @@ from rich.table import Table
 console = Console()
 
 
-def print_database_info(info_dict):
-    # info_dict = None
-
+def print_dict(info_dict: dict) -> None:
+    """Print a dictionary in a table format with Rich."""
     if info_dict is not None:
         table = Table(
             # title="FinLogic Database Information",
@@ -17,7 +16,7 @@ def print_database_info(info_dict):
         )
 
         # Add columns
-        table.add_column("Key", style="bold")
+        table.add_column("Item", style="bold")
         table.add_column("Value", justify="right")
 
         # Add rows
@@ -31,4 +30,4 @@ def print_database_info(info_dict):
         # Print the table
         console.print(table)
     else:
-        console.print("[bold red]Finlogic Database is empty[/bold red]")
+        console.print("[bold red]Dictionary is empty[/bold red]")

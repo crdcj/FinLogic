@@ -11,6 +11,7 @@ import pandas as pd
 from . import config as cfg
 from . import cvm
 from . import language as lng
+from . import finprint as fpr
 
 CHECKMARK = "\033[32m\u2714\033[0m"
 
@@ -134,17 +135,16 @@ def update_database(rebuild: bool = False):
     print(f"\n{CHECKMARK} FinLogic Database updated!")
 
 
-def database_info() -> dict:
-    """Returns general information about FinLogic Database.
+def database_info():
+    """Print a concise summary of FinLogic Database.
 
-    This function generates a dictionary containing main information about
+    This function prints a dictionary containing main information about
     FinLogic Database, such as the database path, file size, last update call,
     last modified dates, size in memory, number of accounting rows, unique
     accounting codes, companies, unique financial statements, first financial
     statement date and last financial statement date.
 
-    Returns:
-        A dictionary containing the FinLogic Database information.
+    Returns: None
     """
     number_of_rows = cfg.fldb.execute("SELECT COUNT(*) FROM reports").fetchall()[0][0]
     if number_of_rows == 0:
@@ -171,12 +171,11 @@ def database_info() -> dict:
         "Last modified": f"{fldb_file_date}",
         "Accounting rows": number_of_rows,
         "Number of companies": number_of_companies,
-        "Unique financial statements": statements_num,
+        "Number of financial statements": statements_num,
         "First financial statement": first_statement.strftime("%Y-%m-%d"),
         "Last financial statement": last_statement.strftime("%Y-%m-%d"),
     }
-
-    return info_dict
+    fpr.print_dict(info_dict)
 
 
 def search_company(
