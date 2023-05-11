@@ -26,14 +26,12 @@ class TestCompany(unittest.TestCase):
         ):
             self.petro_sep.identifier = invalid_identifier
 
-    def test_info(self):
+    def test_atributes(self):
         """Test the info method of the Company class."""
-        # Get the info
-        petro_info = self.petro_sep.info()
-        # Check the info
-        self.assertEqual(petro_info["Name"], "PETROLEO BRASILEIRO S.A. PETROBRAS")
-        self.assertEqual(petro_info["CVM ID"], 9512)
-        self.assertEqual(petro_info["Fiscal ID (CNPJ)"], "33.000.167/0001-01")
+        # Check the attributes
+        self.assertEqual(self.petro_sep.name_id, "PETROLEO BRASILEIRO S.A. PETROBRAS")
+        self.assertEqual(self.petro_sep._cvm_id, 9512)
+        self.assertEqual(self.petro_sep.tax_id, "33.000.167/0001-01")
 
     def test_report(self):
         """Test if the report method of the Company class returns the correct

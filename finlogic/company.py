@@ -23,6 +23,7 @@ import numpy as np
 import pandas as pd
 from .config import fldb
 from .language import language_df
+from .finprint import print_dict
 
 
 class Company:
@@ -97,9 +98,9 @@ class Company:
             self._cvm_id = df.loc[0, "cvm_id"]
             self.tax_id = df.loc[0, "tax_id"]
             self.name_id = df.loc[0, "name_id"]
+            self._identifier = identifier
         else:
             raise KeyError(f"Company 'identifier' {identifier} not found.")
-        self._identifier = identifier
         # If object was already initialized, reset company dataframe
         if self._initialized:
             self._set_co_df()
@@ -256,11 +257,11 @@ class Company:
             co_df["acc_value"],
             co_df["acc_value"] / self._acc_unit,
         )
-        expr = 'report_type == "ANNUAL"'
-        self._first_annual = co_df.query(expr)["period_end"].min()
-        self._last_annual = co_df.query(expr)["period_end"].max()
-        expr = 'report_type == "QUARTERLY"'
-        self._last_quarterly = co_df.query(expr)["period_end"].max()
+        annual_reports = co_df.query('report_type == "ANNUAL"')
+        self._first_annual = annual_reports["period_end"].min()
+        self._last_annual = annual_reports["period_end"].max()
+        quarterly_reports = co_df.query('report_type == "QUARTERLY"')
+        self._last_quarterly = quarterly_reports["period_end"].max()
 
         # Drop columns that are already company atributes
         co_df.drop(columns=["name_id", "cvm_id", "tax_id", "acc_method"], inplace=True)
@@ -284,20 +285,21 @@ class Company:
         self._co_df = co_df
 
     def info(self) -> dict:
-        """Return a dictionay with company info."""
+        """Print a concise summary of a company."""
         company_info = {
             "Name": self.name_id,
             "CVM ID": self._cvm_id,
             "Fiscal ID (CNPJ)": self.tax_id,
             "Total Accounting Rows": len(self._co_df.index),
-            "Selected Tax Rate": self._tax_rate,
             "Selected Accounting Method": self._acc_method,
             "Selected Accounting Unit": self._acc_unit,
+            "Selected Tax Rate": self._tax_rate,
             "First Annual Report": self._first_annual.strftime("%Y-%m-%d"),
             "Last Annual Report": self._last_annual.strftime("%Y-%m-%d"),
             "Last Quarterly Report": self._last_quarterly.strftime("%Y-%m-%d"),
         }
-        return company_info
+        print_dict(info_dict=company_info, table_name="Company Info")
+        return None
 
     def _build_report(self, dfi: pd.DataFrame) -> pd.DataFrame:
         # keep only last quarterly fs

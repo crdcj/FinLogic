@@ -24,6 +24,7 @@ dependencies = [
     "pandas>=1.4.0",
     "requests>=2.27.0",
     "duckdb>=0.7.0",
+    "rich>=13.0.0",
 ]
 
 [project.optional-dependencies]
