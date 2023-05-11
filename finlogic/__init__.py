@@ -10,7 +10,7 @@ from .database import update_database, search_company, database_info
 from .company import Company
 
 
-__version__ = "0.4.1"
+__version__ = "0.4.2"
 __author__ = "Carlos Carvalho"
 
 __all__ = [
