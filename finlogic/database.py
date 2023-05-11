@@ -144,6 +144,10 @@ def database_info(return_dict: bool = False):
     accounting codes, companies, unique financial statements, first financial
     statement date and last financial statement date.
 
+    Args:
+        return_dict (bool, optional): If True, returns a dictionary with the
+            database information and do not print it.
+
     Returns: None
     """
     number_of_rows = cfg.fldb.execute("SELECT COUNT(*) FROM reports").fetchall()[0][0]
@@ -179,6 +183,7 @@ def database_info(return_dict: bool = False):
         return info_dict
     else:
         fpr.print_dict(info_dict=info_dict, table_name="FinLogic Database Info")
+        return None
 
 
 def search_company(
