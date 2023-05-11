@@ -18,27 +18,20 @@
 The source code is currently hosted on GitHub at:
 https://github.com/crdcj/FinLogic
 
-Binary installers for the latest released version are available at the [Python
-Package Index (PyPI)](https://pypi.org/project/finlogic) and on [Conda](https://anaconda.org/conda-forge/finlogic).
+Binary installers for the latest released version are available at the [Python Package Index (PyPI)](https://pypi.org/project/finlogic).
 
 ```sh
 # PyPI:
 pip install finlogic
 ```
 
-<!--
-```sh
-# Conda:
-conda install -c conda-forge finlogic
-```
--->
-
 ### Requirements
 
 - [Python](https://www.python.org) \>= 3.10
-- [DuckDB](https://github.com/pydata/pandas) \>= 0.7.0)
-- [Pandas](https://github.com/pydata/pandas) \>= 1.4.0)
+- [DuckDB](https://github.com/pydata/pandas) \>= 0.7.0
+- [Pandas](https://github.com/pydata/pandas) \>= 1.4.0
 - [Requests](http://docs.python-requests.org/en/master/) \>= 2.27.0
+- [Rich](https://github.com/Textualize/rich) \>= 13.0.0
 
 ---
 
