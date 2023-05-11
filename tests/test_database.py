@@ -5,7 +5,7 @@ import finlogic as fl
 class TestDatabase(unittest.TestCase):
     def test_info(self):
         """Test the info method of the Database module."""
-        db_info = fl.database_info()
+        db_info = fl.database_info(return_dict=True)
         self.assertEqual(db_info["First financial statement"], "2009-01-31")
         self.assertTrue(db_info["Accounting rows"] > 20_000_000)
 

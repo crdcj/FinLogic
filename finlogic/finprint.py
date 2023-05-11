@@ -4,12 +4,12 @@ from rich.table import Table
 console = Console()
 
 
-def print_dict(info_dict: dict) -> None:
+def print_dict(info_dict: dict, table_name) -> None:
     """Print a dictionary in a table format with Rich."""
     if info_dict is not None:
         table = Table(
-            # title="FinLogic Database Information",
-            title_style="bold blue",
+            title=table_name,
+            # title_style="bold blue",
             header_style="bold white on cyan",
             # row_styles=["none", "dim"],
             show_lines=True,

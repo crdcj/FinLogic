@@ -135,7 +135,7 @@ def update_database(rebuild: bool = False):
     print(f"\n{CHECKMARK} FinLogic Database updated!")
 
 
-def database_info():
+def database_info(return_dict: bool = False):
     """Print a concise summary of FinLogic Database.
 
     This function prints a dictionary containing main information about
@@ -155,7 +155,7 @@ def database_info():
     fldb_file_date = pd.Timestamp.fromtimestamp(fldb_file_date_unix)
     query = """
         SELECT DISTINCT cvm_id, report_version, report_type, period_reference
-        FROM reports;
+          FROM reports;
     """
     statements_num = cfg.fldb.execute(query).df().shape[0]
     query = "SELECT MIN(period_end) FROM reports"
@@ -175,7 +175,10 @@ def database_info():
         "First financial statement": first_statement.strftime("%Y-%m-%d"),
         "Last financial statement": last_statement.strftime("%Y-%m-%d"),
     }
-    fpr.print_dict(info_dict)
+    if return_dict:
+        return info_dict
+    else:
+        fpr.print_dict(info_dict=info_dict, table_name="FinLogic Database Info")
 
 
 def search_company(

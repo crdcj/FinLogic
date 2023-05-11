@@ -298,7 +298,7 @@ class Company:
             "Last Annual Report": self._last_annual.strftime("%Y-%m-%d"),
             "Last Quarterly Report": self._last_quarterly.strftime("%Y-%m-%d"),
         }
-        print_dict(company_info)
+        print_dict(info_dict=company_info, table_name="Company Info")
         return None
 
     def _build_report(self, dfi: pd.DataFrame) -> pd.DataFrame:
