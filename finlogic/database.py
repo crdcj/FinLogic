@@ -18,22 +18,21 @@ CHECKMARK = "\033[32m\u2714\033[0m"
 # Initialize FinLogic Database reports table.
 SQL_CREATE_REPORTS_TABLE = """
     CREATE OR REPLACE TABLE reports (
-        name_id VARCHAR,
-        cvm_id UINTEGER NOT NULL,
-        tax_id VARCHAR,
-        report_type VARCHAR NOT NULL,
-        report_version UTINYINT NOT NULL,
-        period_reference DATE NOT NULL,
-        period_begin DATE,
-        period_end DATE NOT NULL,
-        period_order VARCHAR NOT NULL,
-        acc_method VARCHAR NOT NULL,
-        acc_code VARCHAR NOT NULL,
-        acc_name VARCHAR,
-        acc_fixed BOOLEAN NOT NULL,
-        acc_value DOUBLE,
-        equity_statement_column VARCHAR,
-        source_file VARCHAR NOT NULL
+        name_id          VARCHAR  NOT NULL,
+        cvm_id           UINTEGER NOT NULL,
+        tax_id           VARCHAR  NOT NULL,
+        report_type      VARCHAR  NOT NULL,
+        report_version   UTINYINT NOT NULL,
+        period_reference DATE     NOT NULL,
+        period_begin     DATE,
+        period_end       DATE     NOT NULL,
+        period_order     VARCHAR  NOT NULL,
+        acc_method       VARCHAR  NOT NULL,
+        acc_code         VARCHAR  NOT NULL,
+        acc_name         VARCHAR  NOT NULL,
+        acc_fixed        BOOLEAN  NOT NULL,
+        acc_value        DOUBLE   NOT NULL,
+        equity_statement VARCHAR
     )
 """
 

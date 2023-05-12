@@ -99,6 +99,14 @@ def read_cvm_file(cvm_filepath: Path) -> pd.DataFrame:
     return df
 
 
+def remove_empty_spaces(s: pd.Series) -> pd.Series:
+    """Remove empty spaces from a series."""
+    s_unique_original = pd.Series(s.unique())
+    s_unique_adjusted = s_unique_original.replace("\s+", " ", regex=True).str.strip()
+    mapping_dict = dict(zip(s_unique_original, s_unique_adjusted))
+    return s.map(mapping_dict)
+
+
 def format_cvm_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     """Format a cvm dataframe."""
     columns_translation = {
@@ -114,7 +122,7 @@ def format_cvm_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
         "DS_CONTA": "acc_name",
         "ST_CONTA_FIXA": "acc_fixed",
         "VL_CONTA": "acc_value",
-        "COLUNA_DF": "equity_statement_column",
+        "COLUNA_DF": "equity_statement",
         # Columns below will be dropped after processing.
         "GRUPO_DFP": "report_group",
         "MOEDA": "Currency",
@@ -132,13 +140,9 @@ def format_cvm_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     else:
         df.insert(loc=3, column="report_type", value="QUARTERLY")
 
-    df["data_source"] = filepath.name
-
-    # The are double spaces in name_id, acc_name and equity_statement_column.
-    columns = ["name_id", "acc_name", "equity_statement_column"]
-    df[columns] = df[columns].apply(lambda x: x.str.replace("  ", " "))
-    # Strip leading and trailing spaces from those columns.
-    df[columns] = df[columns].apply(lambda x: x.str.strip())
+    # Remove any extra spaces (line breaks, tabs, etc.) from columns below.
+    columns = ["name_id", "acc_name", "equity_statement"]
+    df[columns] = df[columns].apply(remove_empty_spaces)
 
     # Convert string columns to categorical before mapping.
     columns = df.select_dtypes(include="object").columns
