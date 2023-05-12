@@ -7,4 +7,4 @@ Path.mkdir(DATA_PATH, parents=True, exist_ok=True)
 
 # Start FinLogic Database connection
 FINLOGIC_DB_PATH = DATA_PATH / "finlogic.db"
-fldb = duckdb.connect(database=f"{FINLOGIC_DB_PATH}")
+# fldb = duckdb.connect(database=f"{FINLOGIC_DB_PATH}")

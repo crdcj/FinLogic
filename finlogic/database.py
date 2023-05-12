@@ -36,11 +36,29 @@ SQL_CREATE_REPORTS_TABLE = """
         source_file VARCHAR NOT NULL
     )
 """
+# Create duckdb database, if it does not exist.
+db_init = duckdb.connect(database=f"{cfg.FINLOGIC_DB_PATH}")
+db_init.close()
+
+# Modify duckdb database
+def db_modify(sql: str):
+    """Modify duckdb database."""
+    fldb_modify = duckdb.connect(database=f"{cfg.FINLOGIC_DB_PATH}")
+    fldb_modify.execute(sql)
+    fldb_modify.close()
+
+# Read duckdb database
+def db_read(sql: str):
+    """Read duckdb database."""
+    fldb_read = duckdb.connect(database=f"{cfg.FINLOGIC_DB_PATH}",read_only=True)
+    df = fldb_read.execute(sql).df()
+    fldb_read.close()
+    return df
 
 # Create reports table in case it does not exist.
-table_names = cfg.fldb.execute("PRAGMA show_tables").df()["name"].tolist()
+table_names = db_read("PRAGMA show_tables")["name"].tolist()
 if "reports" not in table_names:
-    cfg.fldb.execute(SQL_CREATE_REPORTS_TABLE)
+    db_modify(SQL_CREATE_REPORTS_TABLE)
 
 SQL_CREATE_TMP_TABLE = SQL_CREATE_REPORTS_TABLE.replace(
     "TABLE reports", "TEMP TABLE tmp_table"
@@ -51,12 +69,12 @@ def load_cvm_file(filename: str):
     """Process and load a cvm file in FinLogic Database."""
     df = cvm.process_cvm_file(filename)  # noqa
     # Insert the data in the database
-    cfg.fldb.execute("INSERT INTO reports SELECT * FROM df")
+    db_modify("INSERT INTO reports SELECT * FROM df")
 
 
 def update_cvm_data(filename: str):
     """Proceses and load new cvm data in FinLogic Database."""
-    cfg.fldb.execute(SQL_CREATE_TMP_TABLE)
+    db_modify(SQL_CREATE_TMP_TABLE)
 
     df = cvm.process_cvm_file(filename)  # noqa
     # Insert the dataframe in the database
@@ -74,7 +92,7 @@ def update_cvm_data(filename: str):
 
           DROP TABLE tmp_table;
     """
-    cfg.fldb.execute(sql_update_data)
+    db_modify(sql_update_data)
 
 
 def build_db():
@@ -97,14 +115,10 @@ def update_database(rebuild: bool = False):
         None
     """
     if rebuild:
-        # Close database connection
-        cfg.fldb.close()
         # Delete database file
         cfg.FINLOGIC_DB_PATH.unlink(missing_ok=True)
-        # Create a new database file and connect to it
-        cfg.fldb = duckdb.connect(database=f"{cfg.FINLOGIC_DB_PATH}")
-        # Create tables
-        cfg.fldb.execute(SQL_CREATE_REPORTS_TABLE)
+        # Create a new database file and create tables
+        db_modify(SQL_CREATE_REPORTS_TABLE)
 
     print('\nUpdating "language" database...')
     lng.process_language_df()
@@ -150,7 +164,7 @@ def database_info(return_dict: bool = False):
 
     Returns: None
     """
-    number_of_rows = cfg.fldb.execute("SELECT COUNT(*) FROM reports").fetchall()[0][0]
+    number_of_rows = db_read("SELECT COUNT(*) FROM reports").shape[0]
     if number_of_rows == 0:
         print("Finlogic Database is empty")
         return
@@ -161,13 +175,13 @@ def database_info(return_dict: bool = False):
         SELECT DISTINCT cvm_id, report_version, report_type, period_reference
           FROM reports;
     """
-    statements_num = cfg.fldb.execute(query).df().shape[0]
+    statements_num = db_read(query).shape[0]
     query = "SELECT MIN(period_end) FROM reports"
-    first_statement = cfg.fldb.execute(query).fetchall()[0][0]
+    first_statement = db_read(query).iloc[0][0]
     query = "SELECT MAX(period_end) FROM reports"
-    last_statement = cfg.fldb.execute(query).fetchall()[0][0]
+    last_statement = db_read(query).iloc[0][0]
     query = "SELECT COUNT(DISTINCT cvm_id) FROM reports"
-    number_of_companies = cfg.fldb.execute(query).fetchall()[0][0]
+    number_of_companies = db_read(query).iloc[0][0]
 
     info_dict = {
         "File path": f"{cfg.FINLOGIC_DB_PATH}",
@@ -223,4 +237,4 @@ def search_company(
          WHERE {search_by} {sql_condition}
          ORDER BY name_id;
     """
-    return cfg.fldb.execute(query).df()
+    return db_read(query)
