@@ -223,7 +223,7 @@ def save_processed_df(df: pd.DataFrame, filepath: Path) -> None:
 
         # create an intermediate table where 'date_string' is casted to DATE
         sql = """
-            CREATE OR REPLACE TABLE tbl (
+            CREATE TABLE tbl (
                 name_id          VARCHAR  NOT NULL,
                 cvm_id           UINTEGER NOT NULL,
                 tax_id           VARCHAR  NOT NULL,
@@ -239,8 +239,10 @@ def save_processed_df(df: pd.DataFrame, filepath: Path) -> None:
                 acc_fixed        BOOLEAN  NOT NULL,
                 acc_value        DOUBLE   NOT NULL,
                 equity_statement VARCHAR
-            )
-            FROM df
+                );
+
+            INSERT INTO tbl
+            SELECT * FROM df;
         """
         con.execute(sql)
         # write the DataFrame to a Parquet file
