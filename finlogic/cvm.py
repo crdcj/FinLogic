@@ -139,6 +139,10 @@ def process_df(df: pd.DataFrame, filename: str) -> pd.DataFrame:
     # Remove rows with acc_value == 0 and acc_fixed == False
     df.query("acc_value != 0 or acc_fixed == True", inplace=True)
 
+    # Change column period_reference, period_begin and period_end to datetime
+    date_columns = ["period_reference", "period_begin", "period_end"]
+    df[date_columns] = df[date_columns].apply(pd.to_datetime, format="%Y-%m-%d")
+
     # There are two types of CVM files: DFP (ANNUAL) and ITR (QUARTERLY).
     # In database, "report_type" is positioned after "tax_id" -> position = 3
     if filename.startswith("dfp"):
@@ -229,6 +233,7 @@ def process_file(raw_filepath: Path) -> pd.DataFrame:
     df = process_df(df, raw_filepath.name)
     processed_filepath = PROCESSED_DIR / (raw_filepath.stem + ".parquet")
     save_processed_df(df, processed_filepath)
+    print(f"    {CHECKMARK} {raw_filepath.name} processed.")
 
 
 def process_files(raw_filespaths: List[Path]) -> None:

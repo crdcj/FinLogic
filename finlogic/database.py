@@ -15,36 +15,6 @@ from . import finprint as fpr
 
 CHECKMARK = "\033[32m\u2714\033[0m"
 
-# Initialize FinLogic Database reports table.
-SQL_CREATE_REPORTS_TABLE = """
-    CREATE OR REPLACE TABLE reports (
-        name_id          VARCHAR  NOT NULL,
-        cvm_id           UINTEGER NOT NULL,
-        tax_id           VARCHAR  NOT NULL,
-        report_type      VARCHAR  NOT NULL,
-        report_version   UTINYINT NOT NULL,
-        period_reference DATE     NOT NULL,
-        period_begin     DATE,
-        period_end       DATE     NOT NULL,
-        period_order     VARCHAR  NOT NULL,
-        acc_method       VARCHAR  NOT NULL,
-        acc_code         VARCHAR  NOT NULL,
-        acc_name         VARCHAR  NOT NULL,
-        acc_fixed        BOOLEAN  NOT NULL,
-        acc_value        DOUBLE   NOT NULL,
-        equity_statement VARCHAR
-    )
-"""
-
-# Create reports table in case it does not exist.
-table_names = cfg.fldb.execute("PRAGMA show_tables").df()["name"].tolist()
-if "reports" not in table_names:
-    cfg.fldb.execute(SQL_CREATE_REPORTS_TABLE)
-
-SQL_CREATE_TMP_TABLE = SQL_CREATE_REPORTS_TABLE.replace(
-    "TABLE reports", "TEMP TABLE tmp_table"
-)
-
 
 def build_db():
     """Build FinLogic Database from processed CVM files."""
