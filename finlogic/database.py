@@ -46,44 +46,22 @@ SQL_CREATE_TMP_TABLE = SQL_CREATE_REPORTS_TABLE.replace(
 )
 
 
-def load_cvm_file(filename: str):
-    """Process and load a cvm file in FinLogic Database."""
-    df = cvm.process_cvm_file(filename)  # noqa
-    # Insert the data in the database
-    cfg.fldb.execute("INSERT INTO reports SELECT * FROM df")
-
-
-def update_cvm_data(filename: str):
-    """Proceses and load new cvm data in FinLogic Database."""
-    cfg.fldb.execute(SQL_CREATE_TMP_TABLE)
-
-    df = cvm.process_cvm_file(filename)  # noqa
-    # Insert the dataframe in the database
-    sql_update_data = """
-        INSERT INTO tmp_table
-        SELECT *
-          FROM df;
-
-        INSERT INTO reports
-        SELECT *
-          FROM tmp_table
-        EXCEPT   
-        SELECT *
-          FROM reports;
-
-          DROP TABLE tmp_table;
-    """
-    cfg.fldb.execute(sql_update_data)
-
-
 def build_db():
     """Build FinLogic Database from processed CVM files."""
     print("Building FinLogic Database...")
-    processed_filepaths = [filepath for filepath in cvm.PROCESSED_DIR.glob("*.parquet")]
-    processed_filepaths.sort()
-    for processed_filepath in processed_filepaths:
-        load_cvm_file(processed_filepath)
-        print(f"    {CHECKMARK} {processed_filepath.name} loaded.")
+    # Close database connection
+    cfg.fldb.close()
+    # Delete database file
+    cfg.FINLOGIC_DB_PATH.unlink(missing_ok=True)
+    # Create a new database file and connect to it
+    cfg.fldb = duckdb.connect(database=f"{cfg.FINLOGIC_DB_PATH}")
+    # Create tables
+    # cfg.fldb.execute(SQL_CREATE_REPORTS_TABLE)
+
+    sql = f"""
+        CREATE OR REPLACE TABLE reports AS SELECT * FROM '{cvm.PROCESSED_DIR}/*.parquet'
+    """
+    cfg.fldb.execute(sql)
 
 
 def update_database(rebuild: bool = False):
@@ -96,15 +74,7 @@ def update_database(rebuild: bool = False):
         None
     """
     if rebuild:
-        # Close database connection
-        cfg.fldb.close()
-        # Delete database file
-        cfg.FINLOGIC_DB_PATH.unlink(missing_ok=True)
-        # Create a new database file and connect to it
-        cfg.fldb = duckdb.connect(database=f"{cfg.FINLOGIC_DB_PATH}")
-        # Create tables
-        cfg.fldb.execute(SQL_CREATE_REPORTS_TABLE)
-
+        build_db()
     print('\nUpdating "language" database...')
     lng.process_language_df()
 

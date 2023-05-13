@@ -78,7 +78,7 @@ def update_raw_files(urls: str) -> List[Path]:
     s = requests.Session()
     updated_filepaths = [update_raw_file(url, s) for url in urls]
     s.close()
-    return updated_filepaths
+    return [filepath for filepath in updated_filepaths if filepath is not None]
 
 
 def read_raw_file(filepath: Path) -> pd.DataFrame:
@@ -129,6 +129,9 @@ def process_df(df: pd.DataFrame, filename: str) -> pd.DataFrame:
         "ESCALA_MOEDA": "currency_unit",
     }
     df = df.rename(columns=columns_translation)[columns_translation.values()]
+
+    # Change report_version from int to uint8
+    df["report_version"] = df["report_version"].astype("uint8")
 
     # Currency column has only one value (BRL) so it is not necessary.
     df = df.drop(columns=["Currency"])
@@ -224,7 +227,7 @@ def process_file(raw_filepath: Path) -> pd.DataFrame:
     """Read, process and save a CVM file."""
     df = read_raw_file(raw_filepath)
     df = process_df(df, raw_filepath.name)
-    processed_filepath = PROCESSED_DIR / raw_filepath.name
+    processed_filepath = PROCESSED_DIR / (raw_filepath.stem + ".parquet")
     save_processed_df(df, processed_filepath)
 
 
