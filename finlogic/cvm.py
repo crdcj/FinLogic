@@ -140,8 +140,8 @@ def process_df(df: pd.DataFrame, filename: str) -> pd.DataFrame:
     df.query("acc_value != 0 or acc_fixed == True", inplace=True)
 
     # Change column period_reference, period_begin and period_end to datetime
-    date_columns = ["period_reference", "period_begin", "period_end"]
-    df[date_columns] = df[date_columns].apply(pd.to_datetime, format="%Y-%m-%d")
+    # date_columns = ["period_reference", "period_begin", "period_end"]
+    # df[date_columns] = df[date_columns].apply(pd.to_datetime, format="%Y-%m-%d")
 
     # There are two types of CVM files: DFP (ANNUAL) and ITR (QUARTERLY).
     # In database, "report_type" is positioned after "tax_id" -> position = 3
@@ -217,14 +217,34 @@ def process_df(df: pd.DataFrame, filename: str) -> pd.DataFrame:
 
 def save_processed_df(df: pd.DataFrame, filepath: Path) -> None:
     """Save a processed dataframe as a csv file."""
-    # create a DuckDB connection
-    con = duckdb.connect()
+    with duckdb.connect() as con:
+        # register the DataFrame
+        con.register("df", df)
 
-    # register the DataFrame
-    con.register("df", df)
-
-    # write the DataFrame to a Parquet file
-    con.execute(f"COPY df TO '{filepath}' (FORMAT 'PARQUET', COMPRESSION 'zstd')")
+        # create an intermediate table where 'date_string' is casted to DATE
+        sql = """
+            CREATE OR REPLACE TABLE tbl (
+                name_id          VARCHAR  NOT NULL,
+                cvm_id           UINTEGER NOT NULL,
+                tax_id           VARCHAR  NOT NULL,
+                report_type      VARCHAR  NOT NULL,
+                report_version   UTINYINT NOT NULL,
+                period_reference DATE     NOT NULL,
+                period_begin     DATE,
+                period_end       DATE     NOT NULL,
+                period_order     VARCHAR  NOT NULL,
+                acc_method       VARCHAR  NOT NULL,
+                acc_code         VARCHAR  NOT NULL,
+                acc_name         VARCHAR  NOT NULL,
+                acc_fixed        BOOLEAN  NOT NULL,
+                acc_value        DOUBLE   NOT NULL,
+                equity_statement VARCHAR
+            )
+            FROM df
+        """
+        con.execute(sql)
+        # write the DataFrame to a Parquet file
+        con.execute(f"COPY tbl TO '{filepath}' (FORMAT 'PARQUET', COMPRESSION 'zstd')")
 
 
 def process_file(raw_filepath: Path) -> pd.DataFrame:
