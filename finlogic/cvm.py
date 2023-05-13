@@ -1,8 +1,9 @@
-"""CVM Portal data management."""
+"""Module to download and process CVM data."""
 import re
 from typing import List
 import zipfile as zf
 from pathlib import Path
+import duckdb
 import pandas as pd
 import requests
 from . import config as cfg
@@ -11,12 +12,14 @@ URL_DFP = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/"
 URL_ITR = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/"
 
 CHECKMARK = "\033[32m\u2714\033[0m"
-CVM_DIR = cfg.DATA_PATH / "cvm"
-# Create CVM_DIR if it does not exist
-Path.mkdir(CVM_DIR, parents=True, exist_ok=True)
+RAW_DIR = cfg.DATA_PATH / "cvm" / "raw"
+PROCESSED_DIR = cfg.DATA_PATH / "cvm" / "processed"
+# Create CVM folders if it does not exist
+Path.mkdir(RAW_DIR, parents=True, exist_ok=True)
+Path.mkdir(PROCESSED_DIR, parents=True, exist_ok=True)
 
 
-def get_files_urls(cvm_url) -> List[str]:
+def get_file_urls(cvm_url) -> List[str]:
     """Return a list of available CVM files.
 
     Urls with CVM raw files:
@@ -40,20 +43,20 @@ def get_files_urls(cvm_url) -> List[str]:
     return available_file_urls
 
 
-def get_all_files_urls() -> List[str]:
+def get_all_file_urls() -> List[str]:
     """Return a list of all available CVM files."""
-    urls_dfp = get_files_urls(URL_DFP)
-    urls_itr = get_files_urls(URL_ITR)
+    urls_dfp = get_file_urls(URL_DFP)
+    urls_itr = get_file_urls(URL_ITR)
     # Get only the last 3 QUARTERLY reports
     urls_itr = urls_itr[-3:]
     urls = urls_dfp + urls_itr
     return urls
 
 
-def update_cvm_file(url: str, s) -> str:
+def update_raw_file(url: str, s: requests.Session) -> Path:
     """Update raw file from CVM portal. Return a Path if file is updated."""
     filename = url[-23:]  # filename = end of url
-    filepath = Path(CVM_DIR, filename)
+    filepath = RAW_DIR / filename
     headers = s.head(url).headers
     filesize = filepath.stat().st_size if filepath.exists() else 0
     if filesize == int(headers["Content-Length"]):
@@ -67,23 +70,20 @@ def update_cvm_file(url: str, s) -> str:
     filepath.write_bytes(r.content)
     print(f"    {CHECKMARK} {filename} updated.")
 
-    return filename
+    return filepath
 
 
-def update_cvm_files(urls: str) -> List[str]:
+def update_raw_files(urls: str) -> List[Path]:
     """Update CVM raw files."""
     s = requests.Session()
-    updated_filenames = []
-    for url in urls:
-        updated_filenames.append(update_cvm_file(url, s))
+    updated_filepaths = [update_raw_file(url, s) for url in urls]
     s.close()
-    updated_filenames = [filename for filename in updated_filenames if filename]
-    return updated_filenames
+    return updated_filepaths
 
 
-def read_cvm_file(cvm_filepath: Path) -> pd.DataFrame:
+def read_raw_file(filepath: Path) -> pd.DataFrame:
     """Read annual file, process it, save the result and return the file path."""
-    cvm_zipfile = zf.ZipFile(cvm_filepath)
+    cvm_zipfile = zf.ZipFile(filepath)
     child_filenames = cvm_zipfile.namelist()
 
     # Filename example for the first file in zip: "dfp_cia_aberta_2022.csv"
@@ -100,14 +100,14 @@ def read_cvm_file(cvm_filepath: Path) -> pd.DataFrame:
 
 
 def remove_empty_spaces(s: pd.Series) -> pd.Series:
-    """Remove empty spaces from a series."""
+    """Remove empty spaces in a pandas Series of strings."""
     s_unique_original = pd.Series(s.unique())
     s_unique_adjusted = s_unique_original.replace("\s+", " ", regex=True).str.strip()
     mapping_dict = dict(zip(s_unique_original, s_unique_adjusted))
     return s.map(mapping_dict)
 
 
-def format_cvm_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
+def process_df(df: pd.DataFrame, filename: str) -> pd.DataFrame:
     """Format a cvm dataframe."""
     columns_translation = {
         "DENOM_CIA": "name_id",
@@ -133,9 +133,12 @@ def format_cvm_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     # Currency column has only one value (BRL) so it is not necessary.
     df = df.drop(columns=["Currency"])
 
+    # Remove rows with acc_value == 0 and acc_fixed == False
+    df.query("acc_value != 0 or acc_fixed == True", inplace=True)
+
     # There are two types of CVM files: DFP (ANNUAL) and ITR (QUARTERLY).
     # In database, "report_type" is positioned after "tax_id" -> position = 3
-    if filepath.name.startswith("dfp"):
+    if filename.startswith("dfp"):
         df.insert(loc=3, column="report_type", value="ANNUAL")
     else:
         df.insert(loc=3, column="report_type", value="QUARTERLY")
@@ -205,9 +208,26 @@ def format_cvm_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     return df
 
 
-def process_cvm_file(cvm_filename: str) -> pd.DataFrame:
-    """Read and format a CVM file."""
-    cvm_filepath = Path(CVM_DIR, cvm_filename)
-    df = read_cvm_file(cvm_filepath)
-    df = format_cvm_df(df, cvm_filepath)
-    return df
+def save_processed_df(df: pd.DataFrame, filepath: Path) -> None:
+    """Save a processed dataframe as a csv file."""
+    # create a DuckDB connection
+    con = duckdb.connect()
+
+    # register the DataFrame
+    con.register("df", df)
+
+    # write the DataFrame to a Parquet file
+    con.execute(f"COPY df TO '{filepath}' (FORMAT 'PARQUET', COMPRESSION 'zstd')")
+
+
+def process_file(raw_filepath: Path) -> pd.DataFrame:
+    """Read, process and save a CVM file."""
+    df = read_raw_file(raw_filepath)
+    df = process_df(df, raw_filepath.name)
+    processed_filepath = PROCESSED_DIR / raw_filepath.name
+    save_processed_df(df, processed_filepath)
+
+
+def process_files(raw_filespaths: List[Path]) -> None:
+    """Process a list of CVM raw files."""
+    [process_file(raw_filepath) for raw_filepath in raw_filespaths]

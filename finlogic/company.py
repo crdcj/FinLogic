@@ -450,6 +450,8 @@ class Company:
             cols = report_df.columns.to_list()
             cols = cols[0:2] + cols[-num_years:]
             report_df = report_df[cols]
+        # Fill NaN values with 0
+        report_df.fillna(0, inplace=True)
         return report_df
 
     def _calculate_ttm(self, dfi: pd.DataFrame) -> pd.DataFrame:

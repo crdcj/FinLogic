@@ -77,17 +77,17 @@ def update_cvm_data(filename: str):
 
 
 def build_db():
-    """Build FinLogic Database from scratch."""
+    """Build FinLogic Database from processed CVM files."""
     print("Building FinLogic Database...")
-    filenames_in_raw_folder = [filepath.name for filepath in cvm.CVM_DIR.glob("*.zip")]
-    filenames_in_raw_folder.sort()
-    for filename in filenames_in_raw_folder:
-        load_cvm_file(filename)
-        print(f"    {CHECKMARK} {filename} loaded.")
+    processed_filepaths = [filepath for filepath in cvm.PROCESSED_DIR.glob("*.parquet")]
+    processed_filepaths.sort()
+    for processed_filepath in processed_filepaths:
+        load_cvm_file(processed_filepath)
+        print(f"    {CHECKMARK} {processed_filepath.name} loaded.")
 
 
 def update_database(rebuild: bool = False):
-    """Verify changes in CVM files and update them in Finlogic Database.
+    """Verify changes in CVM files and update Finlogic Database if necessary.
 
     Args:
         rebuild (bool, optional): If True, rebuilds the database from scratch.
@@ -109,29 +109,22 @@ def update_database(rebuild: bool = False):
     lng.process_language_df()
 
     print("Updating CVM files...")
-    urls = cvm.get_all_files_urls()
+    urls = cvm.get_all_file_urls()
     # urls = urls[:1]  # Test
-    updated_filenames = cvm.update_cvm_files(urls)
-    print(f"Number of CVM files updated = {len(updated_filenames)}")
-    if not updated_filenames:
-        print("All files were already updated.")
+    updated_raw_filepaths = cvm.update_raw_files(urls)
+    cvm.process_files(updated_raw_filepaths)
+    print(f"Number of CVM files updated = {len(updated_raw_filepaths)}")
+    if not updated_raw_filepaths:
+        print("CVM files were already updated.")
 
     print()
     db_size = cfg.FINLOGIC_DB_PATH.stat().st_size / 1024**2
     # Rebuilt database when it is smaller than 1 MB
-    if db_size < 1:
-        print("FinLogic Database is empty.")
+    if db_size < 1 or updated_raw_filepaths:
         build_db()
+        print(f"\n{CHECKMARK} FinLogic Database updated!")
     else:
-        if not updated_filenames:
-            print("No new CVM files to load.")
-        else:
-            print("Load new CVM data in FinLogic Database...")
-            for filename in updated_filenames:
-                update_cvm_data(filename)
-                print(f"    {CHECKMARK} {filename} loaded in FinLogic Database.")
-
-    print(f"\n{CHECKMARK} FinLogic Database updated!")
+        print("FinLogic Database is already updated.")
 
 
 def database_info(return_dict: bool = False):
