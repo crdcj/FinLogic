@@ -16,18 +16,24 @@ from . import finprint as fpr
 CHECKMARK = "\033[32m\u2714\033[0m"
 
 
-def build_db():
-    """Build FinLogic Database from processed CVM files."""
-    print("Building FinLogic Database...")
+def reset_db():
+    """Delete the database file and create a new one."""
     # Close database connection
     cfg.fldb.close()
     # Delete database file
     cfg.FINLOGIC_DB_PATH.unlink(missing_ok=True)
     # Create a new database file and connect to it
     cfg.fldb = duckdb.connect(database=f"{cfg.FINLOGIC_DB_PATH}")
+
+
+def build_db():
+    """Build FinLogic Database from processed CVM files."""
+    print("Building FinLogic Database...")
+    # Reset database
+    reset_db()
     # Create a table with all processed CVM files
     sql = f"""
-        CREATE OR REPLACE TABLE reports AS SELECT * FROM '{cvm.PROCESSED_DIR}/*.parquet'
+        CREATE TABLE reports AS SELECT * FROM '{cvm.PROCESSED_DIR}/*.parquet'
     """
     cfg.fldb.execute(sql)
 
@@ -40,6 +46,10 @@ def get_db_files_mtime() -> Dict[str, float]:
         SELECT DISTINCT file_source, file_mtime FROM reports
         ORDER BY file_source
     """
+    # Check if database can be considered empty
+    if cfg.FINLOGIC_DB_PATH.stat().st_size / 1024**2 < 10:
+        return {}
+
     df = cfg.fldb.execute(sql).df()
     return df.set_index("file_source")["file_mtime"].to_dict()
 
@@ -55,30 +65,34 @@ def get_filepaths_to_process() -> list[str]:
     return [cvm.RAW_DIR / filename for filename in filenames_to_process]
 
 
-def update_database():
+def update_database(reset: bool = False):
     """Verify changes in CVM files and update Finlogic Database if necessary.
 
     Args:
-
+        reset (bool, optional): If True, delete the database file and create a
+            new one. Defaults to False.
     Returns:
         None
     """
+    # Language files
     print('\nUpdating "language" database...')
     lng.process_language_df()
 
+    # CVM raw files
     print("Updating CVM files...")
     urls = cvm.get_all_file_urls()
     # urls = urls[:1]  # Test
     updated_raw_filepaths = cvm.update_raw_files(urls)
     print(f"Number of CVM files updated = {len(updated_raw_filepaths)}")
 
+    # CVM processed files
+    print("\nProcessing CVM files...")
     filepaths_to_process = get_filepaths_to_process()
     print(f"Number of new files to process = {len(filepaths_to_process)}")
-
     if filepaths_to_process:
         [cvm.process_file(filepath) for filepath in filepaths_to_process]
 
-    print()
+    # FinLogic Database
     build_db()
     print(f"\n{CHECKMARK} FinLogic Database updated!")
 
