@@ -5,7 +5,7 @@ allows updating, processing and consolidating financial statements, as well as
 searching for company names in the FinLogic Database and retrieving information
 about the database itself.
 """
-from typing import Literal
+from typing import Literal, Dict
 import duckdb
 import pandas as pd
 from . import config as cfg
@@ -15,123 +15,85 @@ from . import finprint as fpr
 
 CHECKMARK = "\033[32m\u2714\033[0m"
 
-# Initialize FinLogic Database reports table.
-SQL_CREATE_REPORTS_TABLE = """
-    CREATE OR REPLACE TABLE reports (
-        name_id VARCHAR,
-        cvm_id UINTEGER NOT NULL,
-        tax_id VARCHAR,
-        report_type VARCHAR NOT NULL,
-        report_version UTINYINT NOT NULL,
-        period_reference DATE NOT NULL,
-        period_begin DATE,
-        period_end DATE NOT NULL,
-        period_order VARCHAR NOT NULL,
-        acc_method VARCHAR NOT NULL,
-        acc_code VARCHAR NOT NULL,
-        acc_name VARCHAR,
-        acc_fixed BOOLEAN NOT NULL,
-        acc_value DOUBLE,
-        equity_statement_column VARCHAR,
-        source_file VARCHAR NOT NULL
-    )
-"""
 
-# Create reports table in case it does not exist.
-table_names = cfg.fldb.execute("PRAGMA show_tables").df()["name"].tolist()
-if "reports" not in table_names:
-    cfg.fldb.execute(SQL_CREATE_REPORTS_TABLE)
-
-SQL_CREATE_TMP_TABLE = SQL_CREATE_REPORTS_TABLE.replace(
-    "TABLE reports", "TEMP TABLE tmp_table"
-)
-
-
-def load_cvm_file(filename: str):
-    """Process and load a cvm file in FinLogic Database."""
-    df = cvm.process_cvm_file(filename)  # noqa
-    # Insert the data in the database
-    cfg.fldb.execute("INSERT INTO reports SELECT * FROM df")
-
-
-def update_cvm_data(filename: str):
-    """Proceses and load new cvm data in FinLogic Database."""
-    cfg.fldb.execute(SQL_CREATE_TMP_TABLE)
-
-    df = cvm.process_cvm_file(filename)  # noqa
-    # Insert the dataframe in the database
-    sql_update_data = """
-        INSERT INTO tmp_table
-        SELECT *
-          FROM df;
-
-        INSERT INTO reports
-        SELECT *
-          FROM tmp_table
-        EXCEPT   
-        SELECT *
-          FROM reports;
-
-          DROP TABLE tmp_table;
-    """
-    cfg.fldb.execute(sql_update_data)
+def reset_db():
+    """Delete the database file and create a new one."""
+    # Close database connection
+    cfg.fldb.close()
+    # Delete database file
+    cfg.FINLOGIC_DB_PATH.unlink(missing_ok=True)
+    # Create a new database file and connect to it
+    cfg.fldb = duckdb.connect(database=f"{cfg.FINLOGIC_DB_PATH}")
 
 
 def build_db():
-    """Build FinLogic Database from scratch."""
+    """Build FinLogic Database from processed CVM files."""
     print("Building FinLogic Database...")
-    filenames_in_raw_folder = [filepath.name for filepath in cvm.CVM_DIR.glob("*.zip")]
-    filenames_in_raw_folder.sort()
-    for filename in filenames_in_raw_folder:
-        load_cvm_file(filename)
-        print(f"    {CHECKMARK} {filename} loaded.")
+    # Reset database
+    reset_db()
+    # Create a table with all processed CVM files
+    sql = f"""
+        CREATE TABLE reports AS SELECT * FROM '{cvm.PROCESSED_DIR}/*.parquet'
+    """
+    cfg.fldb.execute(sql)
 
 
-def update_database(rebuild: bool = False):
-    """Verify changes in CVM files and update them in Finlogic Database.
+# Get a dicionary with the filenames and their respective modified times in database
+def get_db_files_mtime() -> Dict[str, float]:
+    """Return a dictionary with the file sources and their respective modified times in
+    database."""
+    sql = """
+        SELECT DISTINCT file_source, file_mtime FROM reports
+        ORDER BY file_source
+    """
+    # Check if database can be considered empty
+    if cfg.FINLOGIC_DB_PATH.stat().st_size / 1024**2 < 10:
+        return {}
+
+    df = cfg.fldb.execute(sql).df()
+    return df.set_index("file_source")["file_mtime"].to_dict()
+
+
+def get_filepaths_to_process() -> list[str]:
+    """Return a list of files in raw folder that must be processed."""
+    filenames_in_dir = cvm.get_raw_files_mtime()
+    filenames_in_db = get_db_files_mtime()
+    for key, value in filenames_in_db.items():
+        if key in filenames_in_dir and filenames_in_dir[key] == value:
+            del filenames_in_dir[key]
+    filenames_to_process = list(filenames_in_dir.keys())
+    return [cvm.RAW_DIR / filename for filename in filenames_to_process]
+
+
+def update_database(reset: bool = False):
+    """Verify changes in CVM files and update Finlogic Database if necessary.
 
     Args:
-        rebuild (bool, optional): If True, rebuilds the database from scratch.
-
+        reset (bool, optional): If True, delete the database file and create a
+            new one. Defaults to False.
     Returns:
         None
     """
-    if rebuild:
-        # Close database connection
-        cfg.fldb.close()
-        # Delete database file
-        cfg.FINLOGIC_DB_PATH.unlink(missing_ok=True)
-        # Create a new database file and connect to it
-        cfg.fldb = duckdb.connect(database=f"{cfg.FINLOGIC_DB_PATH}")
-        # Create tables
-        cfg.fldb.execute(SQL_CREATE_REPORTS_TABLE)
-
+    # Language files
     print('\nUpdating "language" database...')
     lng.process_language_df()
 
+    # CVM raw files
     print("Updating CVM files...")
-    urls = cvm.get_all_files_urls()
+    urls = cvm.get_all_file_urls()
     # urls = urls[:1]  # Test
-    updated_filenames = cvm.update_cvm_files(urls)
-    print(f"Number of CVM files updated = {len(updated_filenames)}")
-    if not updated_filenames:
-        print("All files were already updated.")
+    updated_raw_filepaths = cvm.update_raw_files(urls)
+    print(f"Number of CVM files updated = {len(updated_raw_filepaths)}")
 
-    print()
-    db_size = cfg.FINLOGIC_DB_PATH.stat().st_size / 1024**2
-    # Rebuilt database when it is smaller than 1 MB
-    if db_size < 1:
-        print("FinLogic Database is empty.")
-        build_db()
-    else:
-        if not updated_filenames:
-            print("No new CVM files to load.")
-        else:
-            print("Load new CVM data in FinLogic Database...")
-            for filename in updated_filenames:
-                update_cvm_data(filename)
-                print(f"    {CHECKMARK} {filename} loaded in FinLogic Database.")
+    # CVM processed files
+    print("\nProcessing CVM files...")
+    filepaths_to_process = get_filepaths_to_process()
+    print(f"Number of new files to process = {len(filepaths_to_process)}")
+    if filepaths_to_process:
+        [cvm.process_file(filepath) for filepath in filepaths_to_process]
 
+    # FinLogic Database
+    build_db()
     print(f"\n{CHECKMARK} FinLogic Database updated!")
 
 
