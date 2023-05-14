@@ -1,13 +1,14 @@
 import unittest
 import finlogic as fl
+from finlogic import fl_duckdb as fdb
 
 
 class TestDatabase(unittest.TestCase):
     def test_info(self):
         """Test the info method of the Database module."""
-        db_info = fl.database_info(return_dict=True)
-        self.assertEqual(db_info["First financial statement"], "2009-01-31")
-        self.assertTrue(db_info["Accounting rows"] > 8_000_000)
+        db_info = fdb.get_info()
+        self.assertEqual(db_info["first_report"], "2009-01-31")
+        self.assertTrue(db_info["number_of_rows"] > 8_000_000)
 
     def test_search_company(self):
         """Test the search_company method of the Database module."""
