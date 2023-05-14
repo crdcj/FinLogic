@@ -23,7 +23,7 @@ import numpy as np
 import pandas as pd
 from .language import language_df
 from .finprint import print_dict
-from .finlogic_db import execute
+from .fl_duckdb import execute
 
 
 class Company:

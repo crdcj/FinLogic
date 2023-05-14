@@ -1,6 +1,6 @@
 import unittest
 import finlogic as fl
-from finlogic import finlogic_db as fdb
+from finlogic import fl_duckdb as fdb
 
 
 class TestDatabase(unittest.TestCase):

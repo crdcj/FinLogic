@@ -11,7 +11,7 @@ from . import config as cfg
 from . import cvm
 from . import language as lng
 from . import finprint as fpr
-from . import finlogic_db as fdb
+from . import fl_duckdb as fdb
 
 CHECKMARK = "\033[32m\u2714\033[0m"
 
