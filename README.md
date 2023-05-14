@@ -62,7 +62,7 @@ FinLogic database updated ✅
 | Last update call            |         2022-04-20 07:29:08 |
 | Last modified               |         2022-04-20 07:31:48 |
 | Last updated data           |         2022-04-17 13:09:01 |
-| Accounting rows             |                  18,757,249 |
+| Accounting rows             |                   8,757,249 |
 | Unique accounting codes     |                       2,008 |
 | Number of companies         |                       1,037 |
 | Unique Financial Statements |                      13,172 |
