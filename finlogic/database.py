@@ -6,63 +6,25 @@ searching for company names in the FinLogic Database and retrieving information
 about the database itself.
 """
 from typing import Literal, Dict
-import duckdb
 import pandas as pd
 from . import config as cfg
 from . import cvm
 from . import language as lng
 from . import finprint as fpr
+from . import finlogic_db as fdb
 
 CHECKMARK = "\033[32m\u2714\033[0m"
-
-
-def reset_db():
-    """Delete the database file and create a new one."""
-    # Close database connection
-    cfg.fldb.close()
-    # Delete database file
-    cfg.FINLOGIC_DB_PATH.unlink(missing_ok=True)
-    # Create a new database file and connect to it
-    cfg.fldb = duckdb.connect(database=f"{cfg.FINLOGIC_DB_PATH}")
-
-
-def build_db():
-    """Build FinLogic Database from processed CVM files."""
-    print("Building FinLogic Database...")
-    # Reset database
-    reset_db()
-    # Create a table with all processed CVM files
-    sql = f"""
-        CREATE TABLE reports AS SELECT * FROM '{cvm.PROCESSED_DIR}/*.parquet'
-    """
-    cfg.fldb.execute(sql)
-
-
-# Get a dicionary with the filenames and their respective modified times in database
-def get_db_files_mtime() -> Dict[str, float]:
-    """Return a dictionary with the file sources and their respective modified times in
-    database."""
-    sql = """
-        SELECT DISTINCT file_source, file_mtime FROM reports
-        ORDER BY file_source
-    """
-    # Check if database can be considered empty
-    if cfg.FINLOGIC_DB_PATH.stat().st_size / 1024**2 < 10:
-        return {}
-
-    df = cfg.fldb.execute(sql).df()
-    return df.set_index("file_source")["file_mtime"].to_dict()
 
 
 def get_filepaths_to_process() -> list[str]:
     """Return a list of files in raw folder that must be processed."""
     filenames_in_dir = cvm.get_raw_files_mtime()
-    filenames_in_db = get_db_files_mtime()
+    filenames_in_db = fdb.get_db_files_mtime()
     for key, value in filenames_in_db.items():
         if key in filenames_in_dir and filenames_in_dir[key] == value:
             del filenames_in_dir[key]
     filenames_to_process = list(filenames_in_dir.keys())
-    return [cvm.RAW_DIR / filename for filename in filenames_to_process]
+    return [cfg.CVM_RAW_DIR / filename for filename in filenames_to_process]
 
 
 def update_database(reset: bool = False):
@@ -93,11 +55,11 @@ def update_database(reset: bool = False):
         [cvm.process_file(filepath) for filepath in filepaths_to_process]
 
     # FinLogic Database
-    build_db()
+    fdb.build()
     print(f"\n{CHECKMARK} FinLogic Database updated!")
 
 
-def database_info(return_dict: bool = False):
+def database_info():
     """Print a concise summary of FinLogic Database.
 
     This function prints a dictionary containing main information about
@@ -112,40 +74,11 @@ def database_info(return_dict: bool = False):
 
     Returns: None
     """
-    number_of_rows = cfg.fldb.execute("SELECT COUNT(*) FROM reports").fetchall()[0][0]
-    if number_of_rows == 0:
-        print("Finlogic Database is empty")
+    info_dict = fdb.get_info_dict()
+    if not info_dict:
+        print("FinLogic Database has no data.")
         return
-
-    fldb_file_date_unix = round(cfg.FINLOGIC_DB_PATH.stat().st_mtime, 0)
-    fldb_file_date = pd.Timestamp.fromtimestamp(fldb_file_date_unix)
-    query = """
-        SELECT DISTINCT cvm_id, report_version, report_type, period_reference
-          FROM reports;
-    """
-    statements_num = cfg.fldb.execute(query).df().shape[0]
-    query = "SELECT MIN(period_end) FROM reports"
-    first_statement = cfg.fldb.execute(query).fetchall()[0][0]
-    query = "SELECT MAX(period_end) FROM reports"
-    last_statement = cfg.fldb.execute(query).fetchall()[0][0]
-    query = "SELECT COUNT(DISTINCT cvm_id) FROM reports"
-    number_of_companies = cfg.fldb.execute(query).fetchall()[0][0]
-
-    info_dict = {
-        "File path": f"{cfg.FINLOGIC_DB_PATH}",
-        "File size (MB)": round(cfg.FINLOGIC_DB_PATH.stat().st_size / 1024**2, 1),
-        "Last modified": f"{fldb_file_date}",
-        "Accounting rows": number_of_rows,
-        "Number of companies": number_of_companies,
-        "Number of financial statements": statements_num,
-        "First financial statement": first_statement.strftime("%Y-%m-%d"),
-        "Last financial statement": last_statement.strftime("%Y-%m-%d"),
-    }
-    if return_dict:
-        return info_dict
-    else:
-        fpr.print_dict(info_dict=info_dict, table_name="FinLogic Database Info")
-        return None
+    fpr.print_dict(info_dict=info_dict, table_name="FinLogic Database Info")
 
 
 def search_company(

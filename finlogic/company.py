@@ -21,7 +21,6 @@ RuntimeWarning:
 from typing import Literal
 import numpy as np
 import pandas as pd
-from .config import fldb
 from .language import language_df
 from .finprint import print_dict
 

@@ -12,11 +12,6 @@ URL_DFP = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/"
 URL_ITR = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/"
 
 CHECKMARK = "\033[32m\u2714\033[0m"
-RAW_DIR = cfg.DATA_PATH / "cvm" / "raw"
-PROCESSED_DIR = cfg.DATA_PATH / "cvm" / "processed"
-# Create CVM folders if it does not exist
-Path.mkdir(RAW_DIR, parents=True, exist_ok=True)
-Path.mkdir(PROCESSED_DIR, parents=True, exist_ok=True)
 
 
 def get_file_urls(cvm_url) -> List[str]:
@@ -56,7 +51,7 @@ def get_all_file_urls() -> List[str]:
 def update_raw_file(url: str, s: requests.Session) -> Path:
     """Update raw file from CVM portal. Return a Path if file is updated."""
     filename = url[-23:]  # filename = end of url
-    filepath = RAW_DIR / filename
+    filepath = cfg.CVM_RAW_DIR / filename
     headers = s.head(url).headers
     filesize = filepath.stat().st_size if filepath.exists() else 0
     if filesize == int(headers["Content-Length"]):
@@ -233,7 +228,7 @@ def process_file(raw_filepath: Path) -> Path:
     """Read, process and save a CVM file."""
     df = read_raw_file(raw_filepath)
     df = process_df(df, raw_filepath)
-    processed_filepath = PROCESSED_DIR / (raw_filepath.stem + ".parquet")
+    processed_filepath = cfg.CVM_PROCESSED_DIR / (raw_filepath.stem + ".parquet")
     save_processed_df(df, processed_filepath)
     print(f"    {CHECKMARK} {raw_filepath.name} processed.")
     return processed_filepath
@@ -241,7 +236,7 @@ def process_file(raw_filepath: Path) -> Path:
 
 def get_raw_files_mtime() -> Dict[str, float]:
     """Return a dictionary with the files and their modification time."""
-    raw_filepaths = list(RAW_DIR.glob("*.zip"))
+    raw_filepaths = list(cfg.CVM_RAW_DIR.glob("*.zip"))
     raw_filepaths.sort()
     files_mtime = {}
     for filepath in raw_filepaths:
