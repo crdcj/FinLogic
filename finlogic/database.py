@@ -25,9 +25,7 @@ def build_db():
     cfg.FINLOGIC_DB_PATH.unlink(missing_ok=True)
     # Create a new database file and connect to it
     cfg.fldb = duckdb.connect(database=f"{cfg.FINLOGIC_DB_PATH}")
-    # Create tables
-    # cfg.fldb.execute(SQL_CREATE_REPORTS_TABLE)
-
+    # Create a table with all processed CVM files
     sql = f"""
         CREATE OR REPLACE TABLE reports AS SELECT * FROM '{cvm.PROCESSED_DIR}/*.parquet'
     """
@@ -38,13 +36,11 @@ def update_database(rebuild: bool = False):
     """Verify changes in CVM files and update Finlogic Database if necessary.
 
     Args:
-        rebuild (bool, optional): If True, rebuilds the database from scratch.
+        rebuild (bool, optional): If True, rebuilds the database.
 
     Returns:
         None
     """
-    if rebuild:
-        build_db()
     print('\nUpdating "language" database...')
     lng.process_language_df()
 
@@ -52,15 +48,19 @@ def update_database(rebuild: bool = False):
     urls = cvm.get_all_file_urls()
     # urls = urls[:1]  # Test
     updated_raw_filepaths = cvm.update_raw_files(urls)
-    cvm.process_files(updated_raw_filepaths)
     print(f"Number of CVM files updated = {len(updated_raw_filepaths)}")
-    if not updated_raw_filepaths:
+    if updated_raw_filepaths:
+        [cvm.process_raw_file(filepath) for filepath in updated_raw_filepaths]
+    else:
         print("CVM files were already updated.")
-
     print()
+
     db_size = cfg.FINLOGIC_DB_PATH.stat().st_size / 1024**2
-    # Rebuilt database when it is smaller than 1 MB
-    if db_size < 1 or updated_raw_filepaths:
+    # Rebuilt database when:
+    #   (1) it is considered empty
+    #   (2) a CVM file was downloaded or updated
+    #   (3) it was requested by the user
+    if db_size < 10 or updated_raw_filepaths or rebuild:
         build_db()
         print(f"\n{CHECKMARK} FinLogic Database updated!")
     else:

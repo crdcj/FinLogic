@@ -130,19 +130,16 @@ def process_df(df: pd.DataFrame, filename: str) -> pd.DataFrame:
     }
     df = df.rename(columns=columns_translation)[columns_translation.values()]
 
-    # Change report_version from int to uint8
-    df["report_version"] = df["report_version"].astype("uint8")
-
     # Currency column has only one value (BRL) so it is not necessary.
     df = df.drop(columns=["Currency"])
 
     # Remove rows with acc_value == 0 and acc_fixed == False
     df.query("acc_value != 0 or acc_fixed == True", inplace=True)
 
-    # Change column period_reference, period_begin and period_end to datetime
-    # date_columns = ["period_reference", "period_begin", "period_end"]
-    # df[date_columns] = df[date_columns].apply(pd.to_datetime, format="%Y-%m-%d")
-
+    # report_version max. value is aprox. 9, so it can be uint8 (0 to 255)
+    df["report_version"] = df["report_version"].astype("uint8")
+    # cvm_id from max. value is 600_000, so it can be uint32 (0 to 4_294_967_295)
+    df["cvm_id"] = df["cvm_id"].astype("uint32")
     # There are two types of CVM files: DFP (ANNUAL) and ITR (QUARTERLY).
     # In database, "report_type" is positioned after "tax_id" -> position = 3
     if filename.startswith("dfp"):
@@ -218,46 +215,21 @@ def process_df(df: pd.DataFrame, filename: str) -> pd.DataFrame:
 def save_processed_df(df: pd.DataFrame, filepath: Path) -> None:
     """Save a processed dataframe as a csv file."""
     with duckdb.connect() as con:
-        # register the DataFrame
-        con.register("df", df)
-
-        # create an intermediate table where 'date_string' is casted to DATE
-        sql = """
-            CREATE TABLE tbl (
-                name_id          VARCHAR  NOT NULL,
-                cvm_id           UINTEGER NOT NULL,
-                tax_id           VARCHAR  NOT NULL,
-                report_type      VARCHAR  NOT NULL,
-                report_version   UTINYINT NOT NULL,
-                period_reference DATE     NOT NULL,
-                period_begin     DATE,
-                period_end       DATE     NOT NULL,
-                period_order     VARCHAR  NOT NULL,
-                acc_method       VARCHAR  NOT NULL,
-                acc_code         VARCHAR  NOT NULL,
-                acc_name         VARCHAR  NOT NULL,
-                acc_fixed        BOOLEAN  NOT NULL,
-                acc_value        DOUBLE   NOT NULL,
-                equity_statement VARCHAR
-                );
-
-            INSERT INTO tbl
-            SELECT * FROM df;
+        sql = f"""
+            CREATE TEMP TABLE tbl AS SELECT * FROM df;
+            ALTER TABLE tbl ALTER period_reference TYPE DATE;
+            ALTER TABLE tbl ALTER period_begin TYPE DATE;
+            ALTER TABLE tbl ALTER period_end TYPE DATE;
+            COPY tbl TO '{filepath}' (FORMAT 'PARQUET', COMPRESSION 'zstd')
         """
         con.execute(sql)
-        # write the DataFrame to a Parquet file
-        con.execute(f"COPY tbl TO '{filepath}' (FORMAT 'PARQUET', COMPRESSION 'zstd')")
 
 
-def process_file(raw_filepath: Path) -> pd.DataFrame:
+def process_file(raw_filepath: Path) -> Path:
     """Read, process and save a CVM file."""
     df = read_raw_file(raw_filepath)
     df = process_df(df, raw_filepath.name)
     processed_filepath = PROCESSED_DIR / (raw_filepath.stem + ".parquet")
     save_processed_df(df, processed_filepath)
     print(f"    {CHECKMARK} {raw_filepath.name} processed.")
-
-
-def process_files(raw_filespaths: List[Path]) -> None:
-    """Process a list of CVM raw files."""
-    [process_file(raw_filepath) for raw_filepath in raw_filespaths]
+    return processed_filepath
