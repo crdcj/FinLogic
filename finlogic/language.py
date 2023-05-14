@@ -6,7 +6,7 @@ INTERIM_DIR = cfg.DATA_PATH / "interim"
 LANGUAGE_DF_PATH = INTERIM_DIR / "pten_df.csv"
 URL_LANGUAGE = "https://raw.githubusercontent.com/fe-lipe-c/finlogic_datasets/master/data/pten_df.csv"  # noqa
 
-# Create interim folder if itdoes not exist.
+# Create interim folder if it does not exist.
 Path.mkdir(INTERIM_DIR, parents=True, exist_ok=True)
 
 # Start/load language file data

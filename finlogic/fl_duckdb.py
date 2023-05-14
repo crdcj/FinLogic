@@ -6,6 +6,9 @@ from . import config as cfg
 
 # Start FinLogic Database connection
 FINLOGIC_DB_PATH = cfg.DATA_PATH / "finlogic.db"
+# Create a new database file and connect to it
+con = duckdb.connect(database=f"{FINLOGIC_DB_PATH}")
+con.close()
 
 
 def reset():
