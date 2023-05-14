@@ -5,7 +5,7 @@ allows updating, processing and consolidating financial statements, as well as
 searching for company names in the FinLogic Database and retrieving information
 about the database itself.
 """
-from typing import Literal, Dict
+from typing import Literal
 import pandas as pd
 from . import config as cfg
 from . import cvm
@@ -74,7 +74,7 @@ def database_info():
 
     Returns: None
     """
-    info_dict = fdb.get_info_dict()
+    info_dict = fdb.get_info()
     if not info_dict:
         print("FinLogic Database has no data.")
         return
@@ -116,6 +116,6 @@ def search_company(
         SELECT DISTINCT name_id, cvm_id, tax_id
           FROM reports
          WHERE {search_by} {sql_condition}
-         ORDER BY name_id;
+         ORDER BY cvm_id;
     """
-    return cfg.fldb.execute(query).df()
+    return fdb.execute(query, "df")

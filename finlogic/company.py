@@ -23,6 +23,7 @@ import numpy as np
 import pandas as pd
 from .language import language_df
 from .finprint import print_dict
+from .finlogic_db import execute
 
 
 class Company:
@@ -92,7 +93,7 @@ class Company:
              WHERE CAST(cvm_id AS VARCHAR) = '{identifier}'
                 OR tax_id = '{identifier}'
         """
-        df = fldb.execute(query).df()
+        df = execute(query, "df")
         if not df.empty:
             self._cvm_id = df.loc[0, "cvm_id"]
             self.tax_id = df.loc[0, "tax_id"]
@@ -248,7 +249,7 @@ class Company:
                AND acc_method = '{self._acc_method}'
              ORDER BY acc_code, period_reference, period_end
         """
-        co_df = fldb.execute(query).df()
+        co_df = execute(query, "df")
 
         # Change acc_unit only for accounts different from 3.99
         co_df["acc_value"] = np.where(
