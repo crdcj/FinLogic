@@ -1,6 +1,6 @@
 """Module to download and process CVM data."""
 import re
-from typing import List
+from typing import List, Dict
 import zipfile as zf
 from pathlib import Path
 import duckdb
@@ -107,7 +107,7 @@ def remove_empty_spaces(s: pd.Series) -> pd.Series:
     return s.map(mapping_dict)
 
 
-def process_df(df: pd.DataFrame, filename: str) -> pd.DataFrame:
+def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     """Format a cvm dataframe."""
     columns_translation = {
         "DENOM_CIA": "name_id",
@@ -142,7 +142,7 @@ def process_df(df: pd.DataFrame, filename: str) -> pd.DataFrame:
     df["cvm_id"] = df["cvm_id"].astype("uint32")
     # There are two types of CVM files: DFP (ANNUAL) and ITR (QUARTERLY).
     # In database, "report_type" is positioned after "tax_id" -> position = 3
-    if filename.startswith("dfp"):
+    if filepath.name.startswith("dfp"):
         df.insert(loc=3, column="report_type", value="ANNUAL")
     else:
         df.insert(loc=3, column="report_type", value="QUARTERLY")
@@ -209,6 +209,10 @@ def process_df(df: pd.DataFrame, filename: str) -> pd.DataFrame:
     cols.remove("acc_value")
     df.drop_duplicates(subset=cols, keep="last", inplace=True, ignore_index=True)
 
+    # Add column for file source and file modification time.
+    df["file_source"] = filepath.name
+    df["file_mtime"] = filepath.stat().st_mtime
+
     return df
 
 
@@ -228,8 +232,18 @@ def save_processed_df(df: pd.DataFrame, filepath: Path) -> None:
 def process_file(raw_filepath: Path) -> Path:
     """Read, process and save a CVM file."""
     df = read_raw_file(raw_filepath)
-    df = process_df(df, raw_filepath.name)
+    df = process_df(df, raw_filepath)
     processed_filepath = PROCESSED_DIR / (raw_filepath.stem + ".parquet")
     save_processed_df(df, processed_filepath)
     print(f"    {CHECKMARK} {raw_filepath.name} processed.")
     return processed_filepath
+
+
+def get_raw_files_mtime() -> Dict[str, float]:
+    """Return a dictionary with the files and their modification time."""
+    raw_filepaths = list(RAW_DIR.glob("*.zip"))
+    raw_filepaths.sort()
+    files_mtime = {}
+    for filepath in raw_filepaths:
+        files_mtime[filepath.name] = filepath.stat().st_mtime
+    return files_mtime

@@ -5,7 +5,7 @@ allows updating, processing and consolidating financial statements, as well as
 searching for company names in the FinLogic Database and retrieving information
 about the database itself.
 """
-from typing import Literal
+from typing import Literal, Dict
 import duckdb
 import pandas as pd
 from . import config as cfg
@@ -32,11 +32,33 @@ def build_db():
     cfg.fldb.execute(sql)
 
 
-def update_database(rebuild: bool = False):
+# Get a dicionary with the filenames and their respective modified times in database
+def get_db_files_mtime() -> Dict[str, float]:
+    """Return a dictionary with the file sources and their respective modified times in
+    database."""
+    sql = """
+        SELECT DISTINCT file_source, file_mtime FROM reports
+        ORDER BY file_source
+    """
+    df = cfg.fldb.execute(sql).df()
+    return df.set_index("file_source")["file_mtime"].to_dict()
+
+
+def get_filepaths_to_process() -> list[str]:
+    """Return a list of files in raw folder that must be processed."""
+    filenames_in_dir = cvm.get_raw_files_mtime()
+    filenames_in_db = get_db_files_mtime()
+    for key, value in filenames_in_db.items():
+        if key in filenames_in_dir and filenames_in_dir[key] == value:
+            del filenames_in_dir[key]
+    filenames_to_process = list(filenames_in_dir.keys())
+    return [cvm.RAW_DIR / filename for filename in filenames_to_process]
+
+
+def update_database():
     """Verify changes in CVM files and update Finlogic Database if necessary.
 
     Args:
-        rebuild (bool, optional): If True, rebuilds the database.
 
     Returns:
         None
@@ -49,22 +71,16 @@ def update_database(rebuild: bool = False):
     # urls = urls[:1]  # Test
     updated_raw_filepaths = cvm.update_raw_files(urls)
     print(f"Number of CVM files updated = {len(updated_raw_filepaths)}")
-    if updated_raw_filepaths:
-        [cvm.process_raw_file(filepath) for filepath in updated_raw_filepaths]
-    else:
-        print("CVM files were already updated.")
-    print()
 
-    db_size = cfg.FINLOGIC_DB_PATH.stat().st_size / 1024**2
-    # Rebuilt database when:
-    #   (1) it is considered empty
-    #   (2) a CVM file was downloaded or updated
-    #   (3) it was requested by the user
-    if db_size < 10 or updated_raw_filepaths or rebuild:
-        build_db()
-        print(f"\n{CHECKMARK} FinLogic Database updated!")
-    else:
-        print("FinLogic Database is already updated.")
+    filepaths_to_process = get_filepaths_to_process()
+    print(f"Number of new files to process = {len(filepaths_to_process)}")
+
+    if filepaths_to_process:
+        [cvm.process_file(filepath) for filepath in filepaths_to_process]
+
+    print()
+    build_db()
+    print(f"\n{CHECKMARK} FinLogic Database updated!")
 
 
 def database_info(return_dict: bool = False):
