@@ -10,6 +10,7 @@ import pandas as pd
 from . import config as cfg
 from . import cvm
 from . import language as lng
+from . import currency as crn
 from . import finprint as fpr
 from . import fl_duckdb as fdb
 
@@ -39,6 +40,10 @@ def update_database(reset: bool = False):
     # Language files
     print('\nUpdating "language" database...')
     lng.process_language_df()
+
+    # Currency files
+    print('\nUpdating "currency" database...')
+    crn.process_currency_df()
 
     # CVM raw files
     print("Updating CVM files...")
