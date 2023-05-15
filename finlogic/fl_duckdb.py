@@ -57,20 +57,20 @@ def get_info() -> dict:
     if is_empty():
         return info_dict
 
-    query = """
+    query = """--sql
         SELECT DISTINCT cvm_id, report_version, report_type, period_reference
           FROM reports;
     """
     num_of_reports = execute(query, "df").shape[0]
     db_last_modified = datetime.fromtimestamp(FINLOGIC_DB_PATH.stat().st_mtime)
     query = "SELECT COUNT(*) FROM reports"
-    number_of_rows = execute(query, "fetchall")[0][0]
+    number_of_rows = execute(query, "fetchone")[0]
     query = "SELECT MIN(period_end) FROM reports"
-    first_statement = execute(query, "fetchall")[0][0]
+    first_statement = execute(query, "fetchone")[0]
     query = "SELECT MAX(period_end) FROM reports"
-    last_statement = execute(query, "fetchall")[0][0]
+    last_statement = execute(query, "fetchone")[0]
     query = "SELECT COUNT(DISTINCT cvm_id) FROM reports"
-    number_of_companies = execute(query, "fetchall")[0][0]
+    number_of_companies = execute(query, "fetchone")[0]
 
     info_dict = {
         "db_path": f"{FINLOGIC_DB_PATH}",
@@ -86,15 +86,16 @@ def get_info() -> dict:
     return info_dict
 
 
-def get_db_files_mtime() -> Dict[str, float]:
+def get_file_source_mtimes() -> Dict[str, float]:
     """Return a dictionary with the file sources and their respective modified times in
     database."""
     if is_empty():
         return {}
 
     sql = """
-        SELECT DISTINCT file_source, file_mtime FROM reports
-        ORDER BY file_source
+        SELECT DISTINCT file_source, file_mtime
+          FROM reports
+         ORDER BY file_source
     """
     df = execute(sql, "df")
     return df.set_index("file_source")["file_mtime"].to_dict()

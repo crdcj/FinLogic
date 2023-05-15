@@ -19,7 +19,7 @@ CHECKMARK = "\033[32m\u2714\033[0m"
 def get_filepaths_to_process() -> list[str]:
     """Return a list of files in raw folder that must be processed."""
     filenames_in_dir = cvm.get_raw_files_mtime()
-    filenames_in_db = fdb.get_db_files_mtime()
+    filenames_in_db = fdb.get_file_source_mtimes()
     for key, value in filenames_in_db.items():
         if key in filenames_in_dir and filenames_in_dir[key] == value:
             del filenames_in_dir[key]
@@ -112,7 +112,7 @@ def search_company(
         case _:
             raise ValueError("Invalid value for 'search_by' argument.")
 
-    query = f"""
+    query = f"""--sql
         SELECT DISTINCT name_id, cvm_id, tax_id
           FROM reports
          WHERE {search_by} {sql_condition}
