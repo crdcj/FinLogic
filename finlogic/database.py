@@ -75,10 +75,10 @@ def database_info():
     Returns: None
     """
     info_dict = fdb.get_info()
-    if not info_dict:
-        print("FinLogic Database has no data.")
-        return
-    fpr.print_dict(info_dict=info_dict, table_name="FinLogic Database Info")
+    if info_dict:
+        fpr.print_dict(info_dict=info_dict, table_name="FinLogic Database Info")
+    else:
+        print("FinLogic Database is empty.")
 
 
 def search_company(

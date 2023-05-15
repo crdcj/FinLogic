@@ -61,10 +61,10 @@ def get_info() -> dict:
         SELECT DISTINCT cvm_id, report_version, report_type, period_reference
           FROM reports;
     """
+    num_of_reports = execute(query, "df").shape[0]
     db_last_modified = datetime.fromtimestamp(FINLOGIC_DB_PATH.stat().st_mtime)
     query = "SELECT COUNT(*) FROM reports"
     number_of_rows = execute(query, "fetchall")[0][0]
-    num_of_reports = execute(query, "df").shape[0]
     query = "SELECT MIN(period_end) FROM reports"
     first_statement = execute(query, "fetchall")[0][0]
     query = "SELECT MAX(period_end) FROM reports"
