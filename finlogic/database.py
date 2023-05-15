@@ -17,14 +17,13 @@ CHECKMARK = "\033[32m\u2714\033[0m"
 
 
 def get_filepaths_to_process() -> list[str]:
-    """Return a list of files in raw folder that must be processed."""
-    filenames_in_dir = cvm.get_raw_files_mtime()
-    filenames_in_db = fdb.get_file_source_mtimes()
-    for key, value in filenames_in_db.items():
-        if key in filenames_in_dir and filenames_in_dir[key] == value:
-            del filenames_in_dir[key]
-    filenames_to_process = list(filenames_in_dir.keys())
-    return [cfg.CVM_RAW_DIR / filename for filename in filenames_to_process]
+    """Return a list of CVM files that has be processed by comparing
+    mtimes in the raw folder with mtimes in the database.
+    """
+    new_mtimes = cvm.get_raw_file_mtimes()
+    old_mtimes = fdb.get_file_mtimes()
+    filenames = pd.concat([new_mtimes, old_mtimes]).drop_duplicates(keep=False)
+    return filenames.to_list()
 
 
 def update_database(reset: bool = False):

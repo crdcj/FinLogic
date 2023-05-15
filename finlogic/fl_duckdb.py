@@ -1,6 +1,7 @@
 """FinLogic Database module."""
 from typing import Dict, Literal
 import duckdb
+import pandas as pd
 from datetime import datetime
 from . import config as cfg
 
@@ -86,8 +87,8 @@ def get_info() -> dict:
     return info_dict
 
 
-def get_file_source_mtimes() -> Dict[str, float]:
-    """Return a dictionary with the file sources and their respective modified times in
+def get_file_mtimes() -> pd.Series:
+    """Return a Pandas Series with the file sources and their respective modified times in
     database."""
     if is_empty():
         return {}
@@ -97,5 +98,4 @@ def get_file_source_mtimes() -> Dict[str, float]:
           FROM reports
          ORDER BY file_source
     """
-    df = execute(sql, "df")
-    return df.set_index("file_source")["file_mtime"].to_dict()
+    return execute(sql, "df").set_index("file_source")["file_mtime"]

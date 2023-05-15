@@ -234,11 +234,8 @@ def process_file(raw_filepath: Path) -> Path:
     return processed_filepath
 
 
-def get_raw_files_mtime() -> Dict[str, float]:
+def get_raw_file_mtimes() -> pd.Series:
     """Return a dictionary with the files and their modification time."""
-    raw_filepaths = list(cfg.CVM_RAW_DIR.glob("*.zip"))
-    raw_filepaths.sort()
-    files_mtime = {}
-    for filepath in raw_filepaths:
-        files_mtime[filepath.name] = filepath.stat().st_mtime
-    return files_mtime
+    filepaths = sorted(cfg.CVM_RAW_DIR.glob("*.zip"))
+    mtimes_dict = {filepath.name: filepath.stat().st_mtime for filepath in filepaths}
+    return pd.Series(mtimes_dict)
