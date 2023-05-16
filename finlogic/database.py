@@ -7,8 +7,8 @@ about the database itself.
 """
 from typing import Literal
 import pandas as pd
-from . import config as cfg
 from . import cvm
+from . import config as cfg
 from . import language as lng
 from . import finprint as fpr
 from . import fl_duckdb as fdb
@@ -17,13 +17,14 @@ CHECKMARK = "\033[32m\u2714\033[0m"
 
 
 def get_filepaths_to_process() -> list[str]:
-    """Return a list of CVM files that has be processed by comparing
-    mtimes in the raw folder with mtimes in the database.
+    """Return a list of CVM files that has to be processed by comparing
+    the files mtimes in the raw folder and in the database.
     """
-    new_mtimes = cvm.get_raw_file_mtimes()
-    old_mtimes = fdb.get_file_mtimes()
-    filenames = pd.concat([new_mtimes, old_mtimes]).drop_duplicates(keep=False)
-    return filenames.to_list()
+    df_raw = cvm.get_raw_file_mtimes()
+    df_fdb = fdb.get_file_mtimes()
+    df_new = pd.concat([df_raw, df_fdb]).drop_duplicates(keep=False)
+    file_sources = df_new["file_source"].drop_duplicates().tolist()
+    return [cfg.CVM_RAW_DIR / file_source for file_source in file_sources]
 
 
 def update_database(reset: bool = False):
@@ -42,7 +43,6 @@ def update_database(reset: bool = False):
     # CVM raw files
     print("Updating CVM files...")
     urls = cvm.get_all_file_urls()
-    # urls = urls[:1]  # Test
     updated_raw_filepaths = cvm.update_raw_files(urls)
     print(f"Number of CVM files updated = {len(updated_raw_filepaths)}")
 

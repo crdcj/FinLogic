@@ -1,5 +1,5 @@
 """FinLogic Database module."""
-from typing import Dict, Literal
+from typing import Literal
 import duckdb
 import pandas as pd
 from datetime import datetime
@@ -87,15 +87,14 @@ def get_info() -> dict:
     return info_dict
 
 
-def get_file_mtimes() -> pd.Series:
-    """Return a Pandas Series with the file sources and their respective modified times in
-    database."""
+def get_file_mtimes() -> pd.DataFrame:
+    """Return a Pandas DataFrame with unique file_source and file_mtime."""
     if is_empty():
-        return {}
+        return pd.DataFrame()
 
     sql = """
         SELECT DISTINCT file_source, file_mtime
           FROM reports
          ORDER BY file_source
     """
-    return execute(sql, "df").set_index("file_source")["file_mtime"]
+    return execute(sql, "df")

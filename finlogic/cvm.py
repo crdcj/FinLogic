@@ -1,6 +1,6 @@
 """Module to download and process CVM data."""
 import re
-from typing import List, Dict
+from typing import List
 import zipfile as zf
 from pathlib import Path
 import duckdb
@@ -234,8 +234,8 @@ def process_file(raw_filepath: Path) -> Path:
     return processed_filepath
 
 
-def get_raw_file_mtimes() -> pd.Series:
-    """Return a dictionary with the files and their modification time."""
+def get_raw_file_mtimes() -> pd.DataFrame:
+    """Return a Pandas DataFrame with file_source and file_mtime columns."""
     filepaths = sorted(cfg.CVM_RAW_DIR.glob("*.zip"))
-    mtimes_dict = {filepath.name: filepath.stat().st_mtime for filepath in filepaths}
-    return pd.Series(mtimes_dict)
+    d_mtimes = {filepath.name: filepath.stat().st_mtime for filepath in filepaths}
+    return pd.DataFrame(d_mtimes.items(), columns=["file_source", "file_mtime"])
