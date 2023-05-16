@@ -18,7 +18,7 @@ CHECKMARK = "\033[32m\u2714\033[0m"
 
 def get_filepaths_to_process() -> list[str]:
     """Return a list of CVM files that has to be processed by comparing
-    the files mtimes in the raw folder and in the database.
+    the files mtimes from the raw folder with the database.
     """
     df_raw = cvm.get_raw_file_mtimes()
     df_fdb = fdb.get_file_mtimes()
@@ -27,12 +27,12 @@ def get_filepaths_to_process() -> list[str]:
     return [cfg.CVM_RAW_DIR / file_source for file_source in file_sources]
 
 
-def update_database(reset: bool = False):
+def update_database(rebuild: bool = False):
     """Verify changes in CVM files and update Finlogic Database if necessary.
 
     Args:
-        reset (bool, optional): If True, delete the database file and create a
-            new one. Defaults to False.
+        rebuild (bool, optional): If True, processes all CVM files and rebuilds
+            the database. Defaults to False.
     Returns:
         None
     """
@@ -48,7 +48,12 @@ def update_database(reset: bool = False):
 
     # CVM processed files
     print("\nProcessing CVM files...")
-    filepaths_to_process = get_filepaths_to_process()
+    if rebuild:
+        # Process all files
+        filepaths_to_process = sorted(cfg.CVM_RAW_DIR.glob("*.zip"))
+    else:
+        # Process only updated files
+        filepaths_to_process = get_filepaths_to_process()
     print(f"Number of new files to process = {len(filepaths_to_process)}")
     if filepaths_to_process:
         [cvm.process_file(filepath) for filepath in filepaths_to_process]
