@@ -7,8 +7,8 @@ about the database itself.
 """
 from typing import Literal
 import pandas as pd
-from . import config as cfg
 from . import cvm
+from . import config as cfg
 from . import language as lng
 from . import finprint as fpr
 from . import fl_duckdb as fdb
@@ -17,22 +17,22 @@ CHECKMARK = "\033[32m\u2714\033[0m"
 
 
 def get_filepaths_to_process() -> list[str]:
-    """Return a list of files in raw folder that must be processed."""
-    filenames_in_dir = cvm.get_raw_files_mtime()
-    filenames_in_db = fdb.get_file_source_mtimes()
-    for key, value in filenames_in_db.items():
-        if key in filenames_in_dir and filenames_in_dir[key] == value:
-            del filenames_in_dir[key]
-    filenames_to_process = list(filenames_in_dir.keys())
-    return [cfg.CVM_RAW_DIR / filename for filename in filenames_to_process]
+    """Return a list of CVM files that has to be processed by comparing
+    the files mtimes from the raw folder with the database.
+    """
+    df_raw = cvm.get_raw_file_mtimes()
+    df_fdb = fdb.get_file_mtimes()
+    df_new = pd.concat([df_raw, df_fdb]).drop_duplicates(keep=False)
+    file_sources = set(df_new["file_source"])
+    return [cfg.CVM_RAW_DIR / file_source for file_source in file_sources]
 
 
-def update_database(reset: bool = False):
+def update_database(rebuild: bool = False):
     """Verify changes in CVM files and update Finlogic Database if necessary.
 
     Args:
-        reset (bool, optional): If True, delete the database file and create a
-            new one. Defaults to False.
+        rebuild (bool, optional): If True, processes all CVM files and rebuilds
+            the database. Defaults to False.
     Returns:
         None
     """
@@ -43,13 +43,17 @@ def update_database(reset: bool = False):
     # CVM raw files
     print("Updating CVM files...")
     urls = cvm.get_all_file_urls()
-    # urls = urls[:1]  # Test
     updated_raw_filepaths = cvm.update_raw_files(urls)
     print(f"Number of CVM files updated = {len(updated_raw_filepaths)}")
 
     # CVM processed files
     print("\nProcessing CVM files...")
-    filepaths_to_process = get_filepaths_to_process()
+    if rebuild:
+        # Process all files
+        filepaths_to_process = sorted(cfg.CVM_RAW_DIR.glob("*.zip"))
+    else:
+        # Process only updated files
+        filepaths_to_process = get_filepaths_to_process()
     print(f"Number of new files to process = {len(filepaths_to_process)}")
     if filepaths_to_process:
         [cvm.process_file(filepath) for filepath in filepaths_to_process]
