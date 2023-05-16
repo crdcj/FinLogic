@@ -23,7 +23,7 @@ def get_filepaths_to_process() -> list[str]:
     df_raw = cvm.get_raw_file_mtimes()
     df_fdb = fdb.get_file_mtimes()
     df_new = pd.concat([df_raw, df_fdb]).drop_duplicates(keep=False)
-    file_sources = df_new["file_source"].drop_duplicates().tolist()
+    file_sources = set(df_new["file_source"])
     return [cfg.CVM_RAW_DIR / file_source for file_source in file_sources]
 
 
