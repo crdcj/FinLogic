@@ -7,6 +7,7 @@ Classes:
     users to generate financial reports and indicators.
 
 Abreviations used in code:
+    dfc = company dataframe
     dfi = input dataframe
     dfo = output dataframe
 
@@ -59,7 +60,7 @@ class Company:
         self.language = language
         self._initialized = True
         # Only set company dataframe after identifier, acc_method and acc_unit are set
-        self._set_co_df()
+        self._set_dfc()
 
     @property
     def identifier(self) -> int | str:
@@ -103,7 +104,7 @@ class Company:
             raise KeyError(f"Company 'identifier' {identifier} not found.")
         # If object was already initialized, reset company dataframe
         if self._initialized:
-            self._set_co_df()
+            self._set_dfc()
 
     @property
     def acc_method(self) -> Literal["consolidated", "separate"]:
@@ -129,7 +130,7 @@ class Company:
             raise ValueError("acc_method expects 'consolidated' or 'separate'")
         # If object was already initialized, reset company dataframe
         if self._initialized:
-            self._set_co_df()
+            self._set_dfc()
 
     @property
     def acc_unit(self) -> float:
@@ -175,7 +176,7 @@ class Company:
 
         # If object was already initialized, reset company dataframe
         if self._initialized:
-            self._set_co_df()
+            self._set_dfc()
 
     @property
     def tax_rate(self) -> float:
@@ -235,7 +236,7 @@ class Company:
             sup_lang = f"Supported languages: {', '.join(list_languages)}"
             raise KeyError(f"'{language}' not supported. {sup_lang}")
 
-    def _set_co_df(self) -> pd.DataFrame:
+    def _set_dfc(self) -> pd.DataFrame:
         """Sets the company data frame.
 
         This method creates a data frame with the company's financial
@@ -249,22 +250,22 @@ class Company:
                AND acc_method = '{self._acc_method}'
              ORDER BY acc_code, period_reference, period_end
         """
-        co_df = execute(query, "df")
+        dfc = execute(query, "df")
 
         # Change acc_unit only for accounts different from 3.99
-        co_df["acc_value"] = np.where(
-            co_df["acc_code"].str.startswith("3.99"),
-            co_df["acc_value"],
-            co_df["acc_value"] / self._acc_unit,
+        dfc["acc_value"] = np.where(
+            dfc["acc_code"].str.startswith("3.99"),
+            dfc["acc_value"],
+            dfc["acc_value"] / self._acc_unit,
         )
-        annual_reports = co_df.query('report_type == "ANNUAL"')
+        annual_reports = dfc.query('report_type == "ANNUAL"')
         self._first_annual = annual_reports["period_end"].min()
         self._last_annual = annual_reports["period_end"].max()
-        quarterly_reports = co_df.query('report_type == "QUARTERLY"')
+        quarterly_reports = dfc.query('report_type == "QUARTERLY"')
         self._last_quarterly = quarterly_reports["period_end"].max()
 
         # Drop columns that are already company atributes
-        co_df.drop(columns=["name_id", "cvm_id", "tax_id", "acc_method"], inplace=True)
+        dfc.drop(columns=["name_id", "cvm_id", "tax_id", "acc_method"], inplace=True)
 
         # Keep only the newest 'report_version' in df
         cols = [
@@ -274,32 +275,34 @@ class Company:
             "period_order",
             "acc_code",
         ]
-        co_df.sort_values(by=cols, ignore_index=True, inplace=True)
-        cols = co_df.columns.tolist()
+        dfc.sort_values(by=cols, ignore_index=True, inplace=True)
+        cols = dfc.columns.tolist()
         cols_remove = ["report_version", "acc_value", "acc_fixed"]
         [cols.remove(col) for col in cols_remove]
         # Ascending order --> last is the newest report_version
-        co_df.drop_duplicates(cols, keep="last", inplace=True, ignore_index=True)
+        dfc.drop_duplicates(cols, keep="last", inplace=True, ignore_index=True)
 
         # Set company data frame
-        self._co_df = co_df
+        self._dfc = dfc
 
     def info(self) -> dict:
         """Print a concise summary of a company."""
+        # Some companies have no quarterly reports (see cvm_id 9784)
+        if self._last_quarterly is pd.NaT:
+            last_quarterly = "No quarterly reports"
         company_info = {
             "Name": self.name_id,
             "CVM ID": self._cvm_id,
             "Fiscal ID (CNPJ)": self.tax_id,
-            "Total Accounting Rows": len(self._co_df.index),
+            "Total Accounting Rows": len(self._dfc.index),
             "Selected Accounting Method": self._acc_method,
             "Selected Accounting Unit": self._acc_unit,
             "Selected Tax Rate": self._tax_rate,
             "First Annual Report": self._first_annual.strftime("%Y-%m-%d"),
             "Last Annual Report": self._last_annual.strftime("%Y-%m-%d"),
-            "Last Quarterly Report": self._last_quarterly.strftime("%Y-%m-%d"),
+            "Last Quarterly Report": last_quarterly,
         }
         print_dict(info_dict=company_info, table_name="Company Info")
-        return None
 
     def _build_report(self, dfi: pd.DataFrame) -> pd.DataFrame:
         # keep only last quarterly fs
@@ -327,7 +330,7 @@ class Company:
             ["acc_name", "acc_code", "acc_fixed"]
         ].drop_duplicates(subset="acc_code", ignore_index=True, keep="last")
 
-        periods = list(df["period_end"].sort_values().unique())
+        periods = sorted(df["period_end"].drop_duplicates())
         for period in periods:
             year_cols = ["acc_value", "acc_code"]
             df_year = df.query("period_end == @period")[year_cols].copy()
@@ -377,7 +380,7 @@ class Company:
         if acc_level not in {None, 2, 3, 4}:
             raise ValueError("acc_level expects None, 2, 3 or 4")
 
-        df = self._co_df.copy()
+        df = self._dfc.copy()
 
         # Set language
         class MyDict(dict):
