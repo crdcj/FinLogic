@@ -95,7 +95,7 @@ def read_raw_file(filepath: Path) -> pd.DataFrame:
 
 
 def remove_empty_spaces(s: pd.Series) -> pd.Series:
-    """Remove empty spaces in a pandas Series of strings."""
+    """Remove empty spaces in a pandas Series of repeated strings."""
     s_unique_original = pd.Series(s.unique())
     s_unique_adjusted = s_unique_original.replace("\s+", " ", regex=True).str.strip()
     mapping_dict = dict(zip(s_unique_original, s_unique_adjusted))
@@ -145,6 +145,9 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     # Remove any extra spaces (line breaks, tabs, etc.) from columns below.
     columns = ["name_id", "acc_name", "equity_statement"]
     df[columns] = df[columns].apply(remove_empty_spaces)
+
+    # Replace "BCO " with "BANCO " in "name_id" column.
+    df["name_id"] = df["name_id"].str.replace("BCO ", "BANCO ")
 
     # Convert string columns to categorical before mapping.
     columns = df.select_dtypes(include="object").columns
