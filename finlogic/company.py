@@ -23,8 +23,8 @@ from typing import Literal
 import numpy as np
 import pandas as pd
 from .language import language_df
-from .finprint import print_dict
-from .fl_duckdb import execute
+from .fprint import print_dict
+from .fduckdb import execute
 
 
 class Company:
@@ -290,6 +290,9 @@ class Company:
         # Some companies have no quarterly reports (see cvm_id 9784)
         if self._last_quarterly is pd.NaT:
             last_quarterly = "No quarterly reports"
+        else:
+            last_quarterly = self._last_quarterly.strftime("%Y-%m-%d")
+
         company_info = {
             "Name": self.name_id,
             "CVM ID": self._cvm_id,

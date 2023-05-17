@@ -10,8 +10,8 @@ import pandas as pd
 from . import cvm
 from . import config as cfg
 from . import language as lng
-from . import finprint as fpr
-from . import fl_duckdb as fdb
+from . import fprint as fpr
+from . import fduckdb as fdb
 
 CHECKMARK = "\033[32m\u2714\033[0m"
 
@@ -23,7 +23,7 @@ def get_filepaths_to_process() -> list[str]:
     df_raw = cvm.get_raw_file_mtimes()
     df_fdb = fdb.get_file_mtimes()
     df_new = pd.concat([df_raw, df_fdb]).drop_duplicates(keep=False)
-    file_sources = set(df_new["file_source"])
+    file_sources = sorted(df_new["file_source"].drop_duplicates())
     return [cfg.CVM_RAW_DIR / file_source for file_source in file_sources]
 
 
