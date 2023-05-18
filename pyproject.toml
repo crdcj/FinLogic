@@ -28,9 +28,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = [
-  "pytest>=7.0.0"
-]
+dev = ["pytest", "ipykernel"]
 
 [project.urls]
 repository = "https://github.com/crdcj/FinLogic"

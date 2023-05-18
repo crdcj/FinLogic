@@ -46,8 +46,8 @@ class Company:
     def __init__(
         self,
         identifier: int | str,
-        acc_method: Literal["consolidated", "separate"] = "consolidated",
-        acc_unit: int | float | str = 1,
+        acc_method: Literal["con", "sep"] = "con",
+        acc_unit: int | float | Literal["t", "m", "b"] = 1,
         tax_rate: float = 0.34,
         language: str = "english",
     ):
@@ -107,14 +107,14 @@ class Company:
             self._set_dfc()
 
     @property
-    def acc_method(self) -> Literal["consolidated", "separate"]:
+    def acc_method(self) -> Literal["con", "sep"]:
         """Gets or sets the accounting method for registering investments in
         subsidiaries.
 
-        The "acc_method" must be "consolidated" or "separate". Consolidated
-        accounting combines the financial statements of a parent company and its
-        subsidiaries, while separate accounting keeps them separate. Defaults to
-        'consolidated'.
+        The "acc_method" must be "con" for consolidated or "sep" for separate.
+        Consolidated accounting combines the financial statements of a parent
+        company and its subsidiaries, while separate accounting keeps them
+        separate. Defaults to 'consolidated'.
 
         Raises:
             ValueError: If the accounting method is invalid.
@@ -122,10 +122,12 @@ class Company:
         return self._acc_unit
 
     @acc_method.setter
-    def acc_method(self, value: Literal["consolidated", "separate"]):
-        if value in {"consolidated", "separate"}:
-            # Set accounting method to upper case as in FinLogic Database
-            self._acc_method = value.upper()
+    def acc_method(self, value: Literal["con", "sep"]):
+        # Set accounting method to upper case as in FinLogic Database
+        if value == "con":
+            self._acc_method = "CONSOLIDATED"
+        elif value == "sep":
+            self._acc_method = "SEPARATE"
         else:
             raise ValueError("acc_method expects 'consolidated' or 'separate'")
         # If object was already initialized, reset company dataframe
@@ -139,9 +141,9 @@ class Company:
         The "acc_unit" is a constant that will divide all company
         accounting values. The constant must be a number greater than
         zero or one of the following strings:
-            - "thousand" to represent thousands       (1,000)
-            - "million" to represent millions     (1,000,000)
-            - "billion" to represent billions (1,000,000,000)
+            - "t" to represent thousands       (1,000)
+            - "m" to represent millions     (1,000,000)
+            - "b" to represent billions (1,000,000,000)
 
         Returns:
             The current accounting unit.
@@ -151,7 +153,7 @@ class Company:
 
         Examples:
             To set the accounting unit to millions:
-                company.acc_unit = "million"
+                company.acc_unit = "m"
 
             To set the accounting unit to a custom factor, e.g., 10,000:
                 company.acc_unit = 10_000
@@ -159,18 +161,18 @@ class Company:
         return self._acc_unit
 
     @acc_unit.setter
-    def acc_unit(self, value: int | float | str) -> float | int:
+    def acc_unit(self, value: int | float | Literal["t", "m", "b"]):
         match value:
-            case "thousand":
+            case "t":
                 self._acc_unit = 1_000
-            case "million":
+            case "m":
                 self._acc_unit = 1_000_000
-            case "billion":
+            case "b":
                 self._acc_unit = 1_000_000_000
             case str():  # Add this case to catch invalid strings
                 raise ValueError("Invalid string for Accounting Unit")
             case v if v > 0:
-                self._acc_unit = v
+                self._acc_unit = float(v)
             case _:
                 raise ValueError("Accounting Unit is invalid")
 
