@@ -30,17 +30,25 @@ from .fduckdb import execute
 class Company:
     """A class to represent a company financial data.
 
-    This class provides methods to create financial reports and to calculate
-    financial indicators based on a company's accounting data. The class also
-    has an AI generated dictionary to translate from Portuguese to English.
+     This class provides methods to create financial reports and to calculate
+     financial indicators based on a company's accounting data. The class also
+     has an AI generated dictionary to translate from Portuguese to English.
 
-    Methods:
-        report: Creates a financial report for the company.
-        custom_report: Creates a custom financial report for the company.
-        indicators: Calculates the financial indicators of the company.
+    Attributes:
+         identifier: A unique identifier for the company (int or str).
+         acc_method: The accounting method, either 'con' or 'sep' (str).
+         acc_unit: The accounting unit for the financial statements (int, float,
+             or 't', 'm', 'b').
+         tax_rate: The tax rate for the company (float).
+         language: The language for the financial report (str).
 
-    Raises:
-        ValueError: If the input arguments are invalid.
+     Methods:
+         report: Creates a financial report for the company.
+         custom_report: Creates a custom financial report for the company.
+         indicators: Calculates the financial indicators of the company.
+
+     Raises:
+         ValueError: If the input arguments are invalid.
     """
 
     def __init__(
@@ -49,7 +57,7 @@ class Company:
         acc_method: Literal["con", "sep"] = "con",
         acc_unit: int | float | Literal["t", "m", "b"] = 1,
         tax_rate: float = 0.34,
-        language: str = "english",
+        language: Literal["english", "portuguese"] = "english",
     ):
         """Initializes a new instance of the Company class."""
         self._initialized = False
@@ -229,7 +237,7 @@ class Company:
         return self._language
 
     @language.setter
-    def language(self, language: str):
+    def language(self, language: Literal["english", "portuguese"]):
         # Supported languages
         list_languages = ["english", "portuguese"]
         if language.lower() in list_languages:
@@ -241,7 +249,7 @@ class Company:
     def _set_dfc(self) -> pd.DataFrame:
         """Sets the company data frame.
 
-        This method creates a data frame with the company's financial
+        This method creates a dataframe with the company's financial
         statements.
         """
         # Create the company data frame
@@ -266,23 +274,19 @@ class Company:
         quarterly_reports = dfc.query('report_type == "QUARTERLY"')
         self._last_quarterly = quarterly_reports["period_end"].max()
 
-        # Drop columns that are already company atributes
-        dfc.drop(columns=["name_id", "cvm_id", "tax_id", "acc_method"], inplace=True)
+        # Drop columns that are company atributes or file source data
 
-        # Keep only the newest 'report_version' in df
-        cols = [
-            "report_type",
-            "report_version",
-            "period_reference",
-            "period_order",
-            "acc_code",
-        ]
-        dfc.sort_values(by=cols, ignore_index=True, inplace=True)
-        cols = dfc.columns.tolist()
-        cols_remove = ["report_version", "acc_value", "acc_fixed"]
-        [cols.remove(col) for col in cols_remove]
-        # Ascending order --> last is the newest report_version
-        dfc.drop_duplicates(cols, keep="last", inplace=True, ignore_index=True)
+        dfc.drop(
+            columns=[
+                "name_id",
+                "cvm_id",
+                "tax_id",
+                "acc_method",
+                "file_source",
+                "file_mtime",
+            ],
+            inplace=True,
+        )
 
         # Set company data frame
         self._dfc = dfc
@@ -350,7 +354,7 @@ class Company:
     def report(
         self,
         report_type: str,
-        acc_level: int | None = None,
+        acc_level: int = 0,
         num_years: int = 0,
     ) -> pd.DataFrame:
         """Generate an accounting report for the company.
@@ -359,19 +363,30 @@ class Company:
         statements for the company adjusted by the attributes passed.
 
         Args:
-            report_type: Type of financial report to be generated. Options
-                include: "assets", "cash", "current_assets",
-                "non_current_assets", "liabilities", "debt",
-                "current_liabilities", "non_current_liabilities",
-                "liabilities_and_equity", "equity", "income",
-                "earnings_per_share", "comprehensive_income",
-                "changes_in_equity", "cash_flow" and "added_value".
-            acc_level: Detail level to show for account codes. Options are 2,
-                3, 4 or None. Defaults to None. How the values works:
+            report_type: Type of financial report to be generated. Options are:
+                    - "assets"
+                    - "cash"
+                    - "current_assets",
+                    - "non_current_assets"
+                    - "liabilities"
+                    - "debt"
+                    - "current_liabilities"
+                    - "non_current_liabilities",
+                    - "liabilities_and_equity"
+                    - "equity"
+                    - "income"
+                    - "earnings_per_share"
+                    - "comprehensive_income",
+                    - "changes_in_equity"
+                    - "cash_flow"
+                    - "added_value"
+            acc_level: Detail level to show for account codes. Options are 0, 1,
+                2, 3 or 4. Defaults to 0. How the values works:
+                    0    -> X...       (show all accounts)
+                    1    -> X          (show 1 level)
                     2    -> X.YY       (show 2 levels)
                     3    -> X.YY.ZZ    (show 3 levels)
                     4    -> X.YY.ZZ.WW (show 4 levels)
-                    None -> X...       (default: show all accounts)
             num_years: Number of years to include in the report. Defaults to 0
                 (all years).
 
@@ -382,8 +397,8 @@ class Company:
             ValueError: If some argument is invalid.
         """
         # Check input arguments.
-        if acc_level not in {None, 2, 3, 4}:
-            raise ValueError("acc_level expects None, 2, 3 or 4")
+        if acc_level not in {0, 1, 2, 3, 4}:
+            raise ValueError("acc_level expects 0, 1, 2, 3 or 4")
 
         df = self._dfc.copy()
 
@@ -401,8 +416,7 @@ class Company:
 
         # Filter dataframe for selected acc_level
         if acc_level:
-            acc_code_limit = acc_level * 3 - 2  # noqa
-            df.query("acc_code.str.len() <= @acc_code_limit", inplace=True)
+            df.query(f"acc_code.str.count('\.') <= {acc_level - 1}", inplace=True)
         """
         Filter dataframe for selected report_type (report type)
         df['acc_code'].str[0].unique() -> [1, 2, 3, 4, 5, 6, 7]
@@ -513,7 +527,7 @@ class Company:
         df_le = self.report("liabilities_and_equity")
         df_is = self.report("income")
         df_cf = self.report("cash_flow")
-        dfo = pd.concat([df_as, df_le, df_is, df_cf]).query("acc_code == @acc_list")
+        dfo = pd.concat([df_as, df_le, df_is, df_cf]).query(f"acc_code == {acc_list}")
         # Show only selected years
         if num_years > 0:
             cols = dfo.columns.to_list()
