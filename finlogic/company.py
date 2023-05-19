@@ -365,15 +365,15 @@ class Company:
         Args:
             report_type: Type of financial report to be generated. Options are:
                     - "assets"
-                    - "cash"
-                    - "current_assets",
-                    - "non_current_assets"
+                        - "cash"
+                        - "current_assets",
+                        - "non_current_assets"
                     - "liabilities"
-                    - "debt"
-                    - "current_liabilities"
-                    - "non_current_liabilities",
+                        - "debt"
+                        - "current_liabilities"
+                        - "non_current_liabilities",
                     - "liabilities_and_equity"
-                    - "equity"
+                        - "equity"
                     - "income"
                     - "earnings_per_share"
                     - "comprehensive_income",
@@ -396,11 +396,17 @@ class Company:
         Raises:
             ValueError: If some argument is invalid.
         """
+        # Copy company dataframe to avoid changing it
+        df = self._dfc.copy()
+
         # Check input arguments.
         if acc_level not in {0, 1, 2, 3, 4}:
             raise ValueError("acc_level expects 0, 1, 2, 3 or 4")
 
-        df = self._dfc.copy()
+        # Filter dataframe for selected acc_level
+        # Example of an acc_code: "7.08.04.04" -> 4 levels and 3 dots
+        if acc_level:
+            df.query(rf"acc_code.str.count('\.') <= {acc_level - 1}", inplace=True)
 
         # Set language
         class MyDict(dict):
@@ -414,9 +420,6 @@ class Company:
             _pten_dict = MyDict(_pten_dict)
             df["acc_name"] = df["acc_name"].map(_pten_dict)
 
-        # Filter dataframe for selected acc_level
-        if acc_level:
-            df.query(f"acc_code.str.count('\.') <= {acc_level - 1}", inplace=True)
         """
         Filter dataframe for selected report_type (report type)
         df['acc_code'].str[0].unique() -> [1, 2, 3, 4, 5, 6, 7]
@@ -431,30 +434,25 @@ class Company:
             7 -> Added Value
         """
         report_types = {
-            "assets": ["1"],
-            "cash": ["1.01.01", "1.01.02"],
-            "current_assets": ["1.01"],
-            "non_current_assets": ["1.02"],
-            "liabilities": ["2.01", "2.02"],
-            "debt": ["2.01.04", "2.02.01"],
-            "current_liabilities": ["2.01"],
-            "non_current_liabilities": ["2.02"],
-            "liabilities_and_equity": ["2"],
-            "equity": ["2.03"],
-            "income": ["3"],
-            "earnings_per_share": ["3.99"],
-            "comprehensive_income": ["4"],
-            "changes_in_equity": ["5"],
-            "cash_flow": ["6"],
-            "added_value": ["7"],
+            "assets": ("1"),
+            "cash": ("1.01.01", "1.01.02"),
+            "current_assets": ("1.01"),
+            "non_current_assets": ("1.02"),
+            "liabilities": ("2.01", "2.02"),
+            "debt": ("2.01.04", "2.02.01"),
+            "current_liabilities": ("2.01"),
+            "non_current_liabilities": ("2.02"),
+            "liabilities_and_equity": ("2"),
+            "equity": ("2.03"),
+            "income": ("3"),
+            "earnings_per_share": ("3.99"),
+            "comprehensive_income": ("4"),
+            "changes_in_equity": ("5"),
+            "cash_flow": ("6"),
+            "added_value": ("7"),
         }
-        acc_codes = report_types[report_type]
-        expr = ""
-        for count, acc_code in enumerate(acc_codes):
-            if count > 0:
-                expr += " or "
-            expr += f'acc_code.str.startswith("{acc_code}")'
-        df.query(expr, inplace=True)
+        acc_codes = report_types[report_type]  # noqa
+        df.query("acc_code.str.startswith(@acc_codes)", inplace=True)
 
         # remove earnings per share from income statment
         if report_type == "income":
