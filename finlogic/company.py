@@ -35,12 +35,17 @@ class Company:
      has an AI generated dictionary to translate from Portuguese to English.
 
     Attributes:
-         identifier: A unique identifier for the company (int or str).
-         acc_method: The accounting method, either 'con' or 'sep' (str).
-         acc_unit: The accounting unit for the financial statements (int, float,
-             or 't', 'm', 'b').
-         tax_rate: The tax rate for the company (float).
-         language: The language for the financial report (str).
+         identifier: A unique identifier for the company. Both CVM ID (int) and
+            Fiscal ID (str) can be used.
+         acc_method: The accounting methods can be either 'con' for consolidated or
+            'sep' for separate. Defaults to 'con' (str).
+         acc_unit: The accounting unit for the financial statements where "t"
+            represents thousands, "m" represents millions and "b" represents
+            billions (int, float or str). Defaults to 1.
+         tax_rate: The tax rate for the company. Defaults to 0.34, which is
+            the standard corporate tax rate in Brazil (float).
+         language: The language for the financial reports. Options are "english"
+            or "portuguese". Defaults to "english" (str).
 
      Methods:
          report: Creates a financial report for the company.
