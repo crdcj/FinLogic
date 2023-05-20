@@ -73,7 +73,7 @@ class Company:
         self.language = language
         self._initialized = True
         # Only set company dataframe after identifier, acc_method and acc_unit are set
-        self._set_dfc()
+        self._set_df()
 
     @property
     def identifier(self) -> int | str:
@@ -117,7 +117,7 @@ class Company:
             raise KeyError(f"Company 'identifier' {identifier} not found.")
         # If object was already initialized, reset company dataframe
         if self._initialized:
-            self._set_dfc()
+            self._set_df()
 
     @property
     def acc_method(self) -> Literal["con", "sep"]:
@@ -145,7 +145,7 @@ class Company:
             raise ValueError("acc_method expects 'consolidated' or 'separate'")
         # If object was already initialized, reset company dataframe
         if self._initialized:
-            self._set_dfc()
+            self._set_df()
 
     @property
     def acc_unit(self) -> float:
@@ -191,7 +191,7 @@ class Company:
 
         # If object was already initialized, reset company dataframe
         if self._initialized:
-            self._set_dfc()
+            self._set_df()
 
     @property
     def tax_rate(self) -> float:
@@ -251,7 +251,7 @@ class Company:
             sup_lang = f"Supported languages: {', '.join(list_languages)}"
             raise KeyError(f"'{language}' not supported. {sup_lang}")
 
-    def _set_dfc(self) -> pd.DataFrame:
+    def _set_df(self) -> pd.DataFrame:
         """Sets the company data frame.
 
         This method creates a dataframe with the company's financial
@@ -265,23 +265,22 @@ class Company:
                AND acc_method = '{self._acc_method}'
              ORDER BY acc_code, period_reference, period_end
         """
-        dfc = execute(query, "df")
+        df = execute(query, "df")
 
         # Change acc_unit only for accounts different from 3.99
-        dfc["acc_value"] = np.where(
-            dfc["acc_code"].str.startswith("3.99"),
-            dfc["acc_value"],
-            dfc["acc_value"] / self._acc_unit,
+        df["acc_value"] = np.where(
+            df["acc_code"].str.startswith("3.99"),
+            df["acc_value"],
+            df["acc_value"] / self._acc_unit,
         )
-        annual_reports = dfc.query('report_type == "ANNUAL"')
+        annual_reports = df.query('report_type == "ANNUAL"')
         self._first_annual = annual_reports["period_end"].min()
         self._last_annual = annual_reports["period_end"].max()
-        quarterly_reports = dfc.query('report_type == "QUARTERLY"')
+        quarterly_reports = df.query('report_type == "QUARTERLY"')
         self._last_quarterly = quarterly_reports["period_end"].max()
 
-        # Drop columns that are company atributes or file source data
-
-        dfc.drop(
+        # Drop columns that are already company attributes or will not be used
+        df.drop(
             columns=[
                 "name_id",
                 "cvm_id",
@@ -294,7 +293,7 @@ class Company:
         )
 
         # Set company data frame
-        self._dfc = dfc
+        self._df = df
 
     def info(self) -> dict:
         """Print a concise summary of a company."""
@@ -308,7 +307,7 @@ class Company:
             "Name": self.name_id,
             "CVM ID": self._cvm_id,
             "Fiscal ID (CNPJ)": self.tax_id,
-            "Total Accounting Rows": len(self._dfc.index),
+            "Total Accounting Rows": len(self._df.index),
             "Selected Accounting Method": self._acc_method,
             "Selected Accounting Unit": self._acc_unit,
             "Selected Tax Rate": self._tax_rate,
@@ -319,19 +318,21 @@ class Company:
         print_dict(info_dict=company_info, table_name="Company Info")
 
     def _build_report(self, dfi: pd.DataFrame) -> pd.DataFrame:
-        # keep only last quarterly fs
+        df = dfi.copy()
+        # keep only last quarterly reports
         if self._last_annual > self._last_quarterly:
-            df = dfi.query('report_type == "ANNUAL"').copy()
+            df.query('report_type == "ANNUAL"', inplace=True)
             df.query(
                 "period_order == 'PREVIOUS' or \
                  period_end == @self._last_annual",
                 inplace=True,
             )
         else:
-            df = dfi.query(
+            df.query(
                 'report_type == "ANNUAL" or \
-                 period_end == @self._last_quarterly'
-            ).copy()
+                 period_end == @self._last_quarterly',
+                inplace=True,
+            )
             df.query(
                 "period_order == 'PREVIOUS' or \
                  period_end == @self._last_quarterly or \
@@ -402,7 +403,7 @@ class Company:
             ValueError: If some argument is invalid.
         """
         # Copy company dataframe to avoid changing it
-        df = self._dfc.copy()
+        df = self._df.copy()
 
         # Check input arguments.
         if acc_level not in {0, 1, 2, 3, 4}:

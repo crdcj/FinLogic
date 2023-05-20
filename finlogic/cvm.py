@@ -128,11 +128,14 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     # Currency column has only one value (BRL) so it is not necessary.
     df = df.drop(columns=["Currency"])
 
+    # The CVM file stores only the last report version. So, we can drop this column.
+    df = df.drop(columns=["report_version"])
+
     # Remove rows with acc_value == 0 and acc_fixed == False
     df.query("acc_value != 0 or acc_fixed == True", inplace=True)
 
     # report_version max. value is aprox. 9, so it can be uint8 (0 to 255)
-    df["report_version"] = df["report_version"].astype("uint8")
+    # df["report_version"] = df["report_version"].astype("uint8")
     # cvm_id from max. value is 600_000, so it can be uint32 (0 to 4_294_967_295)
     df["cvm_id"] = df["cvm_id"].astype("uint32")
     # There are two types of CVM files: DFP (ANNUAL) and ITR (QUARTERLY).
@@ -197,15 +200,29 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     # 'GRUPO_DFP' data can be inferred from 'acc_code'
     df.drop(columns=["report_group"], inplace=True)
 
+    # Because PREVIOUS value is the same as LAST value for the year before,
+    # we can keep only the most recent values by dropping duplicates.
+    check_cols = [
+        "cvm_id",
+        "report_type",  # "ANNUAL" or "QUARTERLY"
+        "acc_method",  # "CONSOLIDATED" or "SEPARATE"
+        "acc_code",
+        "equity_statement",
+        "period_begin",
+        "period_end",
+    ]
+    df.sort_values(by=check_cols, inplace=True, ignore_index=True)
+    df.drop_duplicates(subset=check_cols, keep="last", inplace=True, ignore_index=True)
+
     # Correct/harmonize some account texts.
     # df["acc_name"].replace(to_replace=["\xa0ON\xa0", "On"], value="ON", inplace=True)
 
     # In "itr_cia_aberta_2022.zip", as an example, 2742 rows are duplicated.
     # Few of them have different values in "acc_value". Only one them will be kept.
     # REMOVE ALL VALUES OR MARK THESE ROWS AS ERRORS?
-    cols = df.columns.tolist()
-    cols.remove("acc_value")
-    df.drop_duplicates(subset=cols, keep="last", inplace=True, ignore_index=True)
+    # cols = df.columns.tolist()
+    # cols.remove("acc_value")
+    # df.drop_duplicates(subset=cols, keep="last", inplace=True, ignore_index=True)
 
     # Add column for file source and file modification time.
     df["file_source"] = filepath.name
