@@ -266,7 +266,7 @@ class Company:
              ORDER BY 
                 report_type,
                 acc_code,
-                equity_statement,
+                es_name,
                 period_reference,
                 period_begin,
                 period_end
@@ -286,6 +286,14 @@ class Company:
         self._last_quarterly = quarterly_df["period_end"].max()
         self._last_period = df["period_end"].max()
 
+        # Keep last quarterly report only if it is after the last annual report
+        # for calculating TTM values
+        df.query(
+            'report_type == "ANNUAL" or \
+             period_end == @self._last_period',
+            inplace=True,
+        )
+
         # Drop columns that are already company attributes or will not be used
         df.drop(
             columns=[
@@ -301,11 +309,12 @@ class Company:
 
         # Because PREVIOUS value is the same as LAST value for the year before,
         # we can keep only the most recent values by dropping duplicates.
-        # The dataframe was sorted by the SQL query above.
+        # The dataframe was already sorted by the SQL query.
         cols = [
             "report_type",
             "acc_code",
-            "equity_statement",
+            "acc_fixed",
+            "es_name",
             "period_begin",
             "period_end",
         ]
@@ -336,27 +345,45 @@ class Company:
         }
         print_dict(info_dict=company_info, table_name="Company Info")
 
+    def _build_report_index(self, dfi: pd.DataFrame) -> pd.DataFrame:
+        """Build the index for the report."""
+        # Index for the report
+        ix_cols = ["acc_code", "acc_fixed", "acc_name", "es_name", "period_reference"]
+        df = dfi[ix_cols].copy()
+        # acc_code and es_name work as a primary key
+        # acc_fixed and period_reference set the preference order
+        df.sort_values(
+            by=["acc_code", "es_name", "acc_fixed", "period_reference"], inplace=True
+        )
+        df.drop_duplicates(
+            subset=["acc_code", "es_name"], keep="last", inplace=True, ignore_index=True
+        )
+        df = df[["acc_code", "acc_name", "es_name"]]
+        return df
+
     def _build_report(self, dfi: pd.DataFrame) -> pd.DataFrame:
         # Quarterly reports are only kept if it is the last report
-        df = dfi.query(
-            'report_type == "ANNUAL" or \
-             period_end == @self._last_period',
-        ).copy()
+        df = dfi.copy()
+        # Start "dfo" with the index
+        dfo = self._build_report_index(df)
 
-        # Create output dataframe with only the index
-        index_cols = ["acc_code", "acc_name"]
-        index_df = df.sort_values(by="acc_code")[index_cols].drop_duplicates(
-            subset=index_cols, ignore_index=True
-        )
         periods = sorted(df["period_end"].drop_duplicates())
         for period in periods:
-            year_cols = ["acc_value", "acc_code"]
+            year_cols = ["acc_code", "es_name", "acc_value"]
             df_year = df.query("period_end == @period")[year_cols].copy()
             period_str = period.strftime("%Y-%m-%d")
             if period == self._last_quarterly:
                 period_str += " (ttm)"
             df_year.rename(columns={"acc_value": period_str}, inplace=True)
-            dfo = pd.merge(index_df, df_year, how="left", on=["acc_code"])
+            dfo = pd.merge(dfo, df_year, how="left", on=["acc_code", "es_name"])
+
+        # report_df.set_index(keys="acc_code", drop=True, inplace=True)
+        # Fill NaN values with 0
+        df.fillna(0, inplace=True)
+
+        # Drop "es_name" column if "acc_code" == 5... is not present
+        if not df["acc_code"].str.startswith("5").any():
+            dfo.drop(columns=["es_name"], inplace=True)
 
         return dfo.sort_values("acc_code", ignore_index=True)
 
@@ -408,7 +435,11 @@ class Company:
         """
         # Copy company dataframe to avoid changing it
         df = self._df.copy()
-
+        periods = sorted(df["period_end"].drop_duplicates())
+        if num_years > len(periods):
+            num_years = len(periods)
+        periods = periods[-num_years:]
+        df.query("period_end in @periods", inplace=True)
         # Check input arguments.
         if acc_level not in {0, 1, 2, 3, 4}:
             raise ValueError("acc_level expects 0, 1, 2, 3 or 4")
@@ -475,14 +506,6 @@ class Company:
         df.reset_index(drop=True, inplace=True)
 
         report_df = self._build_report(df)
-        report_df.set_index(keys="acc_code", drop=True, inplace=True)
-        # Show only selected years
-        if num_years > 0:
-            cols = report_df.columns.to_list()
-            cols = cols[0:2] + cols[-num_years:]
-            report_df = report_df[cols]
-        # Fill NaN values with 0
-        report_df.fillna(0, inplace=True)
         return report_df
 
     def _calculate_ttm(self, dfi: pd.DataFrame) -> pd.DataFrame:
@@ -571,11 +594,15 @@ class Company:
                 https://people.stern.nyu.edu/adamodar/pdfoles/papers/returnmeasures.pdf
                 https://people.stern.nyu.edu/adamodar/New_Home_Page/datafile/variable.htm
         """
-        df_as = self.report("assets")
-        df_le = self.report("liabilities_and_equity")
-        df_in = self.report("income")
+        df_bs = self.report("balance_sheet")
+        df_is = self.report("income_statement")
         df_cf = self.report("cash_flow")
-        df = pd.concat([df_as, df_le, df_in, df_cf]).drop(columns=["acc_name"])
+        df = (
+            pd.concat([df_bs, df_is, df_cf])
+            .drop(columns=["acc_name"])
+            .set_index("acc_code", drop=True)
+        )
+
         # Calculate indicators series
         revenues = df.loc["3.01"]
         gross_profit = df.loc["3.03"]

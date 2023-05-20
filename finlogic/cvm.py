@@ -115,9 +115,9 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
         "ORDEM_EXERC": "period_order",
         "CD_CONTA": "acc_code",
         "DS_CONTA": "acc_name",
+        "COLUNA_DF": "es_name",  # equity_statement_name
         "ST_CONTA_FIXA": "acc_fixed",
         "VL_CONTA": "acc_value",
-        "COLUNA_DF": "equity_statement",
         "GRUPO_DFP": "report_group",
         "MOEDA": "Currency",
         "ESCALA_MOEDA": "currency_unit",
@@ -155,7 +155,7 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
         df.insert(loc=3, column="report_type", value="QUARTERLY")
 
     # Remove any extra spaces (line breaks, tabs, etc.) from columns below.
-    columns = ["name_id", "acc_name", "equity_statement"]
+    columns = ["name_id", "acc_name", "es_name"]
     df[columns] = df[columns].apply(remove_empty_spaces)
 
     # Replace "BCO " with "BANCO " in "name_id" column.
