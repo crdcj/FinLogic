@@ -170,9 +170,24 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     )
     df.drop(columns=["currency_unit"], inplace=True)
 
+    """The "period_order" column is a redundant information, since it is possible to
+    infer it from the "period_reference", "period_begin" and "period_end" columns.
+    For example:
+        if "period_reference" is 2020-12-31
+           "period_begin" is 2020-01-01
+           "period_end" is 2020-12-31
+        then "period_order" is "LAST".
+
+        If "period_reference" is 2020-12-31
+           "period_begin" is 2019-01-01
+           "period_end" is 2019-12-31
+        then "period_order" is "PREVIOUS".
+    """
+    df = df.drop(columns=["period_order"])
     # "period_order" values are: 'ÚLTIMO', 'PENÚLTIMO'
-    map_dic = {"ÚLTIMO": "LAST", "PENÚLTIMO": "PREVIOUS"}
-    df["period_order"] = df["period_order"].map(map_dic)
+    # map_dic = {"ÚLTIMO": "LAST", "PENÚLTIMO": "PREVIOUS"}
+    # df["period_order"] = df["period_order"].map(map_dic)
+
     """
     acc_method -> Financial Statemen Type
     Consolidated and Separate Financial Statements (IAS 27/2003)
@@ -200,29 +215,15 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     # 'GRUPO_DFP' data can be inferred from 'acc_code'
     df.drop(columns=["report_group"], inplace=True)
 
-    # Because PREVIOUS value is the same as LAST value for the year before,
-    # we can keep only the most recent values by dropping duplicates.
-    check_cols = [
-        "cvm_id",
-        "report_type",  # "ANNUAL" or "QUARTERLY"
-        "acc_method",  # "CONSOLIDATED" or "SEPARATE"
-        "acc_code",
-        "equity_statement",
-        "period_begin",
-        "period_end",
-    ]
-    df.sort_values(by=check_cols, inplace=True, ignore_index=True)
-    df.drop_duplicates(subset=check_cols, keep="last", inplace=True, ignore_index=True)
-
     # Correct/harmonize some account texts.
     # df["acc_name"].replace(to_replace=["\xa0ON\xa0", "On"], value="ON", inplace=True)
 
     # In "itr_cia_aberta_2022.zip", as an example, 2742 rows are duplicated.
     # Few of them have different values in "acc_value". Only one them will be kept.
     # REMOVE ALL VALUES OR MARK THESE ROWS AS ERRORS?
-    # cols = df.columns.tolist()
-    # cols.remove("acc_value")
-    # df.drop_duplicates(subset=cols, keep="last", inplace=True, ignore_index=True)
+    cols = df.columns.tolist()
+    cols.remove("acc_value")
+    df.drop_duplicates(subset=cols, keep="last", inplace=True, ignore_index=True)
 
     # Add column for file source and file modification time.
     df["file_source"] = filepath.name

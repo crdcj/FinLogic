@@ -263,7 +263,13 @@ class Company:
               FROM reports
              WHERE cvm_id = {self._cvm_id}
                AND acc_method = '{self._acc_method}'
-             ORDER BY acc_code, period_reference, period_end
+             ORDER BY 
+                report_type,
+                acc_code,
+                equity_statement,
+                period_reference,
+                period_begin,
+                period_end
         """
         df = execute(query, "df")
 
@@ -273,11 +279,12 @@ class Company:
             df["acc_value"],
             df["acc_value"] / self._acc_unit,
         )
-        annual_reports = df.query('report_type == "ANNUAL"')
-        self._first_annual = annual_reports["period_end"].min()
-        self._last_annual = annual_reports["period_end"].max()
-        quarterly_reports = df.query('report_type == "QUARTERLY"')
-        self._last_quarterly = quarterly_reports["period_end"].max()
+        annual_df = df.query('report_type == "ANNUAL"')
+        self._first_annual = annual_df["period_end"].min()
+        self._last_annual = annual_df["period_end"].max()
+        quarterly_df = df.query('report_type == "QUARTERLY"')
+        self._last_quarterly = quarterly_df["period_end"].max()
+        self._last_period = df["period_end"].max()
 
         # Drop columns that are already company attributes or will not be used
         df.drop(
@@ -291,6 +298,18 @@ class Company:
             ],
             inplace=True,
         )
+
+        # Because PREVIOUS value is the same as LAST value for the year before,
+        # we can keep only the most recent values by dropping duplicates.
+        # The dataframe was sorted by the SQL query above.
+        cols = [
+            "report_type",
+            "acc_code",
+            "equity_statement",
+            "period_begin",
+            "period_end",
+        ]
+        df.drop_duplicates(subset=cols, keep="last", inplace=True, ignore_index=True)
 
         # Set company data frame
         self._df = df
@@ -318,27 +337,11 @@ class Company:
         print_dict(info_dict=company_info, table_name="Company Info")
 
     def _build_report(self, dfi: pd.DataFrame) -> pd.DataFrame:
-        df = dfi.copy()
-        # keep only last quarterly reports
-        if self._last_annual > self._last_quarterly:
-            df.query('report_type == "ANNUAL"', inplace=True)
-            df.query(
-                "period_order == 'PREVIOUS' or \
-                 period_end == @self._last_annual",
-                inplace=True,
-            )
-        else:
-            df.query(
-                'report_type == "ANNUAL" or \
-                 period_end == @self._last_quarterly',
-                inplace=True,
-            )
-            df.query(
-                "period_order == 'PREVIOUS' or \
-                 period_end == @self._last_quarterly or \
-                 period_end == @self._last_annual",
-                inplace=True,
-            )
+        # Quarterly reports are only kept if it is the last report
+        df = dfi.query(
+            'report_type == "ANNUAL" or \
+             period_end == @self._last_period',
+        ).copy()
 
         # Create output dataframe with only the index
         dfo = df.sort_values(by="period_end", ascending=True)[
@@ -482,7 +485,7 @@ class Company:
 
     def _calculate_ttm(self, dfi: pd.DataFrame) -> pd.DataFrame:
         if self._last_annual > self._last_quarterly:
-            return dfi.query('report_type == "ANNUAL"').copy()
+            return dfi.query('report_type == "ANNUAL"')
 
         df1 = dfi.query("period_end == @self._last_quarterly").copy()
         df1.query("period_begin == period_begin.min()", inplace=True)
