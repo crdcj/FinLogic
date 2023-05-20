@@ -118,7 +118,6 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
         "ST_CONTA_FIXA": "acc_fixed",
         "VL_CONTA": "acc_value",
         "COLUNA_DF": "equity_statement",
-        # Columns below will be dropped after processing.
         "GRUPO_DFP": "report_group",
         "MOEDA": "Currency",
         "ESCALA_MOEDA": "currency_unit",
@@ -128,16 +127,26 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     # Currency column has only one value (BRL) so it is not necessary.
     df = df.drop(columns=["Currency"])
 
-    # The CVM file stores only the last report version. So, we can drop this column.
+    # The CVM file stores only the last report_version -> drop it.
     df = df.drop(columns=["report_version"])
-
-    # Remove rows with acc_value == 0 and acc_fixed == False
-    df.query("acc_value != 0 or acc_fixed == True", inplace=True)
-
     # report_version max. value is aprox. 9, so it can be uint8 (0 to 255)
     # df["report_version"] = df["report_version"].astype("uint8")
-    # cvm_id from max. value is 600_000, so it can be uint32 (0 to 4_294_967_295)
+
+    # acc_fixed values are ['S', 'N']
+    map_dic = {"S": True, "N": False}
+    df["acc_fixed"] = df["acc_fixed"].map(map_dic).astype(bool)
+
+    # Remove rows with acc_value == 0 and acc_fixed == False
+    # df.query("acc_value != 0 or acc_fixed == True", inplace=True)
+    df.query("acc_value != 0", inplace=True)
+
+    # acc_fixed is being used used only non fixed accounts with acc_value == 0
+    # So it can be dropped after the query above.
+    # df = df.drop(columns=["acc_fixed"])
+
+    # cvm_id max. value is 600_000, so it can be uint32 (0 to 4_294_967_295)
     df["cvm_id"] = df["cvm_id"].astype("uint32")
+
     # There are two types of CVM files: DFP (ANNUAL) and ITR (QUARTERLY).
     # In database, "report_type" is positioned after "tax_id" -> position = 3
     if filepath.name.startswith("dfp"):
@@ -156,9 +165,6 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     columns = df.select_dtypes(include="object").columns
     df[columns] = df[columns].astype("category")
 
-    # "acc_fixed" values are: 'S', 'N'
-    map_dic = {"S": True, "N": False}
-    df["acc_fixed"] = df["acc_fixed"].map(map_dic).astype(bool)
     # currency_unit values are ['MIL', 'UNIDADE']
     map_dic = {"UNIDADE": 1, "MIL": 1000}
     df["currency_unit"] = df["currency_unit"].map(map_dic).astype(int)
@@ -168,6 +174,7 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
         df["acc_code"].str.startswith("3.99"),
         df["acc_value"] * df["currency_unit"],
     )
+    # After the adjustment, currency_unit column is not necessary.
     df.drop(columns=["currency_unit"], inplace=True)
 
     """The "period_order" column is a redundant information, since it is possible to
@@ -182,16 +189,15 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
            "period_begin" is 2019-01-01
            "period_end" is 2019-12-31
         then "period_order" is "PREVIOUS".
+    Old code:
+        "period_order" values are: 'ÚLTIMO', 'PENÚLTIMO'
+        map_dic = {"ÚLTIMO": "LAST", "PENÚLTIMO": "PREVIOUS"}
+        df["period_order"] = df["period_order"].map(map_dic)
     """
     df = df.drop(columns=["period_order"])
-    # "period_order" values are: 'ÚLTIMO', 'PENÚLTIMO'
-    # map_dic = {"ÚLTIMO": "LAST", "PENÚLTIMO": "PREVIOUS"}
-    # df["period_order"] = df["period_order"].map(map_dic)
 
     """
-    acc_method -> Financial Statemen Type
-    Consolidated and Separate Financial Statements (IAS 27/2003)
-    df['GRUPO_DFP'].unique() result:
+    df['report_group'].unique() result:
         'DF Consolidado - Balanço Patrimonial Ativo',
         'DF Consolidado - Balanço Patrimonial Passivo',
         'DF Consolidado - Demonstração das Mutações do Patrimônio Líquido',
@@ -210,13 +216,10 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     if == 'Con' -> consolidated statement
     if == 'Ind' -> separate statement
     """
-    map_dic = {"Con": "CONSOLIDATED", "Ind": "SEPARATE"}
-    df.insert(9, "acc_method", df["report_group"].str[3:6].map(map_dic))
-    # 'GRUPO_DFP' data can be inferred from 'acc_code'
+    map_dic = {"DF C": "CONSOLIDATED", "DF I": "SEPARATE"}
+    df.insert(9, "acc_method", df["report_group"].str[:4].map(map_dic))
+    # 'report_group' data can be inferred from 'acc_code'
     df.drop(columns=["report_group"], inplace=True)
-
-    # Correct/harmonize some account texts.
-    # df["acc_name"].replace(to_replace=["\xa0ON\xa0", "On"], value="ON", inplace=True)
 
     # In "itr_cia_aberta_2022.zip", as an example, 2742 rows are duplicated.
     # Few of them have different values in "acc_value". Only one them will be kept.

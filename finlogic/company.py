@@ -344,10 +344,10 @@ class Company:
         ).copy()
 
         # Create output dataframe with only the index
-        dfo = df.sort_values(by="period_end", ascending=True)[
-            ["acc_name", "acc_code", "acc_fixed"]
-        ].drop_duplicates(subset="acc_code", ignore_index=True, keep="last")
-
+        index_cols = ["acc_code", "acc_name"]
+        index_df = df.sort_values(by="acc_code")[index_cols].drop_duplicates(
+            subset=index_cols, ignore_index=True
+        )
         periods = sorted(df["period_end"].drop_duplicates())
         for period in periods:
             year_cols = ["acc_value", "acc_code"]
@@ -356,7 +356,7 @@ class Company:
             if period == self._last_quarterly:
                 period_str += " (ttm)"
             df_year.rename(columns={"acc_value": period_str}, inplace=True)
-            dfo = pd.merge(dfo, df_year, how="left", on=["acc_code"])
+            dfo = pd.merge(index_df, df_year, how="left", on=["acc_code"])
 
         return dfo.sort_values("acc_code", ignore_index=True)
 
@@ -373,22 +373,23 @@ class Company:
 
         Args:
             report_type: Type of financial report to be generated. Options are:
-                    - "assets"
-                        - "cash"
-                        - "current_assets",
-                        - "non_current_assets"
-                    - "liabilities"
-                        - "debt"
-                        - "current_liabilities"
-                        - "non_current_liabilities",
-                    - "liabilities_and_equity"
-                        - "equity"
-                    - "income"
-                    - "earnings_per_share"
-                    - "comprehensive_income",
-                    - "changes_in_equity"
-                    - "cash_flow"
-                    - "added_value"
+                - balance_sheet
+                    - assets
+                        - cash
+                        - current_assets,
+                        - non_current_assets
+                    - liabilities
+                        - debt
+                        - current_liabilities
+                        - non_current_liabilities,
+                    - liabilities_and_equity
+                        - equity
+                - income_statement
+                - cash_flow
+                - earnings_per_share
+                - comprehensive_income,
+                - changes_in_equity
+                - added_value
             acc_level: Detail level to show for account codes. Options are 0, 1,
                 2, 3 or 4. Defaults to 0. How the values works:
                     0    -> X...       (show all accounts)
@@ -443,6 +444,13 @@ class Company:
             7 -> Added Value
         """
         report_types = {
+            "balance_sheet": ("1", "2"),
+            "income_statement": ("3"),
+            "cash_flow": ("6"),
+            "earnings_per_share": ("3.99"),
+            "comprehensive_income": ("4"),
+            "changes_in_equity": ("5"),
+            "added_value": ("7"),
             "assets": ("1"),
             "cash": ("1.01.01", "1.01.02"),
             "current_assets": ("1.01"),
@@ -453,12 +461,6 @@ class Company:
             "non_current_liabilities": ("2.02"),
             "liabilities_and_equity": ("2"),
             "equity": ("2.03"),
-            "income": ("3"),
-            "earnings_per_share": ("3.99"),
-            "comprehensive_income": ("4"),
-            "changes_in_equity": ("5"),
-            "cash_flow": ("6"),
-            "added_value": ("7"),
         }
         acc_codes = report_types[report_type]  # noqa
         df.query("acc_code.str.startswith(@acc_codes)", inplace=True)
@@ -530,11 +532,10 @@ class Company:
         Raises:
             ValueError: If some argument is invalid.
         """
-        df_as = self.report("assets")
-        df_le = self.report("liabilities_and_equity")
-        df_is = self.report("income")
+        df_bs = self.report("balance_sheet")
+        df_is = self.report("income_statement")
         df_cf = self.report("cash_flow")
-        dfo = pd.concat([df_as, df_le, df_is, df_cf]).query(f"acc_code == {acc_list}")
+        dfo = pd.concat([df_bs, df_is, df_cf]).query(f"acc_code == {acc_list}")
         # Show only selected years
         if num_years > 0:
             cols = dfo.columns.to_list()
@@ -574,9 +575,7 @@ class Company:
         df_le = self.report("liabilities_and_equity")
         df_in = self.report("income")
         df_cf = self.report("cash_flow")
-        df = pd.concat([df_as, df_le, df_in, df_cf]).drop(
-            columns=["acc_fixed", "acc_name"]
-        )
+        df = pd.concat([df_as, df_le, df_in, df_cf]).drop(columns=["acc_name"])
         # Calculate indicators series
         revenues = df.loc["3.01"]
         gross_profit = df.loc["3.03"]
