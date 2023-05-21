@@ -257,16 +257,16 @@ class Company:
         This method creates a dataframe with the company's financial
         statements.
         """
-        # Create the company data frame
         query = f"""
             SELECT *
               FROM reports
              WHERE cvm_id = {self._cvm_id}
                AND acc_method = '{self._acc_method}'
              ORDER BY 
-                report_type,
                 acc_code,
                 period_reference,
+                acc_fixed,
+                report_type,
                 period_begin,
                 period_end
         """
@@ -306,8 +306,7 @@ class Company:
             inplace=True,
         )
 
-        # Because PREVIOUS value is the same as LAST value for the year before,
-        # we can keep only the most recent values by dropping duplicates.
+        # Keep only the last value for the same account code and period (begin and end)
         # The dataframe was already sorted by the SQL query.
         cols = [
             # "report_type",
@@ -359,7 +358,7 @@ class Company:
         # Start "dfo" with the index
         dfo = self._build_report_index(dfi)
         year_cols = ["acc_code", "acc_value"]
-        periods = sorted(dfi["period_reference"].drop_duplicates())
+        periods = sorted(dfi["period_end"].drop_duplicates())
         for period in periods:
             df_year = dfi.query("period_end == @period")[year_cols].copy()
             period_str = period.strftime("%Y-%m-%d")
@@ -417,11 +416,11 @@ class Company:
         """
         # Copy company dataframe to avoid changing it
         df = self._df.copy()
-        periods = sorted(df["period_reference"].drop_duplicates())
+        periods = sorted(df["period_end"].drop_duplicates())
         if num_years > len(periods):
             num_years = len(periods)
         periods = periods[-num_years:]
-        df.query("period_reference in @periods", inplace=True)
+        df.query("period_end in @periods", inplace=True)
         # Check input arguments.
         if acc_level not in {0, 1, 2, 3, 4}:
             raise ValueError("acc_level expects 0, 1, 2, 3 or 4")
