@@ -38,9 +38,9 @@ class TestCompany(unittest.TestCase):
         values."""
         petro_report = self.petro_con.report(report_type="assets")
         # Get Total Assets
-        assets_2009 = round(petro_report.at["1", "2009-12-31"], 3)
-        assets_2015 = round(petro_report.at["1", "2015-12-31"], 3)
-        assets_2020 = round(petro_report.at["1", "2020-12-31"], 3)
+        assets_2009 = round(petro_report.query("acc_code == '1'")["2009-12-31"][0], 3)
+        assets_2015 = round(petro_report.query("acc_code == '1'")["2015-12-31"][0], 3)
+        assets_2020 = round(petro_report.query("acc_code == '1'")["2020-12-31"][0], 3)
         # Check the reports
         self.assertEqual(assets_2009, 350.419)
         self.assertEqual(assets_2015, 900.135)

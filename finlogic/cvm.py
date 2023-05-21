@@ -154,9 +154,12 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     else:
         df.insert(loc=3, column="report_type", value="QUARTERLY")
 
+    # For the moment, es_name will not be used since it adds to much complexity to
+    # the database. It will be dropped.
+    df = df.drop(columns=["es_name"])
     # Remove any extra spaces (line breaks, tabs, etc.) from columns below.
-    columns = ["name_id", "acc_name", "es_name"]
-    df[columns] = df[columns].apply(remove_empty_spaces)
+    # columns = ["name_id", "acc_name", "es_name"]
+    # df[columns] = df[columns].apply(remove_empty_spaces)
 
     # Replace "BCO " with "BANCO " in "name_id" column.
     df["name_id"] = df["name_id"].str.replace("BCO ", "BANCO ")
