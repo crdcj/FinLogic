@@ -359,7 +359,7 @@ class Company:
         # Start "dfo" with the index
         dfo = self._build_report_index(dfi)
         year_cols = ["acc_code", "acc_value"]
-        periods = sorted(dfi["period_end"].drop_duplicates())
+        periods = sorted(dfi["period_reference"].drop_duplicates())
         for period in periods:
             df_year = dfi.query("period_end == @period")[year_cols].copy()
             period_str = period.strftime("%Y-%m-%d")
