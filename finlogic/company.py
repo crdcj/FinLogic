@@ -309,9 +309,7 @@ class Company:
         # Keep only the last value for the same account code and period (begin and end)
         # The dataframe was already sorted by the SQL query.
         cols = [
-            # "report_type",
             "acc_code",
-            "acc_fixed",
             "period_begin",
             "period_end",
         ]
