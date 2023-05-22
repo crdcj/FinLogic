@@ -28,10 +28,11 @@ pip install finlogic
 ### Requirements
 
 - [Python](https://www.python.org) \>= 3.10
-- [DuckDB](https://github.com/pydata/pandas) \>= 0.7.0
-- [Pandas](https://github.com/pydata/pandas) \>= 1.4.0
-- [Requests](http://docs.python-requests.org/en/master/) \>= 2.27.0
+- [DuckDB](https://github.com/pydata/pandas) \>= 0.8.0
+- [Pandas](https://github.com/pydata/pandas) \>= 1.5.0
+- [Requests](http://docs.python-requests.org/en/master/) \>= 2.30.0
 - [Rich](https://github.com/Textualize/rich) \>= 13.0.0
+- [Zstandard](https://python-zstandard.readthedocs.io/en/latest/) \>= 0.21.0
 
 ---
 
