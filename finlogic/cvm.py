@@ -223,8 +223,8 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     if == 'Con' -> consolidated statement
     if == 'Ind' -> separate statement
     """
-    map_dic = {"DF C": "CONSOLIDATED", "DF I": "SEPARATE"}
-    df.insert(9, "acc_method", df["report_group"].str[:4].map(map_dic))
+    map_dic = {"Con": "CONSOLIDATED", "Ind": "SEPARATE"}
+    df.insert(4, "acc_method", df["report_group"].str[3:6].map(map_dic))
     # 'report_group' data can be inferred from 'acc_code'
     df.drop(columns=["report_group"], inplace=True)
 
@@ -262,16 +262,17 @@ def read_all_processed_files() -> pd.DataFrame:
     filepaths = sorted(cfg.CVM_PROCESSED_DIR.glob("*.pickle"))
     df = pd.concat([pd.read_pickle(f, compression="zstd") for f in filepaths])
     columns = df.columns
-    cat_cols = [c for c in columns if df[c].dtype in ["object", "datetime64[ns]"]]
+    cat_cols = [c for c in columns if df[c].dtype in ["object"]]
     df[cat_cols] = df[cat_cols].astype("category")
     return df
 
 
-def drop_duplicates(df: pd.DataFrame) -> pd.DataFrame:
-    """Drop duplicates from a before building database
-    Because PREVIOUS value == LAST value for the year before, we can keep only
-    the most recent values by dropping duplicates. By doing this, we guarantee
-    that there is only one valid accounting value in database -> the last one
+def drop_not_last_entries(df: pd.DataFrame) -> pd.DataFrame:
+    """Drop duplicated accounting entries before building database
+
+    Because the report holds accounting entries for the year before, we can keep only
+    the most recent one in the database. By doing this, we guarantee
+    that there is only one valid accounting value in the database -> the last one
     """
     sort_cols = [
         "cvm_id",
@@ -292,5 +293,17 @@ def drop_duplicates(df: pd.DataFrame) -> pd.DataFrame:
         "period_end",
     ]
     df.drop_duplicates(subset=subset_cols, keep="last", inplace=True, ignore_index=True)
+
+    return df
+
+
+def drop_unecessary_quarterly_entries(df: pd.DataFrame) -> pd.DataFrame:
+    df["max_period"] = df.groupby("cvm_id")["period_reference"].transform("max")
+
+    condition1 = df["report_type"] == "QUARTERLY"
+    condition2 = df["period_reference"] < df["max_period"]
+    df = df[~(condition1 & condition2)].reset_index(drop=True)
+
+    df.drop(columns=["max_period"], inplace=True)
 
     return df
