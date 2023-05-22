@@ -298,7 +298,7 @@ def drop_not_last_entries(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def drop_unecessary_quarterly_entries(df: pd.DataFrame) -> pd.DataFrame:
-    """Keep the last QUARTERLY report for each company pmçy when necessary."""
+    """Keep the last QUARTERLY report for each company only when necessary."""
     df["max_period"] = df.groupby("cvm_id")["period_reference"].transform("max")
 
     condition1 = df["report_type"] == "QUARTERLY"
