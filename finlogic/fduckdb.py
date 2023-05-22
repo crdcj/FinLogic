@@ -4,6 +4,7 @@ import duckdb
 import pandas as pd
 from datetime import datetime
 from . import config as cfg
+from . import cvm
 
 # Start FinLogic Database connection
 FINLOGIC_DB_PATH = cfg.DATA_PATH / "finlogic.db"
@@ -40,11 +41,10 @@ def build():
     print("Building FinLogic Database...")
     # Reset database
     reset()
+    df = cvm.read_all_processed_files()
+    df = cvm.drop_duplicates(df)
     # Create a table with all processed CVM files
-    sql = f"""
-        CREATE TABLE reports AS SELECT * FROM '{cfg.CVM_PROCESSED_DIR}/*.parquet'
-    """
-    execute(sql)
+    execute("CREATE TABLE reports AS SELECT * FROM df")
 
 
 def is_empty() -> bool:

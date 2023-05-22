@@ -265,12 +265,16 @@ class Company:
              ORDER BY 
                 acc_code,
                 period_reference,
-                acc_fixed,
                 report_type,
                 period_begin,
                 period_end
         """
         df = execute(query, "df")
+
+        # Convert category columns back to string
+        columns = df.columns
+        cat_cols = [c for c in columns if df[c].dtype == "category"]
+        df[cat_cols] = df[cat_cols].astype("string")
 
         # Change acc_unit only for accounts different from 3.99
         df["acc_value"] = np.where(
@@ -294,26 +298,7 @@ class Company:
         )
 
         # Drop columns that are already company attributes or will not be used
-        df.drop(
-            columns=[
-                "name_id",
-                "cvm_id",
-                "tax_id",
-                "acc_method",
-                "file_source",
-                "file_mtime",
-            ],
-            inplace=True,
-        )
-
-        # Keep only the last value for the same account code and period (begin and end)
-        # The dataframe was already sorted by the SQL query.
-        cols = [
-            "acc_code",
-            "period_begin",
-            "period_end",
-        ]
-        df.drop_duplicates(subset=cols, keep="last", inplace=True, ignore_index=True)
+        df.drop(columns=["name_id", "cvm_id", "tax_id", "acc_method"], inplace=True)
 
         # Set company data frame
         self._df = df
@@ -344,8 +329,8 @@ class Company:
         """Build the index for the report."""
         # "acc_code" works as a primary key. Other columns set the preference order
         df = (
-            dfi[["acc_code", "acc_fixed", "acc_name", "period_reference"]]
-            .sort_values(by=["acc_code", "acc_fixed", "period_reference"])
+            dfi[["acc_code", "acc_name", "period_reference"]]
+            .sort_values(by=["acc_code", "period_reference"])
             .drop_duplicates(subset=["acc_code"], keep="last", ignore_index=True)[
                 ["acc_code", "acc_name"]
             ]
