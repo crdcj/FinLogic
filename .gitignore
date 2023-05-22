@@ -10,5 +10,6 @@ finlogic.egg-info/
 # Jupyter Notebook extensions
 *.ipynb
 debug*
-# PDM lock file
-pdm.lock
+# PDM files
+pdm.*
+.pdm*

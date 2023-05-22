@@ -4,11 +4,11 @@ import finlogic as fl
 
 class TestCompany(unittest.TestCase):
     def setUp(self):
-        self.petro_sep = fl.Company(9512, acc_method="separate", acc_unit="billion")
-        self.petro_con = fl.Company(9512, acc_method="consolidated", acc_unit="billion")
+        self.petro_sep = fl.Company(9512, acc_method="sep", acc_unit="b")
+        self.petro_con = fl.Company(9512, acc_method="con", acc_unit="b")
 
     def test_identifier(self):
-        """Test the identifier method of the Company class.""" ""
+        """Test the identifier method of the Company class."""
         test_cvm_id = 4170
         test_tax_id = "33.592.510/0001-54"
         self.petro_sep.identifier = test_cvm_id
@@ -38,9 +38,9 @@ class TestCompany(unittest.TestCase):
         values."""
         petro_report = self.petro_con.report(report_type="assets")
         # Get Total Assets
-        assets_2009 = round(petro_report.at["1", "2009-12-31"], 3)
-        assets_2015 = round(petro_report.at["1", "2015-12-31"], 3)
-        assets_2020 = round(petro_report.at["1", "2020-12-31"], 3)
+        assets_2009 = round(petro_report.query("acc_code == '1'")["2009-12-31"][0], 3)
+        assets_2015 = round(petro_report.query("acc_code == '1'")["2015-12-31"][0], 3)
+        assets_2020 = round(petro_report.query("acc_code == '1'")["2020-12-31"][0], 3)
         # Check the reports
         self.assertEqual(assets_2009, 350.419)
         self.assertEqual(assets_2015, 900.135)

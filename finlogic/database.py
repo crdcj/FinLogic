@@ -5,35 +5,34 @@ allows updating, processing and consolidating financial statements, as well as
 searching for company names in the FinLogic Database and retrieving information
 about the database itself.
 """
+from pathlib import Path
 from typing import Literal
 import pandas as pd
-from . import config as cfg
 from . import cvm
+from . import config as cfg
 from . import language as lng
+from . import fprint as fpr
+from . import fduckdb as fdb
 from . import currency as crn
-from . import finprint as fpr
-from . import fl_duckdb as fdb
 
 CHECKMARK = "\033[32m\u2714\033[0m"
 
 
-def get_filepaths_to_process() -> list[str]:
-    """Return a list of files in raw folder that must be processed."""
-    filenames_in_dir = cvm.get_raw_files_mtime()
-    filenames_in_db = fdb.get_db_files_mtime()
-    for key, value in filenames_in_db.items():
-        if key in filenames_in_dir and filenames_in_dir[key] == value:
-            del filenames_in_dir[key]
-    filenames_to_process = list(filenames_in_dir.keys())
-    return [cfg.CVM_RAW_DIR / filename for filename in filenames_to_process]
+def get_filepaths_to_process(df1: pd.DataFrame, df2: pd.DataFrame) -> list[Path]:
+    """Return a list of CVM files that has to be processed by comparing
+    the files mtimes from the raw folder.
+    """
+    df = pd.concat([df1, df2]).drop_duplicates(keep=False)
+    file_sources = sorted(df["file_source"].drop_duplicates())
+    return [cfg.CVM_RAW_DIR / file_source for file_source in file_sources]
 
 
-def update_database(reset: bool = False):
+def update_database(rebuild: bool = False):
     """Verify changes in CVM files and update Finlogic Database if necessary.
 
     Args:
-        reset (bool, optional): If True, delete the database file and create a
-            new one. Defaults to False.
+        rebuild (bool, optional): If True, processes all CVM files and rebuilds
+            the database. Defaults to False.
     Returns:
         None
     """
@@ -47,14 +46,22 @@ def update_database(reset: bool = False):
 
     # CVM raw files
     print("Updating CVM files...")
+    # Get files mtimes from the raw folder before updating
+    df_raw1 = cvm.get_raw_file_mtimes()
     urls = cvm.get_all_file_urls()
-    # urls = urls[:1]  # Test
     updated_raw_filepaths = cvm.update_raw_files(urls)
     print(f"Number of CVM files updated = {len(updated_raw_filepaths)}")
+    # Get files mtimes from the raw folder after updating
+    df_raw2 = cvm.get_raw_file_mtimes()
 
     # CVM processed files
     print("\nProcessing CVM files...")
-    filepaths_to_process = get_filepaths_to_process()
+    if rebuild:
+        # Process all files
+        filepaths_to_process = sorted(cfg.CVM_RAW_DIR.glob("*.zip"))
+    else:
+        # Process only updated files
+        filepaths_to_process = get_filepaths_to_process(df1=df_raw1, df2=df_raw2)
     print(f"Number of new files to process = {len(filepaths_to_process)}")
     if filepaths_to_process:
         [cvm.process_file(filepath) for filepath in filepaths_to_process]
@@ -80,10 +87,10 @@ def database_info():
     Returns: None
     """
     info_dict = fdb.get_info()
-    if not info_dict:
-        print("FinLogic Database has no data.")
-        return
-    fpr.print_dict(info_dict=info_dict, table_name="FinLogic Database Info")
+    if info_dict:
+        fpr.print_dict(info_dict=info_dict, table_name="FinLogic Database Info")
+    else:
+        print("FinLogic Database is empty.")
 
 
 def search_company(
@@ -117,7 +124,7 @@ def search_company(
         case _:
             raise ValueError("Invalid value for 'search_by' argument.")
 
-    query = f"""
+    query = f"""--sql
         SELECT DISTINCT name_id, cvm_id, tax_id
           FROM reports
          WHERE {search_by} {sql_condition}
