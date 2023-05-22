@@ -42,7 +42,8 @@ def build():
     # Reset database
     reset()
     df = cvm.read_all_processed_files()
-    df = cvm.drop_duplicates(df)
+    df = cvm.drop_not_last_entries(df)
+    df = cvm.drop_unecessary_quarterly_entries(df)
     # Create a table with all processed CVM files
     execute("CREATE TABLE reports AS SELECT * FROM df")
 

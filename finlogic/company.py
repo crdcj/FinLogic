@@ -289,14 +289,6 @@ class Company:
         self._last_quarterly = quarterly_df["period_end"].max()
         self._last_period = df["period_end"].max()
 
-        # Keep last quarterly report only if it is after the last annual report
-        # for calculating TTM values
-        df.query(
-            'report_type == "ANNUAL" or \
-             period_reference == @self._last_period',
-            inplace=True,
-        )
-
         # Drop columns that are already company attributes or will not be used
         df.drop(columns=["name_id", "cvm_id", "tax_id", "acc_method"], inplace=True)
 
