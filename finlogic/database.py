@@ -5,6 +5,7 @@ allows updating, processing and consolidating financial statements, as well as
 searching for company names in the FinLogic Database and retrieving information
 about the database itself.
 """
+from pathlib import Path
 from typing import Literal
 import pandas as pd
 from . import cvm
@@ -16,14 +17,12 @@ from . import fduckdb as fdb
 CHECKMARK = "\033[32m\u2714\033[0m"
 
 
-def get_filepaths_to_process() -> list[str]:
+def get_filepaths_to_process(df1: pd.DataFrame, df2: pd.DataFrame) -> list[Path]:
     """Return a list of CVM files that has to be processed by comparing
-    the files mtimes from the raw folder with the database.
+    the files mtimes from the raw folder.
     """
-    df_raw = cvm.get_raw_file_mtimes()
-    df_fdb = fdb.get_file_mtimes()
-    df_new = pd.concat([df_raw, df_fdb]).drop_duplicates(keep=False)
-    file_sources = sorted(df_new["file_source"].drop_duplicates())
+    df = pd.concat([df1, df2]).drop_duplicates(keep=False)
+    file_sources = sorted(df["file_source"].drop_duplicates())
     return [cfg.CVM_RAW_DIR / file_source for file_source in file_sources]
 
 
@@ -42,9 +41,13 @@ def update_database(rebuild: bool = False):
 
     # CVM raw files
     print("Updating CVM files...")
+    # Get files mtimes from the raw folder before updating
+    df_raw1 = cvm.get_raw_file_mtimes()
     urls = cvm.get_all_file_urls()
     updated_raw_filepaths = cvm.update_raw_files(urls)
     print(f"Number of CVM files updated = {len(updated_raw_filepaths)}")
+    # Get files mtimes from the raw folder after updating
+    df_raw2 = cvm.get_raw_file_mtimes()
 
     # CVM processed files
     print("\nProcessing CVM files...")
@@ -53,7 +56,7 @@ def update_database(rebuild: bool = False):
         filepaths_to_process = sorted(cfg.CVM_RAW_DIR.glob("*.zip"))
     else:
         # Process only updated files
-        filepaths_to_process = get_filepaths_to_process()
+        filepaths_to_process = get_filepaths_to_process(df1=df_raw1, df2=df_raw2)
     print(f"Number of new files to process = {len(filepaths_to_process)}")
     if filepaths_to_process:
         [cvm.process_file(filepath) for filepath in filepaths_to_process]

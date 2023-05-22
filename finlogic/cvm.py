@@ -3,7 +3,6 @@ import re
 from typing import List
 import zipfile as zf
 from pathlib import Path
-import duckdb
 import pandas as pd
 import requests
 from . import config as cfg
@@ -142,7 +141,7 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
 
     # acc_fixed is being used used only non fixed accounts with acc_value == 0
     # So it can be dropped after the query above.
-    # df = df.drop(columns=["acc_fixed"])
+    df = df.drop(columns=["acc_fixed"])
 
     # cvm_id max. value is 600_000, so it can be uint32 (0 to 4_294_967_295)
     df["cvm_id"] = df["cvm_id"].astype("uint32")
@@ -157,9 +156,10 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     # For the moment, es_name will not be used since it adds to much complexity to
     # the database. It will be dropped.
     df = df.drop(columns=["es_name"])
+
     # Remove any extra spaces (line breaks, tabs, etc.) from columns below.
-    # columns = ["name_id", "acc_name", "es_name"]
-    # df[columns] = df[columns].apply(remove_empty_spaces)
+    columns = ["name_id", "acc_name"]
+    df[columns] = df[columns].apply(remove_empty_spaces)
 
     # Replace "BCO " with "BANCO " in "name_id" column.
     df["name_id"] = df["name_id"].str.replace("BCO ", "BANCO ")
@@ -167,6 +167,10 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     # Convert string columns to categorical before mapping.
     columns = df.select_dtypes(include="object").columns
     df[columns] = df[columns].astype("category")
+
+    # Convert datetime columns
+    columns = ["period_reference", "period_begin", "period_end"]
+    df[columns] = df[columns].apply(pd.to_datetime)
 
     # currency_unit values are ['MIL', 'UNIDADE']
     map_dic = {"UNIDADE": 1, "MIL": 1000}
@@ -231,32 +235,16 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     cols.remove("acc_value")
     df.drop_duplicates(subset=cols, keep="last", inplace=True, ignore_index=True)
 
-    # Add column for file source and file modification time.
-    df["file_source"] = filepath.name
-    df["file_mtime"] = filepath.stat().st_mtime
-
     return df
-
-
-def save_processed_df(df: pd.DataFrame, filepath: Path) -> None:
-    """Save a processed dataframe as a csv file."""
-    with duckdb.connect() as con:
-        sql = f"""
-            CREATE TEMP TABLE tbl AS SELECT * FROM df;
-            ALTER TABLE tbl ALTER period_reference TYPE DATE;
-            ALTER TABLE tbl ALTER period_begin TYPE DATE;
-            ALTER TABLE tbl ALTER period_end TYPE DATE;
-            COPY tbl TO '{filepath}' (FORMAT 'PARQUET', COMPRESSION 'zstd')
-        """
-        con.execute(sql)
 
 
 def process_file(raw_filepath: Path) -> Path:
     """Read, process and save a CVM file."""
     df = read_raw_file(raw_filepath)
     df = process_df(df, raw_filepath)
-    processed_filepath = cfg.CVM_PROCESSED_DIR / (raw_filepath.stem + ".parquet")
-    save_processed_df(df, processed_filepath)
+    processed_filepath = cfg.CVM_PROCESSED_DIR / (raw_filepath.stem + ".pickle")
+    # save_processed_df(df, processed_filepath)
+    df.to_pickle(processed_filepath, compression="zstd")
     print(f"    {CHECKMARK} {raw_filepath.name} processed.")
     return processed_filepath
 
@@ -266,3 +254,43 @@ def get_raw_file_mtimes() -> pd.DataFrame:
     filepaths = sorted(cfg.CVM_RAW_DIR.glob("*.zip"))
     d_mtimes = {filepath.name: filepath.stat().st_mtime for filepath in filepaths}
     return pd.DataFrame(d_mtimes.items(), columns=["file_source", "file_mtime"])
+
+
+def read_all_processed_files() -> pd.DataFrame:
+    """Read all processed CVM files."""
+    # list filepaths in processed folder
+    filepaths = sorted(cfg.CVM_PROCESSED_DIR.glob("*.pickle"))
+    df = pd.concat([pd.read_pickle(f, compression="zstd") for f in filepaths])
+    columns = df.columns
+    cat_cols = [c for c in columns if df[c].dtype in ["object", "datetime64[ns]"]]
+    df[cat_cols] = df[cat_cols].astype("category")
+    return df
+
+
+def drop_duplicates(df: pd.DataFrame) -> pd.DataFrame:
+    """Drop duplicates from a before building database
+    Because PREVIOUS value == LAST value for the year before, we can keep only
+    the most recent values by dropping duplicates. By doing this, we guarantee
+    that there is only one valid accounting value in database -> the last one
+    """
+    sort_cols = [
+        "cvm_id",
+        "acc_method",
+        "acc_code",
+        "period_reference",
+        "report_type",
+        "period_begin",
+        "period_end",
+    ]
+    df.sort_values(by=sort_cols, ascending=True, inplace=True, ignore_index=True)
+
+    subset_cols = [
+        "cvm_id",
+        "acc_method",
+        "acc_code",
+        "period_begin",
+        "period_end",
+    ]
+    df.drop_duplicates(subset=subset_cols, keep="last", inplace=True, ignore_index=True)
+
+    return df
