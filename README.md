@@ -56,35 +56,32 @@ FinLogic database updated ✅
 >>> fl.database_info()
 ```
 
-| FinLogic Database Info      |                       Value |
-| :-------------------------- | --------------------------: |
-| Data path                   | /.../FinLogic/finlogic/data |
-| File size (MB)              |                       301.0 |
-| Last update call            |         2022-04-20 07:29:08 |
-| Last modified               |         2022-04-20 07:31:48 |
-| Last updated data           |         2022-04-17 13:09:01 |
-| Accounting rows             |                   8,757,249 |
-| Unique accounting codes     |                       2,008 |
-| Number of companies         |                       1,037 |
-| Unique Financial Statements |                      13,172 |
-| First Financial Statement   |                  2009-01-31 |
-| Last Financial Statement    |                  2023-03-31 |
+| FinLogic Database Info |                         Value |
+| :--------------------- | ----------------------------: |
+| db_path                | .../finlogic/data/finlogic.db |
+| db_size                |                      301.0 MB |
+| db_last_modified       |           2023-04-20 07:29:08 |
+| number_of_companies    |                         1,139 |
+| number_of_rows         |                     4,379,496 |
+| number_of_reports      |                        13,770 |
+| first_report           |                    2009-01-31 |
+| last_report            |                    2023-03-31 |
 
 ```python
 # Search for a company in database:
 >>> fl.search_company('petro')
 ```
 
-|     | name                                   |    id | fiscal_id          |
-| --: | :------------------------------------- | ----: | :----------------- |
-|   0 | 3R PETROLEUM ÓLEO E GÁS S.A.           | 25291 | 12.091.809/0001-55 |
-|   1 | PETRO RIO S.A.                         | 22187 | 10.629.105/0001-68 |
-|   2 | PETROBRAS DISTRIBUIDORA S/A            | 24295 | 34.274.233/0001-02 |
-|   3 | PETROLEO BRASILEIRO S.A. PETROBRAS     |  9512 | 33.000.167/0001-01 |
-|   4 | PETROLEO LUB DO NORDESTE SA            |  9520 | 07.275.159/0001-68 |
-|   5 | PETRORECÔNCAVO S.A.                    | 25780 | 03.342.704/0001-30 |
-|   6 | PRONOR PETROQUIMICA SA                 |  9784 | 13.552.070/0001-02 |
-|   7 | REFINARIA DE PETROLEOS MANGUINHOS S.A. |  9989 | 33.412.081/0001-96 |
+|     | name_id                                | cvm_id | tax_id             |
+| --: | :------------------------------------- | -----: | :----------------- |
+|   0 | 3R PETROLEUM ÓLEO E GÁS S.A.           |  25291 | 12.091.809/0001-55 |
+|   1 | PETRO RIO S.A.                         |  22187 | 10.629.105/0001-68 |
+|   2 | PETROBRAS DISTRIBUIDORA S/A            |  24295 | 34.274.233/0001-02 |
+|   3 | PETROLEO BRASILEIRO S.A. PETROBRAS     |   9512 | 33.000.167/0001-01 |
+|   4 | PETROLEO LUB DO NORDESTE SA            |   9520 | 07.275.159/0001-68 |
+|   5 | PETRORECÔNCAVO S.A.                    |  25780 | 03.342.704/0001-30 |
+|   6 | PRONOR PETROQUIMICA SA                 |   9784 | 13.552.070/0001-02 |
+|   7 | REFINARIA DE PETROLEOS MANGUINHOS S.A. |   9989 | 33.412.081/0001-96 |
 
 ### The Company Class
 
@@ -93,13 +90,13 @@ The Company Class allows you to easily access financial data from Brazilian comp
 ```python
 # Create a Company object to acces its financial data:
 # Both CVM (regulator) ID or Fiscal ID can be used as an identifier.
->>> petro = fl.Company(9512, acc_method='separate', acc_unit='million')
+>>> petro = fl.Company(9512, acc_method='sep', acc_unit='m')
 
 # Change company accounting method back to consolidated (default):
->>> petro.acc_method = 'consolidated'
+>>> petro.acc_method = 'con'
 
 # Change company accounting unit to billion (default is 1):
->>> petro.acc_unit = 'billion'
+>>> petro.acc_unit = 'b'
 
 # Show company info:
 >>> petro.info()
@@ -126,16 +123,16 @@ The Company Class allows you to easily access financial data from Brazilian comp
 >>> petro.report(report_type='debt', acc_level=4, num_years=3)
 ```
 
-| acc_code   | acc_name            | acc_fixed | 2020-12-31 | 2021-12-31 | 2022-12-31 |
-| :--------- | :------------------ | :-------- | ---------: | ---------: | ---------: |
-| 2.01.04    | Loans and Financing | True      |     51.364 |     50.631 |      47.65 |
-| 2.01.04.01 | Loans and Financing | True      |     21.751 |     20.316 |     18.656 |
-| 2.01.04.02 | Debentures          | True      |          0 |          0 |          0 |
-| 2.01.04.03 | Lease Financing     | True      |     29.613 |     30.315 |     28.994 |
-| 2.02.01    | Loans and Financing | True      |    341.184 |    277.187 |    233.053 |
-| 2.02.01.01 | Loans and Financing | True      |    258.287 |    178.908 |     137.63 |
-| 2.02.01.02 | Debentures          | True      |          0 |          0 |          0 |
-| 2.02.01.03 | Lease Financing     | True      |     82.897 |     98.279 |     95.423 |
+| acc_code   | acc_name            | 2020-12-31 | 2021-12-31 | 2022-12-31 |
+| :--------- | :------------------ | ---------: | ---------: | ---------: |
+| 2.01.04    | Loans and Financing |     51.364 |     50.631 |      47.65 |
+| 2.01.04.01 | Loans and Financing |     21.751 |     20.316 |     18.656 |
+| 2.01.04.02 | Debentures          |          0 |          0 |          0 |
+| 2.01.04.03 | Lease Financing     |     29.613 |     30.315 |     28.994 |
+| 2.02.01    | Loans and Financing |    341.184 |    277.187 |    233.053 |
+| 2.02.01.01 | Loans and Financing |    258.287 |    178.908 |     137.63 |
+| 2.02.01.02 | Debentures          |          0 |          0 |          0 |
+| 2.02.01.03 | Lease Financing     |     82.897 |     98.279 |     95.423 |
 
 ```python
 # Change account names to Portuguese:
@@ -143,16 +140,16 @@ The Company Class allows you to easily access financial data from Brazilian comp
 >>> petro.report(report_type='debt', acc_level=4, num_years=3)
 ```
 
-| acc_code   | acc_name                       | acc_fixed | 2020-12-31 | 2021-12-31 | 2022-12-31 |
-| ---------- | ------------------------------ | --------- | ---------: | ---------: | ---------: |
-| 2.01.04    | Empréstimos e Financiamentos   | True      |     51.364 |     50.631 |      47.65 |
-| 2.01.04.01 | Empréstimos e Financiamentos   | True      |     21.751 |     20.316 |     18.656 |
-| 2.01.04.02 | Debêntures                     | True      |          0 |          0 |          0 |
-| 2.01.04.03 | Financiamento por Arrendamento | True      |     29.613 |     30.315 |     28.994 |
-| 2.02.01    | Empréstimos e Financiamentos   | True      |    341.184 |    277.187 |    233.053 |
-| 2.02.01.01 | Empréstimos e Financiamentos   | True      |    258.287 |    178.908 |     137.63 |
-| 2.02.01.02 | Debêntures                     | True      |          0 |          0 |          0 |
-| 2.02.01.03 | Financiamento por Arrendamento | True      |     82.897 |     98.279 |     95.423 |
+| acc_code   | acc_name                       | 2020-12-31 | 2021-12-31 | 2022-12-31 |
+| ---------- | ------------------------------ | ---------: | ---------: | ---------: |
+| 2.01.04    | Empréstimos e Financiamentos   |     51.364 |     50.631 |      47.65 |
+| 2.01.04.01 | Empréstimos e Financiamentos   |     21.751 |     20.316 |     18.656 |
+| 2.01.04.02 | Debêntures                     |          0 |          0 |          0 |
+| 2.01.04.03 | Financiamento por Arrendamento |     29.613 |     30.315 |     28.994 |
+| 2.02.01    | Empréstimos e Financiamentos   |    341.184 |    277.187 |    233.053 |
+| 2.02.01.01 | Empréstimos e Financiamentos   |    258.287 |    178.908 |     137.63 |
+| 2.02.01.02 | Debêntures                     |          0 |          0 |          0 |
+| 2.02.01.03 | Financiamento por Arrendamento |     82.897 |     98.279 |     95.423 |
 
 ```python
 # Show company main indicators:
