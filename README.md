@@ -59,10 +59,10 @@ FinLogic database updated ✅
 | FinLogic Database Info |                         Value |
 | :--------------------- | ----------------------------: |
 | db_path                | .../finlogic/data/finlogic.db |
-| db_size                |                      301.0 MB |
+| db_size                |                       76.0 MB |
 | db_last_modified       |           2023-04-20 07:29:08 |
 | number_of_companies    |                         1,139 |
-| number_of_rows         |                     4,379,496 |
+| number_of_rows         |                     2,806,635 |
 | number_of_reports      |                        13,770 |
 | first_report           |                    2009-01-31 |
 | last_report            |                    2023-03-31 |
