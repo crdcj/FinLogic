@@ -103,8 +103,8 @@ class Company:
         # Create custom data frame for ID selection
         df = (
             DF[["cvm_id", "tax_id", "name_id"]]
-            .drop_duplicates()
             .query("cvm_id == @identifier or tax_id == @identifier")
+            .drop_duplicates(ignore_index=True)
         )
         if not df.empty:
             self._cvm_id = df.loc[0, "cvm_id"]
@@ -254,7 +254,7 @@ class Company:
         """
         df = DF.query(
             "cvm_id == @self._cvm_id and is_consolidated == @self._is_consolidated"
-        ).copy()
+        ).reset_index(drop=True)
 
         # Convert category columns back to string
         columns = df.columns
@@ -270,12 +270,14 @@ class Company:
 
         self._first_period = df["period_end"].min()
         self._last_period = df["period_end"].max()
+
         last_period_df = df.query("period_end == @self._last_period")
-        self._last_period_type = last_period_df["report_type"].unique()[0]
+        self._last_period_type = last_period_df["is_annual"].unique()[0]
 
         # Drop columns that are already company attributes or will not be used
         df.drop(
-            columns=["name_id", "cvm_id", "tax_id", "is_consolidated"], inplace=True
+            columns=["name_id", "cvm_id", "tax_id", "is_consolidated"],
+            inplace=True,
         )
 
         # Set company data frame
@@ -372,12 +374,10 @@ class Company:
         # Copy company dataframe to avoid changing it
         df = self._df.copy()
         periods = sorted(df["period_end"].drop_duplicates())
-        if num_years > len(periods):
-            num_years = len(periods)
         periods = periods[-num_years:]
         df.query("period_end in @periods", inplace=True)
         # Check input arguments.
-        if acc_level not in {0, 1, 2, 3, 4}:
+        if acc_level not in [0, 1, 2, 3, 4]:
             raise ValueError("acc_level expects 0, 1, 2, 3 or 4")
 
         # Filter dataframe for selected acc_level
