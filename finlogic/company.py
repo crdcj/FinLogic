@@ -24,7 +24,7 @@ import numpy as np
 import pandas as pd
 from .language import language_df
 from .fprint import print_dict
-from .fduckdb import execute
+from .config import MAIN_DF_PATH
 
 
 class Company:
@@ -257,11 +257,10 @@ class Company:
         This method creates a dataframe with the company's financial
         statements.
         """
+        df = pd.read_pickle(cfg
         query = f"""
-            SELECT *
-              FROM reports
-             WHERE cvm_id = {self._cvm_id}
-               AND acc_method = '{self._acc_method}'
+            cvm_id == {self._cvm_id} and \
+            acc_method = {self._acc_method}
              ORDER BY 
                 acc_code,
                 period_reference,
@@ -269,7 +268,7 @@ class Company:
                 period_begin,
                 period_end
         """
-        df = execute(query, "df")
+        df = pd.query(query)
 
         # Convert category columns back to string
         columns = df.columns

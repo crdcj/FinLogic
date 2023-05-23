@@ -10,6 +10,12 @@ from . import config as cfg
 URL_DFP = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/"
 URL_ITR = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/"
 
+CVM_RAW_DIR = cfg.DATA_PATH / "cvm" / "raw"
+CVM_PROCESSED_DIR = cfg.DATA_PATH / "cvm" / "processed"
+# Create CVM folders if they do not exist
+Path.mkdir(CVM_RAW_DIR, parents=True, exist_ok=True)
+Path.mkdir(CVM_PROCESSED_DIR, parents=True, exist_ok=True)
+
 CHECKMARK = "\033[32m\u2714\033[0m"
 
 
@@ -50,7 +56,7 @@ def get_all_file_urls() -> List[str]:
 def update_raw_file(url: str, s: requests.Session) -> Path:
     """Update raw file from CVM portal. Return a Path if file is updated."""
     filename = url[-23:]  # filename = end of url
-    filepath = cfg.CVM_RAW_DIR / filename
+    filepath = CVM_RAW_DIR / filename
     headers = s.head(url).headers
     filesize = filepath.stat().st_size if filepath.exists() else 0
     if filesize == int(headers["Content-Length"]):
@@ -242,7 +248,7 @@ def process_file(raw_filepath: Path) -> Path:
     """Read, process and save a CVM file."""
     df = read_raw_file(raw_filepath)
     df = process_df(df, raw_filepath)
-    processed_filepath = cfg.CVM_PROCESSED_DIR / (raw_filepath.stem + ".pickle")
+    processed_filepath = CVM_PROCESSED_DIR / (raw_filepath.stem + ".pickle")
     # save_processed_df(df, processed_filepath)
     df.to_pickle(processed_filepath, compression="zstd")
     print(f"    {CHECKMARK} {raw_filepath.name} processed.")
@@ -251,7 +257,7 @@ def process_file(raw_filepath: Path) -> Path:
 
 def get_raw_file_mtimes() -> pd.DataFrame:
     """Return a Pandas DataFrame with file_source and file_mtime columns."""
-    filepaths = sorted(cfg.CVM_RAW_DIR.glob("*.zip"))
+    filepaths = sorted(CVM_RAW_DIR.glob("*.zip"))
     d_mtimes = {filepath.name: filepath.stat().st_mtime for filepath in filepaths}
     return pd.DataFrame(d_mtimes.items(), columns=["file_source", "file_mtime"])
 
@@ -259,7 +265,7 @@ def get_raw_file_mtimes() -> pd.DataFrame:
 def read_all_processed_files() -> pd.DataFrame:
     """Read all processed CVM files."""
     # list filepaths in processed folder
-    filepaths = sorted(cfg.CVM_PROCESSED_DIR.glob("*.pickle"))
+    filepaths = sorted(CVM_PROCESSED_DIR.glob("*.pickle"))
     df = pd.concat([pd.read_pickle(f, compression="zstd") for f in filepaths])
     columns = df.columns
     cat_cols = [c for c in columns if df[c].dtype in ["object"]]
@@ -308,3 +314,11 @@ def drop_unecessary_quarterly_entries(df: pd.DataFrame) -> pd.DataFrame:
     df.drop(columns=["max_period"], inplace=True)
 
     return df
+
+
+def build_main_df():
+    """Build FinLogic Database from processed CVM files."""
+    df = read_all_processed_files()
+    df = drop_not_last_entries(df)
+    df = drop_unecessary_quarterly_entries(df)
+    df.to_pickle(cfg.MAIN_DF_PATH, compression="zstd")

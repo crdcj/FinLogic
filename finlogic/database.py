@@ -53,7 +53,7 @@ def update_database(rebuild: bool = False):
     print("\nProcessing CVM files...")
     if rebuild:
         # Process all files
-        filepaths_to_process = sorted(cfg.CVM_RAW_DIR.glob("*.zip"))
+        filepaths_to_process = sorted(cvm.CVM_RAW_DIR.glob("*.zip"))
     else:
         # Process only updated files
         filepaths_to_process = get_filepaths_to_process(df1=df_raw1, df2=df_raw2)
@@ -62,8 +62,9 @@ def update_database(rebuild: bool = False):
         [cvm.process_file(filepath) for filepath in filepaths_to_process]
 
     # FinLogic Database
-    fdb.build()
-    print(f"\n{CHECKMARK} FinLogic Database updated!")
+    print("\nBuilding FinLogic Database...")
+    cvm.build_main_df()
+    print(f"{CHECKMARK} FinLogic Database updated!")
 
 
 def database_info():
