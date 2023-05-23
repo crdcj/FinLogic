@@ -268,14 +268,18 @@ class Company:
             df["acc_value"] / self._acc_unit,
         )
 
-        self._first_report = df["period_end"].min()
-        self._last_report = df["period_end"].max()
+        self._first_period = df["period_end"].min()
+        self._last_period = df["period_end"].max()
 
-        last_period_df = df.query("period_end == @self._last_report")
-        if last_period_df["is_annual"].unique()[0]:
-            self._last_report_type = "ANNUAL"
+        # Not necessarily there will be a quarterly report for the last period
+        self._last_annual = df.query("is_annual == True")["period_end"].max()
+
+        if self._last_period == self._last_annual:
+            self._last_period_type = "ANNUAL"
+            self._last_quarterly = None
         else:
-            self._last_report_type = "QUARTERLY"
+            self._last_period_type = "QUARTERLY"
+            self._last_quarterly = df.query("is_annual == False")["period_end"].max()
 
         # Drop columns that are already company attributes or will not be used
         df.drop(
@@ -296,9 +300,9 @@ class Company:
             "Selected Accounting Method": self._is_consolidated,
             "Selected Accounting Unit": self._acc_unit,
             "Selected Tax Rate": self._tax_rate,
-            "First Report": self._first_report.strftime("%Y-%m-%d"),
-            "Last Report": self._last_report.strftime("%Y-%m-%d"),
-            "Last Report Type": self._last_report_type,
+            "First Report": self._first_period.strftime("%Y-%m-%d"),
+            "Last Report": self._last_period.strftime("%Y-%m-%d"),
+            "Last Report Type": self._last_period_type,
         }
         print_dict(info_dict=company_info, table_name="Company Info")
 
@@ -322,7 +326,7 @@ class Company:
         for period in periods:
             df_year = dfi.query("period_end == @period")[year_cols].copy()
             period_str = period.strftime("%Y-%m-%d")
-            if period == self._last_quarterly:
+            if period == self._last_period and self._last_period_type == "QUARTERLY":
                 period_str += " (ttm)"
             df_year.rename(columns={"acc_value": period_str}, inplace=True)
             dfo = pd.merge(dfo, df_year, how="left", on=["acc_code"])
@@ -417,9 +421,6 @@ class Company:
             "balance_sheet": ("1", "2"),
             "income_statement": ("3"),
             "cash_flow": ("6"),
-            "earnings_per_share": ("3.99"),
-            "comprehensive_income": ("4"),
-            "added_value": ("7"),
             "assets": ("1"),
             "cash": ("1.01.01", "1.01.02"),
             "current_assets": ("1.01"),
@@ -430,12 +431,18 @@ class Company:
             "non_current_liabilities": ("2.02"),
             "liabilities_and_equity": ("2"),
             "equity": ("2.03"),
+            "earnings_per_share": ("3.99"),
+            "comprehensive_income": ("4"),
+            "added_value": ("7"),
         }
         acc_codes = report_types[report_type]  # noqa
         df.query("acc_code.str.startswith(@acc_codes)", inplace=True)
         df.reset_index(drop=True, inplace=True)
 
-        if report_type in {"income_statement", "cash_flow"}:
+        if (
+            report_type in ["income_statement", "cash_flow"]
+            and self._last_period_type == "QUARTERLY"
+        ):
             # remove earnings per share from income statment
             df = df[~df["acc_code"].str.startswith("3.99")]
             df = self._calculate_ttm(df)
@@ -443,13 +450,10 @@ class Company:
         return self._build_report(df)
 
     def _calculate_ttm(self, dfi: pd.DataFrame) -> pd.DataFrame:
-        if self._last_annual > self._last_quarterly:
-            return dfi.query('is_annual == "ANNUAL"')
-
-        df1 = dfi.query("period_end == @self._last_quarterly").copy()
+        df1 = dfi.query("period_end == @self._last_period").copy()
         df1.query("period_begin == period_begin.min()", inplace=True)
 
-        df2 = dfi.query("period_reference == @self._last_quarterly").copy()
+        df2 = dfi.query("period_reference == @self._last_period").copy()
         df2.query("period_begin == period_begin.min()", inplace=True)
         df2["acc_value"] = -df2["acc_value"]
 

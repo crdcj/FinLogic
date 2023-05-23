@@ -322,3 +322,4 @@ def build_main_df():
     df = drop_not_last_entries(df)
     df = drop_unecessary_quarterly_entries(df)
     df.to_pickle(cfg.DF_PATH, compression="zstd")
+    cfg.DF = df
