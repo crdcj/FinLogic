@@ -450,13 +450,20 @@ class Company:
         return self._build_report(df)
 
     def _calculate_ttm(self, dfi: pd.DataFrame) -> pd.DataFrame:
-        df1 = dfi.query("period_end == @self._last_period").copy()
+        """Calculate trailing twelve months (TTM) for income statement and cash
+        when quarterly data is the most recent available. If the function was
+        called, the last period is quarterly"""
+
+        # Min. period begin in current year
+        df1 = dfi.query("period_end == period_end.max()").copy()
         df1.query("period_begin == period_begin.min()", inplace=True)
 
-        df2 = dfi.query("period_reference == @self._last_period").copy()
+        # Min. period begin in prior year
+        df2 = dfi.query("period_reference == @self._last_quarterly").copy()
         df2.query("period_begin == period_begin.min()", inplace=True)
         df2["acc_value"] = -df2["acc_value"]
 
+        # Last annual report
         df3 = dfi.query("period_end == @self._last_annual").copy()
 
         df_ttm = (
@@ -467,10 +474,9 @@ class Company:
         )
         df1.drop(columns="acc_value", inplace=True)
         df_ttm = pd.merge(df1, df_ttm)
-        df_ttm["is_annual"] = "QUARTERLY"
         df_ttm["period_begin"] = self._last_quarterly - pd.DateOffset(years=1)
 
-        df_annual = dfi.query('is_annual == "ANNUAL"').copy()
+        df_annual = dfi.query("is_annual == True").copy()
 
         return pd.concat([df_annual, df_ttm], ignore_index=True)
 

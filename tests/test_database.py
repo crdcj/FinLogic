@@ -1,12 +1,12 @@
 import unittest
 import finlogic as fl
-from finlogic import fduckdb as fdb
+from finlogic import database as db
 
 
 class TestDatabase(unittest.TestCase):
     def test_info(self):
         """Test the info method of the Database module."""
-        db_info = fdb.get_info()
+        db_info = db.get_info()
         self.assertEqual(db_info["first_report"], "2009-01-31")
         self.assertTrue(db_info["number_of_rows"] > 2_000_000)
 
