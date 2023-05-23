@@ -24,7 +24,7 @@ import numpy as np
 import pandas as pd
 from .language import language_df
 from .fprint import print_dict
-from .config import MAIN_DF_PATH
+from .config import DF
 
 
 class Company:
@@ -37,7 +37,7 @@ class Company:
     Attributes:
          identifier: A unique identifier for the company. Both CVM ID (int) and
             Fiscal ID (str) can be used.
-         acc_method: The accounting methods can be either 'con' for consolidated or
+         is_consolidated: The accounting methods can be either 'con' for consolidated or
             'sep' for separate. Defaults to 'con' (str).
          acc_unit: The accounting unit for the financial statements where "t"
             represents thousands, "m" represents millions and "b" represents
@@ -59,7 +59,7 @@ class Company:
     def __init__(
         self,
         identifier: int | str,
-        acc_method: Literal["con", "sep"] = "con",
+        is_consolidated: bool = True,
         acc_unit: int | float | Literal["t", "m", "b"] = 1,
         tax_rate: float = 0.34,
         language: Literal["english", "portuguese"] = "english",
@@ -67,12 +67,12 @@ class Company:
         """Initializes a new instance of the Company class."""
         self._initialized = False
         self.identifier = identifier
-        self.acc_method = acc_method
+        self.is_consolidated = is_consolidated
         self.acc_unit = acc_unit
         self.tax_rate = tax_rate
         self.language = language
         self._initialized = True
-        # Only set company dataframe after identifier, acc_method and acc_unit are set
+        # Only set _df after identifier, is_consolidated and acc_unit are setted
         self._set_df()
 
     @property
@@ -101,13 +101,11 @@ class Company:
     @identifier.setter
     def identifier(self, identifier: int | str):
         # Create custom data frame for ID selection
-        query = f"""
-            SELECT DISTINCT cvm_id, tax_id, name_id
-              FROM reports
-             WHERE CAST(cvm_id AS VARCHAR) = '{identifier}'
-                OR tax_id = '{identifier}'
-        """
-        df = execute(query, "df")
+        df = (
+            DF[["cvm_id", "tax_id", "name_id"]]
+            .drop_duplicates()
+            .query("cvm_id == @identifier or tax_id == @identifier")
+        )
         if not df.empty:
             self._cvm_id = df.loc[0, "cvm_id"]
             self.tax_id = df.loc[0, "tax_id"]
@@ -120,11 +118,11 @@ class Company:
             self._set_df()
 
     @property
-    def acc_method(self) -> Literal["con", "sep"]:
+    def is_consolidated(self) -> bool:
         """Gets or sets the accounting method for registering investments in
         subsidiaries.
 
-        The "acc_method" must be "con" for consolidated or "sep" for separate.
+        The "is_consolidated" must be True for consolidated or False for separate.
         Consolidated accounting combines the financial statements of a parent
         company and its subsidiaries, while separate accounting keeps them
         separate. Defaults to 'consolidated'.
@@ -134,15 +132,12 @@ class Company:
         """
         return self._acc_unit
 
-    @acc_method.setter
-    def acc_method(self, value: Literal["con", "sep"]):
-        # Set accounting method to upper case as in FinLogic Database
-        if value == "con":
-            self._acc_method = "CONSOLIDATED"
-        elif value == "sep":
-            self._acc_method = "SEPARATE"
+    @is_consolidated.setter
+    def is_consolidated(self, value: bool):
+        if value:
+            self._is_consolidated = True
         else:
-            raise ValueError("acc_method expects 'consolidated' or 'separate'")
+            self._is_consolidated = False
         # If object was already initialized, reset company dataframe
         if self._initialized:
             self._set_df()
@@ -257,18 +252,9 @@ class Company:
         This method creates a dataframe with the company's financial
         statements.
         """
-        df = pd.read_pickle(cfg
-        query = f"""
-            cvm_id == {self._cvm_id} and \
-            acc_method = {self._acc_method}
-             ORDER BY 
-                acc_code,
-                period_reference,
-                report_type,
-                period_begin,
-                period_end
-        """
-        df = pd.query(query)
+        df = DF.query(
+            "cvm_id == @self._cvm_id and is_consolidated == @self._is_consolidated"
+        ).copy()
 
         # Convert category columns back to string
         columns = df.columns
@@ -281,38 +267,33 @@ class Company:
             df["acc_value"],
             df["acc_value"] / self._acc_unit,
         )
-        annual_df = df.query('report_type == "ANNUAL"')
-        self._first_annual = annual_df["period_end"].min()
-        self._last_annual = annual_df["period_end"].max()
-        quarterly_df = df.query('report_type == "QUARTERLY"')
-        self._last_quarterly = quarterly_df["period_end"].max()
+
+        self._first_period = df["period_end"].min()
         self._last_period = df["period_end"].max()
+        last_period_df = df.query("period_end == @self._last_period")
+        self._last_period_type = last_period_df["report_type"].unique()[0]
 
         # Drop columns that are already company attributes or will not be used
-        df.drop(columns=["name_id", "cvm_id", "tax_id", "acc_method"], inplace=True)
+        df.drop(
+            columns=["name_id", "cvm_id", "tax_id", "is_consolidated"], inplace=True
+        )
 
         # Set company data frame
         self._df = df
 
     def info(self) -> dict:
         """Print a concise summary of a company."""
-        # Some companies have no quarterly reports (see cvm_id 9784)
-        if self._last_quarterly is pd.NaT:
-            last_quarterly = "No quarterly reports"
-        else:
-            last_quarterly = self._last_quarterly.strftime("%Y-%m-%d")
-
         company_info = {
             "Name": self.name_id,
             "CVM ID": self._cvm_id,
             "Fiscal ID (CNPJ)": self.tax_id,
             "Total Accounting Rows": len(self._df.index),
-            "Selected Accounting Method": self._acc_method,
+            "Selected Accounting Method": self._is_consolidated,
             "Selected Accounting Unit": self._acc_unit,
             "Selected Tax Rate": self._tax_rate,
-            "First Annual Report": self._first_annual.strftime("%Y-%m-%d"),
-            "Last Annual Report": self._last_annual.strftime("%Y-%m-%d"),
-            "Last Quarterly Report": last_quarterly,
+            "First Report": self._first_period.strftime("%Y-%m-%d"),
+            "Last Report": self._last_period.strftime("%Y-%m-%d"),
+            "Last Report Type": self._last_period_type,
         }
         print_dict(info_dict=company_info, table_name="Company Info")
 

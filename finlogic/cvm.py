@@ -121,7 +121,7 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
         "CD_CONTA": "acc_code",
         "DS_CONTA": "acc_name",
         "COLUNA_DF": "es_name",  # equity_statement_name
-        "ST_CONTA_FIXA": "acc_fixed",
+        "ST_CONTA_FIXA": "is_acc_fixed",
         "VL_CONTA": "acc_value",
         "GRUPO_DFP": "report_group",
         "MOEDA": "Currency",
@@ -137,27 +137,27 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     # report_version max. value is aprox. 9, so it can be uint8 (0 to 255)
     # df["report_version"] = df["report_version"].astype("uint8")
 
-    # acc_fixed values are ['S', 'N']
+    # is_acc_fixed values are ['S', 'N']
     map_dic = {"S": True, "N": False}
-    df["acc_fixed"] = df["acc_fixed"].map(map_dic).astype(bool)
+    df["is_acc_fixed"] = df["is_acc_fixed"].map(map_dic).astype(bool)
 
-    # Remove rows with acc_value == 0 and acc_fixed == False
-    # df.query("acc_value != 0 or acc_fixed == True", inplace=True)
+    # Remove rows with acc_value == 0 and is_acc_fixed == False
+    # df.query("acc_value != 0 or is_acc_fixed == True", inplace=True)
     df.query("acc_value != 0", inplace=True)
 
-    # acc_fixed is being used used only non fixed accounts with acc_value == 0
+    # is_acc_fixed is being used used only non fixed accounts with acc_value == 0
     # So it can be dropped after the query above.
-    df = df.drop(columns=["acc_fixed"])
+    df = df.drop(columns=["is_acc_fixed"])
 
     # cvm_id max. value is 600_000, so it can be uint32 (0 to 4_294_967_295)
     df["cvm_id"] = df["cvm_id"].astype("uint32")
 
     # There are two types of CVM files: DFP (ANNUAL) and ITR (QUARTERLY).
-    # In database, "report_type" is positioned after "tax_id" -> position = 3
+    # In database, "is_annual" is positioned after "tax_id" -> position = 3
     if filepath.name.startswith("dfp"):
-        df.insert(loc=3, column="report_type", value="ANNUAL")
+        df.insert(loc=3, column="is_annual", value=True)
     else:
-        df.insert(loc=3, column="report_type", value="QUARTERLY")
+        df.insert(loc=3, column="is_annual", value=False)
 
     # For the moment, es_name will not be used since it adds to much complexity to
     # the database. It will be dropped.
@@ -229,8 +229,8 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     if == 'Con' -> consolidated statement
     if == 'Ind' -> separate statement
     """
-    map_dic = {"Con": "CONSOLIDATED", "Ind": "SEPARATE"}
-    df.insert(4, "acc_method", df["report_group"].str[3:6].map(map_dic))
+    map_dic = {"Con": True, "Ind": False}
+    df.insert(4, "is_consolidated", df["report_group"].str[3:6].map(map_dic))
     # 'report_group' data can be inferred from 'acc_code'
     df.drop(columns=["report_group"], inplace=True)
 
@@ -282,10 +282,10 @@ def drop_not_last_entries(df: pd.DataFrame) -> pd.DataFrame:
     """
     sort_cols = [
         "cvm_id",
-        "acc_method",
+        "is_consolidated",
         "acc_code",
         "period_reference",
-        "report_type",
+        "is_annual",
         "period_begin",
         "period_end",
     ]
@@ -293,7 +293,7 @@ def drop_not_last_entries(df: pd.DataFrame) -> pd.DataFrame:
 
     subset_cols = [
         "cvm_id",
-        "acc_method",
+        "is_consolidated",
         "acc_code",
         "period_begin",
         "period_end",
@@ -307,7 +307,7 @@ def drop_unecessary_quarterly_entries(df: pd.DataFrame) -> pd.DataFrame:
     """Keep the last QUARTERLY report for each company only when necessary."""
     df["max_period"] = df.groupby("cvm_id")["period_reference"].transform("max")
 
-    condition1 = df["report_type"] == "QUARTERLY"
+    condition1 = ~df["is_annual"]
     condition2 = df["period_reference"] < df["max_period"]
     df = df[~(condition1 & condition2)].reset_index(drop=True)
 
@@ -321,4 +321,4 @@ def build_main_df():
     df = read_all_processed_files()
     df = drop_not_last_entries(df)
     df = drop_unecessary_quarterly_entries(df)
-    df.to_pickle(cfg.MAIN_DF_PATH, compression="zstd")
+    df.to_pickle(cfg.DF_PATH, compression="zstd")

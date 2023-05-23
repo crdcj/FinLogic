@@ -7,12 +7,12 @@ about the database itself.
 """
 from pathlib import Path
 from typing import Literal
+from datetime import datetime
 import pandas as pd
 from . import cvm
-from . import config as cfg
 from . import language as lng
 from . import fprint as fpr
-from . import fduckdb as fdb
+from finlogic.config import DF, DF_PATH
 
 CHECKMARK = "\033[32m\u2714\033[0m"
 
@@ -23,7 +23,7 @@ def get_filepaths_to_process(df1: pd.DataFrame, df2: pd.DataFrame) -> list[Path]
     """
     df = pd.concat([df1, df2]).drop_duplicates(keep=False)
     file_sources = sorted(df["file_source"].drop_duplicates())
-    return [cfg.CVM_RAW_DIR / file_source for file_source in file_sources]
+    return [cvm.CVM_RAW_DIR / file_source for file_source in file_sources]
 
 
 def update_database(rebuild: bool = False):
@@ -67,6 +67,31 @@ def update_database(rebuild: bool = False):
     print(f"{CHECKMARK} FinLogic Database updated!")
 
 
+def get_db_info() -> dict:
+    """Return a dictionary with information about the database."""
+    info = {}
+    if DF.empty:
+        return info
+
+    info["db_path"] = f"{DF_PATH}"
+    info["db_size"] = f"{DF_PATH.stat().st_size / 1024**2:.2f} MB"
+
+    db_last_modified = datetime.fromtimestamp(DF_PATH.stat().st_mtime)
+    info["db_last_modified"] = db_last_modified.strftime("%Y-%m-%d %H:%M:%S")
+
+    info["number_of_rows"] = DF.shape[0]
+
+    report_cols = ["cvm_id", "is_annual", "period_reference"]
+    info["number_of_reports"] = DF[report_cols].drop_duplicates().shape[0]
+
+    info["number_of_companies"] = DF["cvm_id"].nunique()
+
+    info["first_report"] = DF["period_end"].min().strftime("%Y-%m-%d")
+    info["last_report"] = DF["period_end"].max().strftime("%Y-%m-%d")
+
+    return info
+
+
 def database_info():
     """Print a concise summary of FinLogic Database.
 
@@ -82,7 +107,7 @@ def database_info():
 
     Returns: None
     """
-    info_dict = fdb.get_info()
+    info_dict = get_db_info()
     if info_dict:
         fpr.print_dict(info_dict=info_dict, table_name="FinLogic Database Info")
     else:
@@ -109,21 +134,16 @@ def search_company(
             'name_id', 'cvm_id', and 'tax_id' for each unique company that
             matches the search criteria.
     """
+    df = DF[["name_id", "cvm_id", "tax_id"]].drop_duplicates(ignore_index=True)
     match search_by:
         case "name_id":
             # Company name is stored in uppercase in the database
-            sql_condition = f"LIKE '%{search_value.upper()}%'"
+            df.query(f"name_id.str.contains('{search_value.upper()}')", inplace=True)
         case "cvm_id":
-            sql_condition = f"= {search_value}"
+            df.query(f"cvm_id == {search_value}", inplace=True)
         case "tax_id":
-            sql_condition = f"LIKE '%{search_value}%'"
+            df.query(f"tax_id == '{search_value}'", inplace=True)
         case _:
             raise ValueError("Invalid value for 'search_by' argument.")
 
-    query = f"""--sql
-        SELECT DISTINCT name_id, cvm_id, tax_id
-          FROM reports
-         WHERE {search_by} {sql_condition}
-         ORDER BY cvm_id;
-    """
-    return fdb.execute(query, "df")
+    return df.reset_index(drop=True)
