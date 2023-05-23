@@ -69,7 +69,7 @@ def get_info() -> dict:
     info["number_of_rows"] = execute(query, "fetchone")[0]
 
     query = """--sql
-        SELECT DISTINCT cvm_id, report_type, period_reference
+        SELECT DISTINCT cvm_id, is_annual, period_reference
           FROM reports;
     """
     info["number_of_reports"] = execute(query, "df").shape[0]

@@ -90,10 +90,10 @@ The Company Class allows you to easily access financial data from Brazilian comp
 ```python
 # Create a Company object to acces its financial data:
 # Both CVM (regulator) ID or Fiscal ID can be used as an identifier.
->>> petro = fl.Company(9512, acc_method='sep', acc_unit='m')
+>>> petro = fl.Company(9512, is_consolidated='sep', acc_unit='m')
 
 # Change company accounting method back to consolidated (default):
->>> petro.acc_method = 'con'
+>>> petro.is_consolidated = 'con'
 
 # Change company accounting unit to billion (default is 1):
 >>> petro.acc_unit = 'b'

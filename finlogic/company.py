@@ -268,11 +268,14 @@ class Company:
             df["acc_value"] / self._acc_unit,
         )
 
-        self._first_period = df["period_end"].min()
-        self._last_period = df["period_end"].max()
+        self._first_report = df["period_end"].min()
+        self._last_report = df["period_end"].max()
 
-        last_period_df = df.query("period_end == @self._last_period")
-        self._last_period_type = last_period_df["is_annual"].unique()[0]
+        last_period_df = df.query("period_end == @self._last_report")
+        if last_period_df["is_annual"].unique()[0]:
+            self._last_report_type = "ANNUAL"
+        else:
+            self._last_report_type = "QUARTERLY"
 
         # Drop columns that are already company attributes or will not be used
         df.drop(
@@ -293,9 +296,9 @@ class Company:
             "Selected Accounting Method": self._is_consolidated,
             "Selected Accounting Unit": self._acc_unit,
             "Selected Tax Rate": self._tax_rate,
-            "First Report": self._first_period.strftime("%Y-%m-%d"),
-            "Last Report": self._last_period.strftime("%Y-%m-%d"),
-            "Last Report Type": self._last_period_type,
+            "First Report": self._first_report.strftime("%Y-%m-%d"),
+            "Last Report": self._last_report.strftime("%Y-%m-%d"),
+            "Last Report Type": self._last_report_type,
         }
         print_dict(info_dict=company_info, table_name="Company Info")
 
@@ -441,7 +444,7 @@ class Company:
 
     def _calculate_ttm(self, dfi: pd.DataFrame) -> pd.DataFrame:
         if self._last_annual > self._last_quarterly:
-            return dfi.query('report_type == "ANNUAL"')
+            return dfi.query('is_annual == "ANNUAL"')
 
         df1 = dfi.query("period_end == @self._last_quarterly").copy()
         df1.query("period_begin == period_begin.min()", inplace=True)
@@ -460,10 +463,10 @@ class Company:
         )
         df1.drop(columns="acc_value", inplace=True)
         df_ttm = pd.merge(df1, df_ttm)
-        df_ttm["report_type"] = "QUARTERLY"
+        df_ttm["is_annual"] = "QUARTERLY"
         df_ttm["period_begin"] = self._last_quarterly - pd.DateOffset(years=1)
 
-        df_annual = dfi.query('report_type == "ANNUAL"').copy()
+        df_annual = dfi.query('is_annual == "ANNUAL"').copy()
 
         return pd.concat([df_annual, df_ttm], ignore_index=True)
 
