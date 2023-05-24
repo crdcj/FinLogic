@@ -261,9 +261,9 @@ class Company:
         cat_cols = [c for c in columns if df[c].dtype == "category"]
         df[cat_cols] = df[cat_cols].astype("string")
 
-        # Change acc_unit only for accounts different from 3.99
+        # Change acc_value only when it is not earnings_per_share (acc_code 8)
         df["acc_value"] = np.where(
-            df["acc_code"].str.startswith("3.99"),
+            df["acc_code"].str.startswith("8"),
             df["acc_value"],
             df["acc_value"] / self._acc_unit,
         )
@@ -431,9 +431,9 @@ class Company:
             "non_current_liabilities": ("2.02"),
             "liabilities_and_equity": ("2"),
             "equity": ("2.03"),
-            "earnings_per_share": ("3.99"),
             "comprehensive_income": ("4"),
             "added_value": ("7"),
+            "earnings_per_share": ("8"),
         }
         acc_codes = report_types[report_type]  # noqa
         df.query("acc_code.str.startswith(@acc_codes)", inplace=True)
@@ -443,8 +443,6 @@ class Company:
             report_type in ["income_statement", "cash_flow"]
             and self._last_period_type == "QUARTERLY"
         ):
-            # remove earnings per share from income statment
-            df = df[~df["acc_code"].str.startswith("3.99")]
             df = self._calculate_ttm(df)
 
         return self._build_report(df)

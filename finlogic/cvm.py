@@ -4,6 +4,7 @@ from typing import List
 import zipfile as zf
 from pathlib import Path
 import pandas as pd
+import numpy as np
 import requests
 from . import config as cfg
 
@@ -183,9 +184,17 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     df["currency_unit"] = df["currency_unit"].map(map_dic).astype(int)
 
     # Do not ajust acc_value for 3.99 codes.
-    df["acc_value"] = df["acc_value"].where(
+    df["acc_value"] = np.where(
         df["acc_code"].str.startswith("3.99"),
+        df["acc_value"],
         df["acc_value"] * df["currency_unit"],
+    )
+
+    # Change acc_code 3.99... to 8...
+    df["acc_code"] = np.where(
+        df["acc_code"].str.startswith("3.99"),
+        df["acc_code"].str.replace("3.99", "8"),
+        df["acc_code"],
     )
     # After the adjustment, currency_unit column is not necessary.
     df.drop(columns=["currency_unit"], inplace=True)
