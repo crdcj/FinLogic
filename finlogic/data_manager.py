@@ -11,7 +11,7 @@ from datetime import datetime
 import pandas as pd
 from . import cvm
 from . import language as lng
-from . import fprint as fpr
+from . import frich as fpr
 from . import config as cfg
 
 CHECKMARK = "\033[32m\u2714\033[0m"

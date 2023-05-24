@@ -6,7 +6,7 @@
 # Copyright 2022 Carlos Carvalho
 #
 from . import config  # noqa
-from .database import update, search_company, info
+from .data_manager import update, search_company, info
 from .company import Company
 
 

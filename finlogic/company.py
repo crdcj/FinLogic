@@ -23,7 +23,7 @@ from typing import Literal
 import numpy as np
 import pandas as pd
 from .language import language_df
-from .fprint import print_dict
+from .frich import print_dict
 from .config import DF
 
 
