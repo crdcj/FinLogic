@@ -26,7 +26,7 @@ def get_filepaths_to_process(df1: pd.DataFrame, df2: pd.DataFrame) -> list[Path]
     return [cvm.CVM_RAW_DIR / file_source for file_source in file_sources]
 
 
-def update_database(rebuild: bool = False):
+def update(rebuild: bool = False):
     """Verify changes in CVM files and update Finlogic Database if necessary.
 
     Args:
@@ -75,7 +75,7 @@ def get_info() -> dict:
 
     info["db_path"] = f"{cfg.DF_PATH}"
     info["db_size"] = f"{cfg.DF_PATH.stat().st_size / 1024**2:.2f} MB"
-
+    # cfg.DF_PATH.stat().st_mtime
     db_last_modified = datetime.fromtimestamp(cfg.DF_PATH.stat().st_mtime)
     info["db_last_modified"] = db_last_modified.strftime("%Y-%m-%d %H:%M:%S")
 
@@ -92,7 +92,7 @@ def get_info() -> dict:
     return info
 
 
-def database_info():
+def info():
     """Print a concise summary of FinLogic Database.
 
     This function prints a dictionary containing main information about
