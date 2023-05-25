@@ -9,10 +9,10 @@ from pathlib import Path
 from typing import Literal
 from datetime import datetime
 import pandas as pd
+from . import config as cfg
 from . import cvm
 from . import language as lng
 from . import frich as fpr
-from . import config as cfg
 
 CHECKMARK = "\033[32m\u2714\033[0m"
 
@@ -70,24 +70,25 @@ def update(rebuild: bool = False):
 def get_info() -> dict:
     """Return a dictionary with information about the database."""
     info = {}
-    if cfg.DF.empty:
+    df = cfg.DF
+    if df.empty:
         return info
 
-    info["db_path"] = f"{cfg.DF_PATH}"
-    info["db_size"] = f"{cfg.DF_PATH.stat().st_size / 1024**2:.2f} MB"
-    # cfg.DF_PATH.stat().st_mtime
+    info["data_path"] = f"{cfg.DATA_PATH}"
+    info["memory_used"] = f"{df.memory_usage(deep=True).sum() / 1024**2:.1f} MB"
+    info["file_size"] = f"{cfg.DF_PATH.stat().st_size / 1024**2:.1f} MB"
     db_last_modified = datetime.fromtimestamp(cfg.DF_PATH.stat().st_mtime)
-    info["db_last_modified"] = db_last_modified.strftime("%Y-%m-%d %H:%M:%S")
+    info["file_last_modified"] = db_last_modified.strftime("%Y-%m-%d %H:%M:%S")
 
-    info["number_of_rows"] = cfg.DF.shape[0]
+    info["number_of_rows"] = df.shape[0]
 
     report_cols = ["cvm_id", "is_annual", "period_reference"]
-    info["number_of_reports"] = cfg.DF[report_cols].drop_duplicates().shape[0]
+    info["number_of_reports"] = df[report_cols].drop_duplicates().shape[0]
 
-    info["number_of_companies"] = cfg.DF["cvm_id"].nunique()
+    info["number_of_companies"] = df["cvm_id"].nunique()
 
-    info["first_report"] = cfg.DF["period_end"].min().strftime("%Y-%m-%d")
-    info["last_report"] = cfg.DF["period_end"].max().strftime("%Y-%m-%d")
+    info["first_report"] = df["period_end"].min().strftime("%Y-%m-%d")
+    info["last_report"] = df["period_end"].max().strftime("%Y-%m-%d")
 
     return info
 
@@ -109,9 +110,9 @@ def info():
     """
     info_dict = get_info()
     if info_dict:
-        fpr.print_dict(info_dict=info_dict, table_name="FinLogic Database Info")
+        fpr.print_dict(info_dict=info_dict, table_name="FinLogic Info")
     else:
-        print("FinLogic Database is empty.")
+        print("FinLogic File is empty.")
 
 
 def search_company(

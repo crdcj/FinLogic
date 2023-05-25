@@ -183,14 +183,15 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     map_dic = {"UNIDADE": 1, "MIL": 1000}
     df["currency_unit"] = df["currency_unit"].map(map_dic).astype(int)
 
-    # Do not ajust acc_value for 3.99 codes.
+    # Earnings per share (EPS) values don't need to be adjusted by currency_unit.
     df["acc_value"] = np.where(
         df["acc_code"].str.startswith("3.99"),
         df["acc_value"],
         df["acc_value"] * df["currency_unit"],
     )
 
-    # Change acc_code 3.99... to 8...
+    # Change earnings per share codes from 3.99. to 8. to avoid confusion with
+    # 3. (income_statement)
     df["acc_code"] = np.where(
         df["acc_code"].str.startswith("3.99"),
         df["acc_code"].str.replace("3.99", "8"),

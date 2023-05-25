@@ -380,9 +380,6 @@ class Company:
         """
         # Copy company dataframe to avoid changing it
         df = self._df.copy()
-        periods = sorted(df["period_end"].drop_duplicates())
-        periods = periods[-num_years:]
-        df.query("period_end in @periods", inplace=True)
         # Check input arguments.
         if acc_level not in [0, 1, 2, 3, 4]:
             raise ValueError("acc_level expects 0, 1, 2, 3 or 4")
@@ -416,6 +413,7 @@ class Company:
             5 -> Changes in Equity
             6 -> Cash Flow (Indirect Method)
             7 -> Added Value
+            8 -> Earnings per Share
         """
         report_types = {
             "balance_sheet": ("1", "2"),
@@ -445,6 +443,11 @@ class Company:
         ):
             df = self._calculate_ttm(df)
 
+        # Show only selected years
+        all_periods = sorted(df["period_end"].drop_duplicates())
+        selected_periods = all_periods[-num_years:]  # noqa
+        df.query("period_end in @selected_periods", inplace=True)
+
         return self._build_report(df)
 
     def _calculate_ttm(self, dfi: pd.DataFrame) -> pd.DataFrame:
@@ -452,27 +455,30 @@ class Company:
         when quarterly data is the most recent available. If the function was
         called, the last period is quarterly"""
 
-        # Min. period begin in current year
-        df1 = dfi.query("period_end == period_end.max()").copy()
-        df1.query("period_begin == period_begin.min()", inplace=True)
+        # Quarterly dataframe
+        dfq = dfi.query("is_annual == False").copy()
+        ttm_period_begin = dfq["period_end"].min()
 
-        # Min. period begin in prior year
-        df2 = dfi.query("period_reference == @self._last_quarterly").copy()
-        df2.query("period_begin == period_begin.min()", inplace=True)
+        # Last quarter in quarterly dataframe
+        df1 = dfq.query("period_end == period_end.max()").copy()
+
+        # Previous quarter in quarterly dataframe
+        df2 = dfq.query("period_end == period_end.min()").copy()
         df2["acc_value"] = -df2["acc_value"]
 
         # Last annual report
-        df3 = dfi.query("period_end == @self._last_annual").copy()
+        dfa = dfi.query("is_annual == True and period_end == @self._last_annual").copy()
 
+        # Construct TTM dataframe
         df_ttm = (
-            pd.concat([df1, df2, df3], ignore_index=True)[["acc_code", "acc_value"]]
+            pd.concat([df1, df2, dfa], ignore_index=True)[["acc_code", "acc_value"]]
             .groupby(by="acc_code")
             .sum()
             .reset_index()
         )
         df1.drop(columns="acc_value", inplace=True)
         df_ttm = pd.merge(df1, df_ttm)
-        df_ttm["period_begin"] = self._last_quarterly - pd.DateOffset(years=1)
+        df_ttm["period_begin"] = ttm_period_begin
 
         df_annual = dfi.query("is_annual == True").copy()
 
@@ -497,16 +503,11 @@ class Company:
         Raises:
             ValueError: If some argument is invalid.
         """
-        df_bs = self.report("balance_sheet")
-        df_is = self.report("income_statement")
-        df_cf = self.report("cash_flow")
-        dfo = pd.concat([df_bs, df_is, df_cf]).query(f"acc_code == {acc_list}")
-        # Show only selected years
-        if num_years > 0:
-            cols = dfo.columns.to_list()
-            cols = cols[0:2] + cols[-num_years:]
-            dfo = dfo[cols]
-        return dfo
+        df_bs = self.report("balance_sheet", num_years=num_years)
+        df_is = self.report("income_statement", num_years=num_years)
+        df_cf = self.report("cash_flow", num_years=num_years)
+
+        return pd.concat([df_bs, df_is, df_cf]).query(f"acc_code == {acc_list}")
 
     @staticmethod
     def _prior_values(s: pd.Series, is_prior: bool) -> pd.Series:
