@@ -3,6 +3,7 @@ import re
 from typing import List
 import zipfile as zf
 from pathlib import Path
+from tqdm import tqdm
 import pandas as pd
 import numpy as np
 import requests
@@ -16,8 +17,6 @@ CVM_PROCESSED_DIR = cfg.DATA_PATH / "cvm" / "processed"
 # Create CVM folders if they do not exist
 Path.mkdir(CVM_RAW_DIR, parents=True, exist_ok=True)
 Path.mkdir(CVM_PROCESSED_DIR, parents=True, exist_ok=True)
-
-CHECKMARK = "\033[32m\u2714\033[0m"
 
 
 def get_file_urls(cvm_url) -> List[str]:
@@ -61,7 +60,7 @@ def update_raw_file(url: str, s: requests.Session) -> Path:
     headers = s.head(url).headers
     filesize = filepath.stat().st_size if filepath.exists() else 0
     if filesize == int(headers["Content-Length"]):
-        print(f"    - {filename} is the same -> skip.")
+        # file is already updated
         return None
     r = s.get(url)
     if r.status_code != 200:
@@ -69,17 +68,20 @@ def update_raw_file(url: str, s: requests.Session) -> Path:
 
     # Save file with Pathlib
     filepath.write_bytes(r.content)
-    print(f"    {CHECKMARK} {filename} updated.")
-
     return filepath
 
 
 def update_raw_files(urls: str) -> List[Path]:
     """Update CVM raw files."""
     s = requests.Session()
-    updated_filepaths = [update_raw_file(url, s) for url in urls]
+    updated_filepaths = []
+    for url in tqdm(urls, desc="Updating..."):
+        filepath = update_raw_file(url, s)
+        # print(f"    {CHECKMARK} {filename} updated.")
+        if filepath:
+            updated_filepaths.append(filepath)
     s.close()
-    return [filepath for filepath in updated_filepaths if filepath is not None]
+    return updated_filepaths
 
 
 def read_raw_file(filepath: Path) -> pd.DataFrame:
@@ -261,8 +263,14 @@ def process_file(raw_filepath: Path) -> Path:
     processed_filepath = CVM_PROCESSED_DIR / (raw_filepath.stem + ".pickle")
     # save_processed_df(df, processed_filepath)
     df.to_pickle(processed_filepath, compression="zstd")
-    print(f"    {CHECKMARK} {raw_filepath.name} processed.")
     return processed_filepath
+
+
+def process_files_with_progress(filepaths_to_process):
+    """Process CVM files with a progress bar."""
+    for filepath in tqdm(filepaths_to_process, desc="Processing..."):
+        # print(f"    {CHECKMARK} {raw_filepath.name} processed.")
+        process_file(filepath)
 
 
 def get_raw_file_mtimes() -> pd.DataFrame:

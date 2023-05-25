@@ -9,11 +9,9 @@ from pathlib import Path
 from typing import Literal
 from datetime import datetime
 import pandas as pd
-from rich.progress import track
 from . import config as cfg
 from . import cvm
 from . import language as lng
-from . import frich as fpr
 
 CHECKMARK = "\033[32m\u2714\033[0m"
 
@@ -37,11 +35,6 @@ def get_filepaths_to_process(df1: pd.DataFrame, df2: pd.DataFrame) -> list[Path]
     return [cvm.CVM_RAW_DIR / file_source for file_source in file_sources]
 
 
-def process_files_with_progress(filepaths_to_process):
-    for filepath in track(filepaths_to_process, description="Processing..."):
-        cvm.process_file(filepath)
-
-
 def update(rebuild: bool = False):
     """Verify changes in CVM files and update Finlogic Database if necessary.
 
@@ -56,7 +49,6 @@ def update(rebuild: bool = False):
     lng.process_language_df()
 
     # CVM raw files
-    print("Updating CVM files...")
     # Get files mtimes from the raw folder before updating
     df_raw1 = cvm.get_raw_file_mtimes()
     urls = cvm.get_all_file_urls()
@@ -66,7 +58,6 @@ def update(rebuild: bool = False):
     df_raw2 = cvm.get_raw_file_mtimes()
 
     # CVM processed files
-    print("\nProcessing CVM files...")
     if rebuild:
         # Process all files
         filepaths_to_process = sorted(cvm.CVM_RAW_DIR.glob("*.zip"))
@@ -75,23 +66,36 @@ def update(rebuild: bool = False):
         filepaths_to_process = get_filepaths_to_process(df1=df_raw1, df2=df_raw2)
     print(f"Number of new files to process = {len(filepaths_to_process)}")
 
-    process_files_with_progress(filepaths_to_process)
+    cvm.process_files_with_progress(filepaths_to_process)
 
     # FinLogic Database
-    print("\nBuilding FinLogic Database...")
+    print("\nBuilding FinLogic main DataFrame...")
     cvm.build_main_df()
-    print(f"{CHECKMARK} FinLogic Database updated!")
+    print(f"{CHECKMARK} FinLogic updated!")
 
 
-def get_info() -> dict:
-    """Return a dictionary with information about the database."""
+def info() -> pd.DataFrame:
+    """Print a concise summary of FinLogic available data.
+
+    This function returns a dataframe containing main information about
+    FinLogic Database, such as the database path, file size, last update call,
+    last modified dates, size in memory, number of accounting rows, unique
+    accounting codes, companies, unique financial statements, first financial
+    statement date and last financial statement date.
+
+    Args:
+        return_dict (bool, optional): If True, returns a dictionary with the
+            database information and do not print it.
+
+    Returns: None
+    """
     info = {}
     df = get_main_df()
     if df.empty:
-        return info
+        return pd.DataFrame()
 
     info["data_path"] = f"{cfg.DATA_PATH}"
-    info["memory_used"] = f"{df.memory_usage(deep=True).sum() / 1024**2:.1f} MB"
+    info["dataframe_size"] = f"{df.memory_usage(deep=True).sum() / 1024**2:.1f} MB"
     info["file_size"] = f"{cfg.DF_PATH.stat().st_size / 1024**2:.1f} MB"
     db_last_modified = datetime.fromtimestamp(cfg.DF_PATH.stat().st_mtime)
     info["file_last_modified"] = db_last_modified.strftime("%Y-%m-%d %H:%M:%S")
@@ -106,29 +110,10 @@ def get_info() -> dict:
     info["first_report"] = df["period_end"].min().strftime("%Y-%m-%d")
     info["last_report"] = df["period_end"].max().strftime("%Y-%m-%d")
 
-    return info
+    s = pd.Series(info)
+    s.name = "FinLogic Info"
 
-
-def info():
-    """Print a concise summary of FinLogic Database.
-
-    This function prints a dictionary containing main information about
-    FinLogic Database, such as the database path, file size, last update call,
-    last modified dates, size in memory, number of accounting rows, unique
-    accounting codes, companies, unique financial statements, first financial
-    statement date and last financial statement date.
-
-    Args:
-        return_dict (bool, optional): If True, returns a dictionary with the
-            database information and do not print it.
-
-    Returns: None
-    """
-    info_dict = get_info()
-    if info_dict:
-        fpr.print_dict(info_dict=info_dict, table_name="FinLogic Info")
-    else:
-        print("FinLogic File is empty.")
+    return s.to_frame()
 
 
 def search_company(

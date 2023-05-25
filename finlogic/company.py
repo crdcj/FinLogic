@@ -24,7 +24,6 @@ from typing import Literal
 import numpy as np
 import pandas as pd
 from .language import language_df
-from .frich import print_dict
 from . import data_manager as dm
 
 
@@ -278,10 +277,10 @@ class Company:
         self._last_annual = df.query("is_annual")["period_end"].max()
 
         if self._last_period == self._last_annual:
-            self._last_period_type = "ANNUAL"
+            self._last_period_type = "annual"
             self._last_quarterly = None
         else:
-            self._last_period_type = "QUARTERLY"
+            self._last_period_type = "quarterly"
             self._last_quarterly = df.query("not is_annual")["period_end"].max()
 
         # Drop columns that are already company attributes or will not be used
@@ -293,21 +292,25 @@ class Company:
         # Set company data frame
         self._df = df
 
-    def info(self) -> dict:
+    def info(self) -> pd.DataFrame:
         """Print a concise summary of a company."""
         company_info = {
             "Name": self.name_id,
             "CVM ID": self._cvm_id,
             "Fiscal ID (CNPJ)": self.tax_id,
             "Total Accounting Rows": len(self._df.index),
-            "Selected Accounting Method": self._is_consolidated,
+            "Selected Accounting Method": "consolidated"
+            if self._is_consolidated
+            else "separate",
             "Selected Accounting Unit": self._acc_unit,
             "Selected Tax Rate": self._tax_rate,
             "First Report": self._first_period.strftime("%Y-%m-%d"),
             "Last Report": self._last_period.strftime("%Y-%m-%d"),
             "Last Report Type": self._last_period_type,
         }
-        print_dict(info_dict=company_info, table_name="Company Info")
+        s = pd.Series(company_info)
+        s.name = "Company Info"
+        return s.to_frame()
 
     def _build_report_index(self, dfi: pd.DataFrame) -> pd.DataFrame:
         """Build the index for the report. This function is used by the
@@ -331,7 +334,7 @@ class Company:
         for period in periods:
             df_year = dfi.query("period_end == @period")[year_cols].copy()
             period_str = period.strftime("%Y-%m-%d")
-            if period == self._last_period and self._last_period_type == "QUARTERLY":
+            if period == self._last_period and self._last_period_type == "quarterly":
                 period_str += " (ttm)"
             df_year.rename(columns={"acc_value": period_str}, inplace=True)
             dfo = pd.merge(dfo, df_year, how="left", on=["acc_code"])
@@ -444,7 +447,7 @@ class Company:
 
         if (
             report_type in ["income_statement", "cash_flow"]
-            and self._last_period_type == "QUARTERLY"
+            and self._last_period_type == "quarterly"
         ):
             df = self._calculate_ttm(df)
 

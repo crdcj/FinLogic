@@ -6,7 +6,7 @@ from finlogic import data_manager as dm
 class TestDatabase(unittest.TestCase):
     def test_info(self):
         """Test the info method of the Database module."""
-        info = dm.get_info()
+        info = dm.info()["FinLogic Info"]
         self.assertEqual(info["first_report"], "2009-01-31")
         self.assertTrue(info["number_of_rows"] > 2_000_000)
 
