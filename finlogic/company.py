@@ -134,10 +134,10 @@ class Company:
 
     @is_consolidated.setter
     def is_consolidated(self, value: bool):
-        if value:
-            self._is_consolidated = True
+        if type(value) is bool:
+            self._is_consolidated = value
         else:
-            self._is_consolidated = False
+            raise ValueError("Company 'is_consolidated' value is invalid")
         # If object was already initialized, reset company dataframe
         if self._initialized:
             self._set_df()
@@ -254,7 +254,10 @@ class Company:
         """
         df = (
             dm.get_main_df()
-            .query("cvm_id == @self._cvm_id and is_consolidated")
+            .query(
+                "cvm_id == @self._cvm_id and \
+                 is_consolidated == @self._is_consolidated"
+            )
             .reset_index(drop=True)
         )
 

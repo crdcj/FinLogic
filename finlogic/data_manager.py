@@ -95,20 +95,18 @@ def info() -> pd.DataFrame:
         return pd.DataFrame()
 
     info["data_path"] = f"{cfg.DATA_PATH}"
-    info["dataframe_size"] = f"{df.memory_usage(deep=True).sum() / 1024**2:.1f} MB"
-    info["file_size"] = f"{cfg.DF_PATH.stat().st_size / 1024**2:.1f} MB"
+    info["data_size"] = f"{cfg.DF_PATH.stat().st_size / 1024**2:.1f} MB"
     db_last_modified = datetime.fromtimestamp(cfg.DF_PATH.stat().st_mtime)
-    info["file_last_modified"] = db_last_modified.strftime("%Y-%m-%d %H:%M:%S")
+    info["last_modified_on"] = db_last_modified.strftime("%Y-%m-%d %H:%M:%S")
 
-    info["number_of_rows"] = df.shape[0]
+    info["accounting_entries"] = df.shape[0]
 
     report_cols = ["cvm_id", "is_annual", "period_end"]
     info["number_of_reports"] = df[report_cols].drop_duplicates().shape[0]
-
-    info["number_of_companies"] = df["cvm_id"].nunique()
-
     info["first_report"] = df["period_end"].min().strftime("%Y-%m-%d")
     info["last_report"] = df["period_end"].max().strftime("%Y-%m-%d")
+
+    info["number_of_companies"] = df["cvm_id"].nunique()
 
     s = pd.Series(info)
     s.name = "FinLogic Info"

@@ -3,12 +3,12 @@ import finlogic as fl
 from finlogic import data_manager as dm
 
 
-class TestDatabase(unittest.TestCase):
+class TestData(unittest.TestCase):
     def test_info(self):
         """Test the info method of the Database module."""
         info = dm.info()["FinLogic Info"]
         self.assertEqual(info["first_report"], "2009-01-31")
-        self.assertTrue(info["number_of_rows"] > 2_000_000)
+        self.assertTrue(info["accounting_entries"] > 2_000_000)
 
     def test_search_company(self):
         """Test the search_company method of the Database module."""
