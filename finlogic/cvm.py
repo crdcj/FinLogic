@@ -308,22 +308,18 @@ def drop_not_last_entries(df: pd.DataFrame) -> pd.DataFrame:
         "period_begin",
         "period_end",
     ]
-    df.drop_duplicates(subset=subset_cols, keep="last", inplace=True, ignore_index=True)
-
-    return df
+    return df.drop_duplicates(subset=subset_cols, keep="last", ignore_index=True)
 
 
 def drop_unecessary_quarterly_entries(df: pd.DataFrame) -> pd.DataFrame:
     """Keep the last QUARTERLY report for each company only when necessary."""
+    # Create a temporary column with the max. period_reference for each company
     df["max_period"] = df.groupby("cvm_id")["period_reference"].transform("max")
 
-    condition1 = ~df["is_annual"]
-    condition2 = df["period_reference"] < df["max_period"]
-    df = df[~(condition1 & condition2)].reset_index(drop=True)
-
-    df.drop(columns=["max_period"], inplace=True)
-
-    return df
+    mask1 = ~df["is_annual"]
+    mask2 = df["period_reference"] < df["max_period"]
+    mask = ~(mask1 & mask2)
+    return df[mask].reset_index(drop=True).drop(columns=["max_period"])
 
 
 def build_main_df():
@@ -331,5 +327,6 @@ def build_main_df():
     df = read_all_processed_files()
     df = drop_not_last_entries(df)
     df = drop_unecessary_quarterly_entries(df)
+    # After the drop_unecessary entries, period_reference is not necessary anymore
+    df.drop(columns=["period_reference"], inplace=True)
     df.to_pickle(cfg.DF_PATH, compression="zstd")
-    cfg.DF = df

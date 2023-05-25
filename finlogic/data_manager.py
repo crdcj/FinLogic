@@ -17,6 +17,16 @@ from . import frich as fpr
 CHECKMARK = "\033[32m\u2714\033[0m"
 
 
+def get_main_df() -> pd.DataFrame:
+    """Return a DataFrame with all accounting data"""
+    if cfg.DF_PATH.is_file():
+        df = pd.read_pickle(cfg.DF_PATH, compression="zstd")
+    else:
+        df = pd.DataFrame()
+
+    return df
+
+
 def get_filepaths_to_process(df1: pd.DataFrame, df2: pd.DataFrame) -> list[Path]:
     """Return a list of CVM files that has to be processed by comparing
     the files mtimes from the raw folder.
@@ -70,7 +80,7 @@ def update(rebuild: bool = False):
 def get_info() -> dict:
     """Return a dictionary with information about the database."""
     info = {}
-    df = cfg.DF
+    df = get_main_df()
     if df.empty:
         return info
 
@@ -82,7 +92,7 @@ def get_info() -> dict:
 
     info["number_of_rows"] = df.shape[0]
 
-    report_cols = ["cvm_id", "is_annual", "period_reference"]
+    report_cols = ["cvm_id", "is_annual", "period_end"]
     info["number_of_reports"] = df[report_cols].drop_duplicates().shape[0]
 
     info["number_of_companies"] = df["cvm_id"].nunique()
@@ -135,7 +145,8 @@ def search_company(
             'name_id', 'cvm_id', and 'tax_id' for each unique company that
             matches the search criteria.
     """
-    df = cfg.DF[["name_id", "cvm_id", "tax_id"]].drop_duplicates(ignore_index=True)
+    search_cols = ["name_id", "cvm_id", "tax_id"]
+    df = get_main_df()[search_cols].drop_duplicates(ignore_index=True)
     match search_by:
         case "name_id":
             # Company name is stored in uppercase in the database

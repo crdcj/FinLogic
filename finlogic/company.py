@@ -6,10 +6,11 @@ Classes:
     Company: Represents a company with its financial information and allows
     users to generate financial reports and indicators.
 
-Abreviations used in code:
-    dfc = company dataframe
-    dfi = input dataframe
-    dfo = output dataframe
+Main variables:
+    cfg.DF  memory dataframe with all accounting data
+    _df     company dataframe (protected)
+    dfi     function input dataframe
+    dfo     function output dataframe
 
 RuntimeWarning:
     Pandas query + numexpr module -> Engine has switched to 'python' because
@@ -24,7 +25,7 @@ import numpy as np
 import pandas as pd
 from .language import language_df
 from .frich import print_dict
-from .config import DF
+from . import data_manager as dm
 
 
 class Company:
@@ -102,7 +103,7 @@ class Company:
     def identifier(self, identifier: int | str):
         # Create custom data frame for ID selection
         df = (
-            DF[["cvm_id", "tax_id", "name_id"]]
+            dm.get_main_df()[["cvm_id", "tax_id", "name_id"]]
             .query("cvm_id == @identifier or tax_id == @identifier")
             .drop_duplicates(ignore_index=True)
         )
@@ -252,9 +253,11 @@ class Company:
         This method creates a dataframe with the company's financial
         statements.
         """
-        df = DF.query(
-            "cvm_id == @self._cvm_id and is_consolidated == @self._is_consolidated"
-        ).reset_index(drop=True)
+        df = (
+            dm.get_main_df()
+            .query("cvm_id == @self._cvm_id and is_consolidated")
+            .reset_index(drop=True)
+        )
 
         # Convert category columns back to string
         columns = df.columns
@@ -272,14 +275,14 @@ class Company:
         self._last_period = df["period_end"].max()
 
         # Not necessarily there will be a quarterly report for the last period
-        self._last_annual = df.query("is_annual == True")["period_end"].max()
+        self._last_annual = df.query("is_annual")["period_end"].max()
 
         if self._last_period == self._last_annual:
             self._last_period_type = "ANNUAL"
             self._last_quarterly = None
         else:
             self._last_period_type = "QUARTERLY"
-            self._last_quarterly = df.query("is_annual == False")["period_end"].max()
+            self._last_quarterly = df.query("not is_annual")["period_end"].max()
 
         # Drop columns that are already company attributes or will not be used
         df.drop(
@@ -307,11 +310,13 @@ class Company:
         print_dict(info_dict=company_info, table_name="Company Info")
 
     def _build_report_index(self, dfi: pd.DataFrame) -> pd.DataFrame:
-        """Build the index for the report."""
-        # "acc_code" works as a primary key. Other columns set the preference order
+        """Build the index for the report. This function is used by the
+        _build_report function. The index is built from the annual reports
+        "acc_code" works as a primary key. Other columns set the preference order
+        """
         df = (
-            dfi[["acc_code", "acc_name", "period_reference"]]
-            .sort_values(by=["acc_code", "period_reference"])
+            dfi.query("is_annual")[["acc_code", "acc_name", "period_end"]]
+            .sort_values(by=["acc_code", "period_end"])
             .drop_duplicates(subset=["acc_code"], keep="last", ignore_index=True)[
                 ["acc_code", "acc_name"]
             ]
@@ -456,7 +461,7 @@ class Company:
         called, the last period is quarterly"""
 
         # Quarterly dataframe
-        dfq = dfi.query("is_annual == False").copy()
+        dfq = dfi.query("not is_annual").copy()
         ttm_period_begin = dfq["period_end"].min()
 
         # Last quarter in quarterly dataframe
@@ -467,7 +472,7 @@ class Company:
         df2["acc_value"] = -df2["acc_value"]
 
         # Last annual report
-        dfa = dfi.query("is_annual == True and period_end == @self._last_annual").copy()
+        dfa = dfi.query("is_annual and period_end == @self._last_annual").copy()
 
         # Construct TTM dataframe
         df_ttm = (
@@ -480,7 +485,7 @@ class Company:
         df_ttm = pd.merge(df1, df_ttm)
         df_ttm["period_begin"] = ttm_period_begin
 
-        df_annual = dfi.query("is_annual == True").copy()
+        df_annual = dfi.query("is_annual").copy()
 
         return pd.concat([df_annual, df_ttm], ignore_index=True)
 
@@ -506,8 +511,12 @@ class Company:
         df_bs = self.report("balance_sheet", num_years=num_years)
         df_is = self.report("income_statement", num_years=num_years)
         df_cf = self.report("cash_flow", num_years=num_years)
-
-        return pd.concat([df_bs, df_is, df_cf]).query(f"acc_code == {acc_list}")
+        df = (
+            pd.concat([df_bs, df_is, df_cf])
+            .query(f"acc_code == {acc_list}")
+            .reset_index(drop=True)
+        )
+        return df
 
     @staticmethod
     def _prior_values(s: pd.Series, is_prior: bool) -> pd.Series:
@@ -594,7 +603,6 @@ class Company:
         dfo.loc["after_tax_operating_margin"] = ebit * (1 - self._tax_rate) / revenues
         dfo.loc["net_margin"] = net_income / revenues
 
-        dfo.index.name = "Company Financial Indicators"
         # Show only the selected number of years
         if num_years > 0:
             dfo = dfo[dfo.columns[-num_years:]]
