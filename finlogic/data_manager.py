@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Literal
 from datetime import datetime
 import pandas as pd
+from rich.progress import track
 from . import config as cfg
 from . import cvm
 from . import language as lng
@@ -34,6 +35,11 @@ def get_filepaths_to_process(df1: pd.DataFrame, df2: pd.DataFrame) -> list[Path]
     df = pd.concat([df1, df2]).drop_duplicates(keep=False)
     file_sources = sorted(df["file_source"].drop_duplicates())
     return [cvm.CVM_RAW_DIR / file_source for file_source in file_sources]
+
+
+def process_files_with_progress(filepaths_to_process):
+    for filepath in track(filepaths_to_process, description="Processing..."):
+        cvm.process_file(filepath)
 
 
 def update(rebuild: bool = False):
@@ -68,8 +74,8 @@ def update(rebuild: bool = False):
         # Process only updated files
         filepaths_to_process = get_filepaths_to_process(df1=df_raw1, df2=df_raw2)
     print(f"Number of new files to process = {len(filepaths_to_process)}")
-    if filepaths_to_process:
-        [cvm.process_file(filepath) for filepath in filepaths_to_process]
+
+    process_files_with_progress(filepaths_to_process)
 
     # FinLogic Database
     print("\nBuilding FinLogic Database...")

@@ -315,7 +315,7 @@ class Company:
         "acc_code" works as a primary key. Other columns set the preference order
         """
         df = (
-            dfi.query("is_annual")[["acc_code", "acc_name", "period_end"]]
+            dfi[["acc_code", "acc_name", "period_end"]]
             .sort_values(by=["acc_code", "period_end"])
             .drop_duplicates(subset=["acc_code"], keep="last", ignore_index=True)[
                 ["acc_code", "acc_name"]
