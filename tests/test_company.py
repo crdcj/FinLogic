@@ -4,8 +4,8 @@ import finlogic as fl
 
 class TestCompany(unittest.TestCase):
     def setUp(self):
-        self.petro_sep = fl.Company(9512, acc_method="sep", acc_unit="b")
-        self.petro_con = fl.Company(9512, acc_method="con", acc_unit="b")
+        self.petro_sep = fl.Company(9512, is_consolidated=False, acc_unit="b")
+        self.petro_con = fl.Company(9512, is_consolidated=True, acc_unit="b")
 
     def test_identifier(self):
         """Test the identifier method of the Company class."""

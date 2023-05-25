@@ -7,14 +7,23 @@ about the database itself.
 """
 from pathlib import Path
 from typing import Literal
+from datetime import datetime
 import pandas as pd
-from . import cvm
 from . import config as cfg
+from . import cvm
 from . import language as lng
-from . import fprint as fpr
-from . import fduckdb as fdb
 
 CHECKMARK = "\033[32m\u2714\033[0m"
+
+
+def get_main_df() -> pd.DataFrame:
+    """Return a DataFrame with all accounting data"""
+    if cfg.DF_PATH.is_file():
+        df = pd.read_pickle(cfg.DF_PATH, compression="zstd")
+    else:
+        df = pd.DataFrame()
+
+    return df
 
 
 def get_filepaths_to_process(df1: pd.DataFrame, df2: pd.DataFrame) -> list[Path]:
@@ -23,10 +32,10 @@ def get_filepaths_to_process(df1: pd.DataFrame, df2: pd.DataFrame) -> list[Path]
     """
     df = pd.concat([df1, df2]).drop_duplicates(keep=False)
     file_sources = sorted(df["file_source"].drop_duplicates())
-    return [cfg.CVM_RAW_DIR / file_source for file_source in file_sources]
+    return [cvm.CVM_RAW_DIR / file_source for file_source in file_sources]
 
 
-def update_database(rebuild: bool = False):
+def update(rebuild: bool = False):
     """Verify changes in CVM files and update Finlogic Database if necessary.
 
     Args:
@@ -40,7 +49,6 @@ def update_database(rebuild: bool = False):
     lng.process_language_df()
 
     # CVM raw files
-    print("Updating CVM files...")
     # Get files mtimes from the raw folder before updating
     df_raw1 = cvm.get_raw_file_mtimes()
     urls = cvm.get_all_file_urls()
@@ -50,26 +58,26 @@ def update_database(rebuild: bool = False):
     df_raw2 = cvm.get_raw_file_mtimes()
 
     # CVM processed files
-    print("\nProcessing CVM files...")
     if rebuild:
         # Process all files
-        filepaths_to_process = sorted(cfg.CVM_RAW_DIR.glob("*.zip"))
+        filepaths_to_process = sorted(cvm.CVM_RAW_DIR.glob("*.zip"))
     else:
         # Process only updated files
         filepaths_to_process = get_filepaths_to_process(df1=df_raw1, df2=df_raw2)
     print(f"Number of new files to process = {len(filepaths_to_process)}")
-    if filepaths_to_process:
-        [cvm.process_file(filepath) for filepath in filepaths_to_process]
+
+    cvm.process_files_with_progress(filepaths_to_process)
 
     # FinLogic Database
-    fdb.build()
-    print(f"\n{CHECKMARK} FinLogic Database updated!")
+    print("\nBuilding FinLogic main DataFrame...")
+    cvm.build_main_df()
+    print(f"{CHECKMARK} FinLogic updated!")
 
 
-def database_info():
-    """Print a concise summary of FinLogic Database.
+def info() -> pd.DataFrame:
+    """Print a concise summary of FinLogic available data.
 
-    This function prints a dictionary containing main information about
+    This function returns a dataframe containing main information about
     FinLogic Database, such as the database path, file size, last update call,
     last modified dates, size in memory, number of accounting rows, unique
     accounting codes, companies, unique financial statements, first financial
@@ -81,11 +89,29 @@ def database_info():
 
     Returns: None
     """
-    info_dict = fdb.get_info()
-    if info_dict:
-        fpr.print_dict(info_dict=info_dict, table_name="FinLogic Database Info")
-    else:
-        print("FinLogic Database is empty.")
+    info = {}
+    df = get_main_df()
+    if df.empty:
+        return pd.DataFrame()
+
+    info["data_path"] = f"{cfg.DATA_PATH}"
+    info["data_size"] = f"{cfg.DF_PATH.stat().st_size / 1024**2:.1f} MB"
+    db_last_modified = datetime.fromtimestamp(cfg.DF_PATH.stat().st_mtime)
+    info["last_modified_on"] = db_last_modified.strftime("%Y-%m-%d %H:%M:%S")
+
+    info["accounting_entries"] = df.shape[0]
+
+    report_cols = ["cvm_id", "is_annual", "period_end"]
+    info["number_of_reports"] = df[report_cols].drop_duplicates().shape[0]
+    info["first_report"] = df["period_end"].min().strftime("%Y-%m-%d")
+    info["last_report"] = df["period_end"].max().strftime("%Y-%m-%d")
+
+    info["number_of_companies"] = df["cvm_id"].nunique()
+
+    s = pd.Series(info)
+    s.name = "FinLogic Info"
+
+    return s.to_frame()
 
 
 def search_company(
@@ -108,21 +134,17 @@ def search_company(
             'name_id', 'cvm_id', and 'tax_id' for each unique company that
             matches the search criteria.
     """
+    search_cols = ["name_id", "cvm_id", "tax_id"]
+    df = get_main_df()[search_cols].drop_duplicates(ignore_index=True)
     match search_by:
         case "name_id":
             # Company name is stored in uppercase in the database
-            sql_condition = f"LIKE '%{search_value.upper()}%'"
+            df.query(f"name_id.str.contains('{search_value.upper()}')", inplace=True)
         case "cvm_id":
-            sql_condition = f"= {search_value}"
+            df.query(f"cvm_id == {search_value}", inplace=True)
         case "tax_id":
-            sql_condition = f"LIKE '%{search_value}%'"
+            df.query(f"tax_id == '{search_value}'", inplace=True)
         case _:
             raise ValueError("Invalid value for 'search_by' argument.")
 
-    query = f"""--sql
-        SELECT DISTINCT name_id, cvm_id, tax_id
-          FROM reports
-         WHERE {search_by} {sql_condition}
-         ORDER BY cvm_id;
-    """
-    return fdb.execute(query, "df")
+    return df.reset_index(drop=True)

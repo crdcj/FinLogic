@@ -6,10 +6,11 @@ Classes:
     Company: Represents a company with its financial information and allows
     users to generate financial reports and indicators.
 
-Abreviations used in code:
-    dfc = company dataframe
-    dfi = input dataframe
-    dfo = output dataframe
+Main variables:
+    cfg.DF  memory dataframe with all accounting data
+    _df     company dataframe (protected)
+    dfi     function input dataframe
+    dfo     function output dataframe
 
 RuntimeWarning:
     Pandas query + numexpr module -> Engine has switched to 'python' because
@@ -23,8 +24,7 @@ from typing import Literal
 import numpy as np
 import pandas as pd
 from .language import language_df
-from .fprint import print_dict
-from .fduckdb import execute
+from . import data_manager as dm
 
 
 class Company:
@@ -37,7 +37,7 @@ class Company:
     Attributes:
          identifier: A unique identifier for the company. Both CVM ID (int) and
             Fiscal ID (str) can be used.
-         acc_method: The accounting methods can be either 'con' for consolidated or
+         is_consolidated: The accounting methods can be either 'con' for consolidated or
             'sep' for separate. Defaults to 'con' (str).
          acc_unit: The accounting unit for the financial statements where "t"
             represents thousands, "m" represents millions and "b" represents
@@ -59,7 +59,7 @@ class Company:
     def __init__(
         self,
         identifier: int | str,
-        acc_method: Literal["con", "sep"] = "con",
+        is_consolidated: bool = True,
         acc_unit: int | float | Literal["t", "m", "b"] = 1,
         tax_rate: float = 0.34,
         language: Literal["english", "portuguese"] = "english",
@@ -67,12 +67,12 @@ class Company:
         """Initializes a new instance of the Company class."""
         self._initialized = False
         self.identifier = identifier
-        self.acc_method = acc_method
+        self.is_consolidated = is_consolidated
         self.acc_unit = acc_unit
         self.tax_rate = tax_rate
         self.language = language
         self._initialized = True
-        # Only set company dataframe after identifier, acc_method and acc_unit are set
+        # Only set _df after identifier, is_consolidated and acc_unit are setted
         self._set_df()
 
     @property
@@ -101,13 +101,11 @@ class Company:
     @identifier.setter
     def identifier(self, identifier: int | str):
         # Create custom data frame for ID selection
-        query = f"""
-            SELECT DISTINCT cvm_id, tax_id, name_id
-              FROM reports
-             WHERE CAST(cvm_id AS VARCHAR) = '{identifier}'
-                OR tax_id = '{identifier}'
-        """
-        df = execute(query, "df")
+        df = (
+            dm.get_main_df()[["cvm_id", "tax_id", "name_id"]]
+            .query("cvm_id == @identifier or tax_id == @identifier")
+            .drop_duplicates(ignore_index=True)
+        )
         if not df.empty:
             self._cvm_id = df.loc[0, "cvm_id"]
             self.tax_id = df.loc[0, "tax_id"]
@@ -120,11 +118,11 @@ class Company:
             self._set_df()
 
     @property
-    def acc_method(self) -> Literal["con", "sep"]:
+    def is_consolidated(self) -> bool:
         """Gets or sets the accounting method for registering investments in
         subsidiaries.
 
-        The "acc_method" must be "con" for consolidated or "sep" for separate.
+        The "is_consolidated" must be True for consolidated or False for separate.
         Consolidated accounting combines the financial statements of a parent
         company and its subsidiaries, while separate accounting keeps them
         separate. Defaults to 'consolidated'.
@@ -134,15 +132,12 @@ class Company:
         """
         return self._acc_unit
 
-    @acc_method.setter
-    def acc_method(self, value: Literal["con", "sep"]):
-        # Set accounting method to upper case as in FinLogic Database
-        if value == "con":
-            self._acc_method = "CONSOLIDATED"
-        elif value == "sep":
-            self._acc_method = "SEPARATE"
+    @is_consolidated.setter
+    def is_consolidated(self, value: bool):
+        if type(value) is bool:
+            self._is_consolidated = value
         else:
-            raise ValueError("acc_method expects 'consolidated' or 'separate'")
+            raise ValueError("Company 'is_consolidated' value is invalid")
         # If object was already initialized, reset company dataframe
         if self._initialized:
             self._set_df()
@@ -257,72 +252,77 @@ class Company:
         This method creates a dataframe with the company's financial
         statements.
         """
-        query = f"""
-            SELECT *
-              FROM reports
-             WHERE cvm_id = {self._cvm_id}
-               AND acc_method = '{self._acc_method}'
-             ORDER BY 
-                acc_code,
-                period_reference,
-                report_type,
-                period_begin,
-                period_end
-        """
-        df = execute(query, "df")
+        df = (
+            dm.get_main_df()
+            .query(
+                "cvm_id == @self._cvm_id and \
+                 is_consolidated == @self._is_consolidated"
+            )
+            .reset_index(drop=True)
+        )
 
         # Convert category columns back to string
         columns = df.columns
         cat_cols = [c for c in columns if df[c].dtype == "category"]
         df[cat_cols] = df[cat_cols].astype("string")
 
-        # Change acc_unit only for accounts different from 3.99
+        # Change acc_value only when it is not earnings_per_share (acc_code 8)
         df["acc_value"] = np.where(
-            df["acc_code"].str.startswith("3.99"),
+            df["acc_code"].str.startswith("8"),
             df["acc_value"],
             df["acc_value"] / self._acc_unit,
         )
-        annual_df = df.query('report_type == "ANNUAL"')
-        self._first_annual = annual_df["period_end"].min()
-        self._last_annual = annual_df["period_end"].max()
-        quarterly_df = df.query('report_type == "QUARTERLY"')
-        self._last_quarterly = quarterly_df["period_end"].max()
+
+        self._first_period = df["period_end"].min()
         self._last_period = df["period_end"].max()
 
+        # Not necessarily there will be a quarterly report for the last period
+        self._last_annual = df.query("is_annual")["period_end"].max()
+
+        if self._last_period == self._last_annual:
+            self._last_period_type = "annual"
+            self._last_quarterly = None
+        else:
+            self._last_period_type = "quarterly"
+            self._last_quarterly = df.query("not is_annual")["period_end"].max()
+
         # Drop columns that are already company attributes or will not be used
-        df.drop(columns=["name_id", "cvm_id", "tax_id", "acc_method"], inplace=True)
+        df.drop(
+            columns=["name_id", "cvm_id", "tax_id", "is_consolidated"],
+            inplace=True,
+        )
 
         # Set company data frame
         self._df = df
 
-    def info(self) -> dict:
+    def info(self) -> pd.DataFrame:
         """Print a concise summary of a company."""
-        # Some companies have no quarterly reports (see cvm_id 9784)
-        if self._last_quarterly is pd.NaT:
-            last_quarterly = "No quarterly reports"
-        else:
-            last_quarterly = self._last_quarterly.strftime("%Y-%m-%d")
-
         company_info = {
             "Name": self.name_id,
             "CVM ID": self._cvm_id,
             "Fiscal ID (CNPJ)": self.tax_id,
             "Total Accounting Rows": len(self._df.index),
-            "Selected Accounting Method": self._acc_method,
+            "Selected Accounting Method": "consolidated"
+            if self._is_consolidated
+            else "separate",
             "Selected Accounting Unit": self._acc_unit,
             "Selected Tax Rate": self._tax_rate,
-            "First Annual Report": self._first_annual.strftime("%Y-%m-%d"),
-            "Last Annual Report": self._last_annual.strftime("%Y-%m-%d"),
-            "Last Quarterly Report": last_quarterly,
+            "First Report": self._first_period.strftime("%Y-%m-%d"),
+            "Last Report": self._last_period.strftime("%Y-%m-%d"),
+            "Last Report Type": self._last_period_type,
         }
-        print_dict(info_dict=company_info, table_name="Company Info")
+        s = pd.Series(company_info)
+        s.name = "Company Info"
+        return s.to_frame()
 
     def _build_report_index(self, dfi: pd.DataFrame) -> pd.DataFrame:
-        """Build the index for the report."""
-        # "acc_code" works as a primary key. Other columns set the preference order
+        """Build the index for the report. This function is used by the
+        _build_report function. The index is built from the annual reports
+        "acc_code" works as a primary key. Other columns set the preference order
+        """
         df = (
-            dfi[["acc_code", "acc_name", "period_reference"]]
-            .sort_values(by=["acc_code", "period_reference"])
+            dfi[["acc_code", "acc_name", "period_end"]]
+            .sort_values(by=["acc_code", "period_end"])
             .drop_duplicates(subset=["acc_code"], keep="last", ignore_index=True)[
                 ["acc_code", "acc_name"]
             ]
@@ -337,7 +337,7 @@ class Company:
         for period in periods:
             df_year = dfi.query("period_end == @period")[year_cols].copy()
             period_str = period.strftime("%Y-%m-%d")
-            if period == self._last_quarterly:
+            if period == self._last_period and self._last_period_type == "quarterly":
                 period_str += " (ttm)"
             df_year.rename(columns={"acc_value": period_str}, inplace=True)
             dfo = pd.merge(dfo, df_year, how="left", on=["acc_code"])
@@ -391,13 +391,8 @@ class Company:
         """
         # Copy company dataframe to avoid changing it
         df = self._df.copy()
-        periods = sorted(df["period_end"].drop_duplicates())
-        if num_years > len(periods):
-            num_years = len(periods)
-        periods = periods[-num_years:]
-        df.query("period_end in @periods", inplace=True)
         # Check input arguments.
-        if acc_level not in {0, 1, 2, 3, 4}:
+        if acc_level not in [0, 1, 2, 3, 4]:
             raise ValueError("acc_level expects 0, 1, 2, 3 or 4")
 
         # Filter dataframe for selected acc_level
@@ -429,14 +424,12 @@ class Company:
             5 -> Changes in Equity
             6 -> Cash Flow (Indirect Method)
             7 -> Added Value
+            8 -> Earnings per Share
         """
         report_types = {
             "balance_sheet": ("1", "2"),
             "income_statement": ("3"),
             "cash_flow": ("6"),
-            "earnings_per_share": ("3.99"),
-            "comprehensive_income": ("4"),
-            "added_value": ("7"),
             "assets": ("1"),
             "cash": ("1.01.01", "1.01.02"),
             "current_assets": ("1.01"),
@@ -447,43 +440,58 @@ class Company:
             "non_current_liabilities": ("2.02"),
             "liabilities_and_equity": ("2"),
             "equity": ("2.03"),
+            "comprehensive_income": ("4"),
+            "added_value": ("7"),
+            "earnings_per_share": ("8"),
         }
         acc_codes = report_types[report_type]  # noqa
         df.query("acc_code.str.startswith(@acc_codes)", inplace=True)
         df.reset_index(drop=True, inplace=True)
 
-        if report_type in {"income_statement", "cash_flow"}:
-            # remove earnings per share from income statment
-            df = df[~df["acc_code"].str.startswith("3.99")]
+        if (
+            report_type in ["income_statement", "cash_flow"]
+            and self._last_period_type == "quarterly"
+        ):
             df = self._calculate_ttm(df)
+
+        # Show only selected years
+        all_periods = sorted(df["period_end"].drop_duplicates())
+        selected_periods = all_periods[-num_years:]  # noqa
+        df.query("period_end in @selected_periods", inplace=True)
 
         return self._build_report(df)
 
     def _calculate_ttm(self, dfi: pd.DataFrame) -> pd.DataFrame:
-        if self._last_annual > self._last_quarterly:
-            return dfi.query('report_type == "ANNUAL"')
+        """Calculate trailing twelve months (TTM) for income statement and cash
+        when quarterly data is the most recent available. If the function was
+        called, the last period is quarterly"""
 
-        df1 = dfi.query("period_end == @self._last_quarterly").copy()
-        df1.query("period_begin == period_begin.min()", inplace=True)
+        # Quarterly dataframe
+        dfq = dfi.query("not is_annual").copy()
+        ttm_period_begin = dfq["period_end"].min()
 
-        df2 = dfi.query("period_reference == @self._last_quarterly").copy()
-        df2.query("period_begin == period_begin.min()", inplace=True)
+        # Last quarter in quarterly dataframe
+        df1 = dfq.query("period_end == period_end.max()").copy()
+
+        # Previous quarter in quarterly dataframe
+        df2 = dfq.query("period_end == period_end.min()").copy()
         df2["acc_value"] = -df2["acc_value"]
 
-        df3 = dfi.query("period_end == @self._last_annual").copy()
+        # Last annual report
+        dfa = dfi.query("is_annual and period_end == @self._last_annual").copy()
 
+        # Construct TTM dataframe
         df_ttm = (
-            pd.concat([df1, df2, df3], ignore_index=True)[["acc_code", "acc_value"]]
+            pd.concat([df1, df2, dfa], ignore_index=True)[["acc_code", "acc_value"]]
             .groupby(by="acc_code")
             .sum()
             .reset_index()
         )
         df1.drop(columns="acc_value", inplace=True)
         df_ttm = pd.merge(df1, df_ttm)
-        df_ttm["report_type"] = "QUARTERLY"
-        df_ttm["period_begin"] = self._last_quarterly - pd.DateOffset(years=1)
+        df_ttm["period_begin"] = ttm_period_begin
 
-        df_annual = dfi.query('report_type == "ANNUAL"').copy()
+        df_annual = dfi.query("is_annual").copy()
 
         return pd.concat([df_annual, df_ttm], ignore_index=True)
 
@@ -506,16 +514,15 @@ class Company:
         Raises:
             ValueError: If some argument is invalid.
         """
-        df_bs = self.report("balance_sheet")
-        df_is = self.report("income_statement")
-        df_cf = self.report("cash_flow")
-        dfo = pd.concat([df_bs, df_is, df_cf]).query(f"acc_code == {acc_list}")
-        # Show only selected years
-        if num_years > 0:
-            cols = dfo.columns.to_list()
-            cols = cols[0:2] + cols[-num_years:]
-            dfo = dfo[cols]
-        return dfo
+        df_bs = self.report("balance_sheet", num_years=num_years)
+        df_is = self.report("income_statement", num_years=num_years)
+        df_cf = self.report("cash_flow", num_years=num_years)
+        df = (
+            pd.concat([df_bs, df_is, df_cf])
+            .query(f"acc_code == {acc_list}")
+            .reset_index(drop=True)
+        )
+        return df
 
     @staticmethod
     def _prior_values(s: pd.Series, is_prior: bool) -> pd.Series:
@@ -602,7 +609,6 @@ class Company:
         dfo.loc["after_tax_operating_margin"] = ebit * (1 - self._tax_rate) / revenues
         dfo.loc["net_margin"] = net_income / revenues
 
-        dfo.index.name = "Company Financial Indicators"
         # Show only the selected number of years
         if num_years > 0:
             dfo = dfo[dfo.columns[-num_years:]]
