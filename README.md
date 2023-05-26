@@ -39,7 +39,7 @@ pip install finlogic
 
 ### Create FinLogic Database
 
-The 'update' function is responsible for downloading and updating raw financial data from the CVM, processing approximately 20 million accounting entries, and storing them for local data analysis. During the initial run, the process might take longer than 1 minute, depending on the CVM server connection and local CPU power. For subsequent updates, only the updated CVM files will be downloaded and processed, which should expedite the operation.
+The 'update' function is responsible for downloading and updating raw financial data from the CVM, processing approximately 20 million accounting entries, and storing them for local data analysis. During the initial run, the process might take some minutes, depending on the CVM server connection and local CPU power. For subsequent updates, only the updated CVM files will be downloaded and processed, which should expedite the operation.
 
 ```python
 >>> import finlogic as fl
@@ -55,16 +55,16 @@ FinLogic database updated ✅
 >>> fl.info()
 ```
 
-| FinLogic Database Info |                         Value |
-| :--------------------- | ----------------------------: |
-| db_path                | .../finlogic/data/finlogic.db |
-| db_size                |                       76.0 MB |
-| db_last_modified       |           2023-04-20 07:29:08 |
-| number_of_companies    |                         1,139 |
-| number_of_rows         |                     2,806,635 |
-| number_of_reports      |                         9,422 |
-| first_report           |                    2009-01-31 |
-| last_report            |                    2023-03-31 |
+|                     |       FinLogic Info |
+| :------------------ | ------------------: |
+| data_path           |   .../finlogic/data |
+| data_size           |             12.1 MB |
+| last_modified_on    | 2023-04-20 07:29:08 |
+| accounting_entries  |           2,806,635 |
+| number_of_reports   |              11,635 |
+| first_report        |          2009-01-31 |
+| last_report         |          2023-03-31 |
+| number_of_companies |               1,139 |
 
 ```python
 # Search for a company in database:
@@ -89,10 +89,10 @@ The Company Class allows you to easily access financial data from Brazilian comp
 ```python
 # Create a Company object to acces its financial data:
 # Both CVM (regulator) ID or Fiscal ID can be used as an identifier.
->>> petro = fl.Company(9512, is_consolidated='sep', acc_unit='m')
+>>> petro = fl.Company(9512, is_consolidated=False, acc_unit='m')
 
 # Change company accounting method back to consolidated (default):
->>> petro.is_consolidated = 'con'
+>>> petro.is_consolidated = True
 
 # Change company accounting unit to billion (default is 1):
 >>> petro.acc_unit = 'b'
@@ -101,18 +101,18 @@ The Company Class allows you to easily access financial data from Brazilian comp
 >>> petro.info()
 ```
 
-| Company Info               |                             Values |
+|                            |                       Company Info |
 | :------------------------- | ---------------------------------: |
 | Name                       | PETROLEO BRASILEIRO S.A. PETROBRAS |
 | CVM ID                     |                               9512 |
-| Fiscal ID (CNPJ)           |                 33.000.167/0001-01 |
-| Total Accounting Rows      |                             39,292 |
+| Tax ID (CNPJ)              |                 33.000.167/0001-01 |
+| Total Accounting Rows      |                              3,292 |
 | Selected Tax Rate          |                               0.34 |
 | Selected Accounting Method |                       consolidated |
 | Selected Accounting Unit   |                      1,000,000,000 |
-| First Annual Report        |                         2009-12-31 |
-| Last Annual Report         |                         2021-12-31 |
-| Last Quarterly Report      |                         2021-09-30 |
+| First Report               |                         2009-12-31 |
+| Last Report                |                         2021-12-31 |
+| Last Report Type           |                          quarterly |
 
 ```python
 # Show company assets in Brazilian currency:
