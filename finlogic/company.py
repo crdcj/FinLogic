@@ -346,8 +346,25 @@ class Company:
 
     def report(
         self,
-        report_type: str,
-        acc_level: int = 0,
+        report_type: Literal[
+            "balance_sheet",
+            "assets",
+            "cash",
+            "current_assets",
+            "non_current_assets",
+            "liabilities",
+            "debt",
+            "current_liabilities",
+            "non_current_liabilities",
+            "liabilities_and_equity",
+            "equity",
+            "income_statement",
+            "comprehensive_income",
+            "cash_flow",
+            "added_value",
+            "earnings_per_share",
+        ],
+        acc_level: Literal[0, 1, 2, 3, 4] = 0,
         num_years: int = 0,
     ) -> pd.DataFrame:
         """Generate an accounting report for the company.
@@ -427,9 +444,6 @@ class Company:
             8 -> Earnings per Share
         """
         report_types = {
-            "balance_sheet": ("1", "2"),
-            "income_statement": ("3"),
-            "cash_flow": ("6"),
             "assets": ("1"),
             "cash": ("1.01.01", "1.01.02"),
             "current_assets": ("1.01"),
@@ -440,7 +454,10 @@ class Company:
             "non_current_liabilities": ("2.02"),
             "liabilities_and_equity": ("2"),
             "equity": ("2.03"),
+            "balance_sheet": ("1", "2"),
+            "income_statement": ("3"),
             "comprehensive_income": ("4"),
+            "cash_flow": ("6"),
             "added_value": ("7"),
             "earnings_per_share": ("8"),
         }
