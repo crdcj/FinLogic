@@ -338,7 +338,7 @@ class Company:
             df_year = dfi.query("period_end == @period")[year_cols].copy()
             period_str = period.strftime("%Y-%m-%d")
             if period == self._last_period and self._last_period_type == "quarterly":
-                period_str += " (ttm)"
+                period_str += " (ltm)"
             df_year.rename(columns={"acc_value": period_str}, inplace=True)
             dfo = pd.merge(dfo, df_year, how="left", on=["acc_code"])
         dfo.fillna(0, inplace=True)
@@ -465,51 +465,12 @@ class Company:
         df.query("acc_code.str.startswith(@acc_codes)", inplace=True)
         df.reset_index(drop=True, inplace=True)
 
-        if (
-            report_type in ["income_statement", "cash_flow"]
-            and self._last_period_type == "quarterly"
-        ):
-            df = self._calculate_ttm(df)
-
         # Show only selected years
         all_periods = sorted(df["period_end"].drop_duplicates())
         selected_periods = all_periods[-num_years:]  # noqa
         df.query("period_end in @selected_periods", inplace=True)
 
         return self._build_report(df)
-
-    def _calculate_ttm(self, dfi: pd.DataFrame) -> pd.DataFrame:
-        """Calculate trailing twelve months (TTM) for income statement and cash
-        when quarterly data is the most recent available. If the function was
-        called, the last period is quarterly"""
-
-        # Quarterly dataframe
-        dfq = dfi.query("not is_annual").copy()
-
-        # Last quarter in quarterly dataframe
-        df1 = dfq.query("period_end == period_end.max()").copy()
-
-        # Previous quarter in quarterly dataframe
-        df2 = dfq.query("period_end == period_end.min()").copy()
-        df2["acc_value"] = -df2["acc_value"]
-
-        # Last annual report
-        dfa = dfi.query("is_annual and period_end == @self._last_annual").copy()
-
-        # Construct TTM dataframe
-        df_ttm = (
-            pd.concat([df1, df2, dfa], ignore_index=True)[["acc_code", "acc_value"]]
-            .groupby(by="acc_code")
-            .sum()
-            .reset_index()
-        )
-        df1.drop(columns="acc_value", inplace=True)
-        df_ttm = pd.merge(df1, df_ttm)
-        df_ttm["period_begin"] = dfq["period_end"].min()
-
-        df_annual = dfi.query("is_annual").copy()
-
-        return pd.concat([df_annual, df_ttm], ignore_index=True)
 
     def custom_report(
         self,

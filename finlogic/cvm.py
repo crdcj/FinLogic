@@ -12,12 +12,6 @@ from . import config as cfg
 URL_DFP = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/"
 URL_ITR = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/"
 
-CVM_RAW_DIR = cfg.DATA_PATH / "cvm" / "raw"
-CVM_PROCESSED_DIR = cfg.DATA_PATH / "cvm" / "processed"
-# Create CVM folders if they do not exist
-Path.mkdir(CVM_RAW_DIR, parents=True, exist_ok=True)
-Path.mkdir(CVM_PROCESSED_DIR, parents=True, exist_ok=True)
-
 
 def get_file_urls(cvm_url) -> List[str]:
     """Return a list of available CVM files.
@@ -56,7 +50,7 @@ def get_all_file_urls() -> List[str]:
 def update_raw_file(url: str, s: requests.Session) -> Path:
     """Update raw file from CVM portal. Return a Path if file is updated."""
     filename = url[-23:]  # filename = end of url
-    filepath = CVM_RAW_DIR / filename
+    filepath = cfg.CVM_RAW_DIR / filename
     headers = s.head(url).headers
     filesize = filepath.stat().st_size if filepath.exists() else 0
     if filesize == int(headers["Content-Length"]):
@@ -173,10 +167,6 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     # Replace "BCO " with "BANCO " in "name_id" column.
     df["name_id"] = df["name_id"].str.replace("BCO ", "BANCO ")
 
-    # Convert string columns to categorical before mapping.
-    columns = df.select_dtypes(include="object").columns
-    df[columns] = df[columns].astype("category")
-
     # Convert datetime columns
     columns = ["period_reference", "period_begin", "period_end"]
     df[columns] = df[columns].apply(pd.to_datetime)
@@ -214,10 +204,6 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
            "period_begin" is 2019-01-01
            "period_end" is 2019-12-31
         then "period_order" is "PREVIOUS".
-    Old code:
-        "period_order" values are: 'ÚLTIMO', 'PENÚLTIMO'
-        map_dic = {"ÚLTIMO": "LAST", "PENÚLTIMO": "PREVIOUS"}
-        df["period_order"] = df["period_order"].map(map_dic)
     """
     df = df.drop(columns=["period_order"])
 
@@ -260,7 +246,7 @@ def process_file(raw_filepath: Path) -> Path:
     """Read, process and save a CVM file."""
     df = read_raw_file(raw_filepath)
     df = process_df(df, raw_filepath)
-    processed_filepath = CVM_PROCESSED_DIR / (raw_filepath.stem + ".pickle")
+    processed_filepath = cfg.CVM_PROCESSED_DIR / (raw_filepath.stem + ".pickle")
     # save_processed_df(df, processed_filepath)
     df.to_pickle(processed_filepath, compression="zstd")
     return processed_filepath
@@ -275,66 +261,6 @@ def process_files_with_progress(filepaths_to_process):
 
 def get_raw_file_mtimes() -> pd.DataFrame:
     """Return a Pandas DataFrame with file_source and file_mtime columns."""
-    filepaths = sorted(CVM_RAW_DIR.glob("*.zip"))
+    filepaths = sorted(cfg.CVM_RAW_DIR.glob("*.zip"))
     d_mtimes = {filepath.name: filepath.stat().st_mtime for filepath in filepaths}
     return pd.DataFrame(d_mtimes.items(), columns=["file_source", "file_mtime"])
-
-
-def read_all_processed_files() -> pd.DataFrame:
-    """Read all processed CVM files."""
-    # list filepaths in processed folder
-    filepaths = sorted(CVM_PROCESSED_DIR.glob("*.pickle"))
-    df = pd.concat([pd.read_pickle(f, compression="zstd") for f in filepaths])
-    columns = df.columns
-    cat_cols = [c for c in columns if df[c].dtype in ["object"]]
-    df[cat_cols] = df[cat_cols].astype("category")
-    return df
-
-
-def drop_not_last_entries(df: pd.DataFrame) -> pd.DataFrame:
-    """Drop duplicated accounting entries before building database
-
-    Because the report holds accounting entries for the year before, we can keep only
-    the most recent one in the database. By doing this, we guarantee
-    that there is only one valid accounting value in the database -> the last one
-    """
-    sort_cols = [
-        "cvm_id",
-        "is_consolidated",
-        "acc_code",
-        "period_reference",
-        "is_annual",
-        "period_begin",
-        "period_end",
-    ]
-    df.sort_values(by=sort_cols, ascending=True, inplace=True, ignore_index=True)
-
-    subset_cols = [
-        "cvm_id",
-        "is_consolidated",
-        "acc_code",
-        "period_begin",
-        "period_end",
-    ]
-    return df.drop_duplicates(subset=subset_cols, keep="last", ignore_index=True)
-
-
-def drop_unecessary_quarterly_entries(df: pd.DataFrame) -> pd.DataFrame:
-    """Keep the last QUARTERLY report for each company only when necessary."""
-    # Create a temporary column with the max. period_reference for each company
-    df["max_period"] = df.groupby("cvm_id")["period_reference"].transform("max")
-
-    mask1 = ~df["is_annual"]
-    mask2 = df["period_reference"] < df["max_period"]
-    mask = ~(mask1 & mask2)
-    return df[mask].reset_index(drop=True).drop(columns=["max_period"])
-
-
-def build_main_df():
-    """Build FinLogic Database from processed CVM files."""
-    df = read_all_processed_files()
-    df = drop_not_last_entries(df)
-    df = drop_unecessary_quarterly_entries(df)
-    # After the drop_unecessary entries, period_reference is not necessary anymore
-    df.drop(columns=["period_reference"], inplace=True)
-    df.to_pickle(cfg.DF_PATH, compression="zstd")

@@ -12,6 +12,7 @@ import pandas as pd
 from . import config as cfg
 from . import cvm
 from . import language as lng
+from . import builder as bld
 
 CHECKMARK = "\033[32m\u2714\033[0m"
 
@@ -32,7 +33,7 @@ def get_filepaths_to_process(df1: pd.DataFrame, df2: pd.DataFrame) -> list[Path]
     """
     df = pd.concat([df1, df2]).drop_duplicates(keep=False)
     file_sources = sorted(df["file_source"].drop_duplicates())
-    return [cvm.CVM_RAW_DIR / file_source for file_source in file_sources]
+    return [cfg.CVM_RAW_DIR / file_source for file_source in file_sources]
 
 
 def update(rebuild: bool = False):
@@ -60,7 +61,7 @@ def update(rebuild: bool = False):
     # CVM processed files
     if rebuild:
         # Process all files
-        filepaths_to_process = sorted(cvm.CVM_RAW_DIR.glob("*.zip"))
+        filepaths_to_process = sorted(cfg.CVM_RAW_DIR.glob("*.zip"))
     else:
         # Process only updated files
         filepaths_to_process = get_filepaths_to_process(df1=df_raw1, df2=df_raw2)
@@ -70,7 +71,7 @@ def update(rebuild: bool = False):
 
     # FinLogic Database
     print("\nBuilding FinLogic main DataFrame...")
-    cvm.build_main_df()
+    bld.build_main_df()
     print(f"{CHECKMARK} FinLogic updated!")
 
 
