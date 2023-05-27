@@ -338,7 +338,7 @@ class Company:
             df_year = dfi.query("period_end == @period")[year_cols].copy()
             period_str = period.strftime("%Y-%m-%d")
             if period == self._last_period and self._last_period_type == "quarterly":
-                period_str += " (ltm)"
+                period_str += " ltm"
             df_year.rename(columns={"acc_value": period_str}, inplace=True)
             dfo = pd.merge(dfo, df_year, how="left", on=["acc_code"])
         dfo.fillna(0, inplace=True)

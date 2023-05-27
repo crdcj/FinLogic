@@ -19,6 +19,7 @@ def drop_duplicated_entries(df: pd.DataFrame) -> pd.DataFrame:
     """
     sort_cols = [
         "cvm_id",
+        "is_annual",
         "is_consolidated",
         "acc_code",
         "period_reference",
@@ -30,6 +31,7 @@ def drop_duplicated_entries(df: pd.DataFrame) -> pd.DataFrame:
 
     subset_cols = [
         "cvm_id",
+        "is_annual",
         "is_consolidated",
         "acc_code",
         "period_begin",
