@@ -97,7 +97,7 @@ def info() -> pd.DataFrame:
     info["data_path"] = f"{cfg.DATA_PATH}"
     info["data_size"] = f"{cfg.DF_PATH.stat().st_size / 1024**2:.1f} MB"
     db_last_modified = datetime.fromtimestamp(cfg.DF_PATH.stat().st_mtime)
-    info["last_modified_on"] = db_last_modified.strftime("%Y-%m-%d %H:%M:%S")
+    info["updated_on"] = db_last_modified.strftime("%Y-%m-%d %H:%M:%S")
 
     info["accounting_entries"] = df.shape[0]
 

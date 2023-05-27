@@ -485,7 +485,6 @@ class Company:
 
         # Quarterly dataframe
         dfq = dfi.query("not is_annual").copy()
-        ttm_period_begin = dfq["period_end"].min()
 
         # Last quarter in quarterly dataframe
         df1 = dfq.query("period_end == period_end.max()").copy()
@@ -506,7 +505,7 @@ class Company:
         )
         df1.drop(columns="acc_value", inplace=True)
         df_ttm = pd.merge(df1, df_ttm)
-        df_ttm["period_begin"] = ttm_period_begin
+        df_ttm["period_begin"] = dfq["period_end"].min()
 
         df_annual = dfi.query("is_annual").copy()
 
