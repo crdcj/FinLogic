@@ -9,7 +9,7 @@
 
 ---
 
-**FinLogic** offers a Pythonic way to analyze financial data of listed companies in Brazil from information made publicly avaible by local securities market authority (CVM). FinLogic uses DuckDB as an OLAP database management system and Pandas to process the data to and from the locally builted accounting database (aprox. 8 million rows).
+**FinLogic** offers a Pythonic way to analyze the financial data of companies listed in Brazil, using information made publicly available by the local securities market authority, CVM. FinLogic processes approximately 20 million accounting entries using Pandas, and constructs a local DataFrame for ultra-fast access to this information.
 
 ---
 
@@ -28,10 +28,9 @@ pip install finlogic
 ### Requirements
 
 - [Python](https://www.python.org) \>= 3.10
-- [DuckDB](https://github.com/pydata/pandas) \>= 0.8.0
 - [Pandas](https://github.com/pydata/pandas) \>= 1.5.0
 - [Requests](http://docs.python-requests.org/en/master/) \>= 2.30.0
-- [Rich](https://github.com/Textualize/rich) \>= 13.0.0
+- [tqdm](https://github.com/tqdm/tqdm) \>= 4.1.0
 - [Zstandard](https://python-zstandard.readthedocs.io/en/latest/) \>= 0.21.0
 
 ---
@@ -40,32 +39,32 @@ pip install finlogic
 
 ### Create FinLogic Database
 
-The 'update_database' function is responsible for downloading raw financial files from CVM, processesing aprox. 8 millions rows of accounting values and loading it into FinLogic Database for local data analysis. In the firt run, the process can take more than 1 minute depending on CVM Server connection and local CPU power. For subsequent updates, only updated CVM files will be processed, which will be faster.
+The 'update' function is responsible for downloading and updating raw financial data from the CVM, processing approximately 20 million accounting entries, and storing them for local data analysis. During the initial run, the process might take some minutes, depending on the CVM server connection and local CPU power. For subsequent updates, only the updated CVM files will be downloaded and processed, which should expedite the operation.
 
 ```python
 >>> import finlogic as fl
 
 # Compile FinLogic database for the first time:
->>> fl.update_database()
+>>> fl.update()
 
 Updating CVM raw files...
 ...
 FinLogic database updated ✅
 
 # Show database info:
->>> fl.database_info()
+>>> fl.info()
 ```
 
-| FinLogic Database Info |                         Value |
-| :--------------------- | ----------------------------: |
-| db_path                | .../finlogic/data/finlogic.db |
-| db_size                |                      301.0 MB |
-| db_last_modified       |           2023-04-20 07:29:08 |
-| number_of_companies    |                         1,139 |
-| number_of_rows         |                     4,379,496 |
-| number_of_reports      |                        13,770 |
-| first_report           |                    2009-01-31 |
-| last_report            |                    2023-03-31 |
+|                     |       FinLogic Info |
+| :------------------ | ------------------: |
+| data_path           |   .../finlogic/data |
+| data_size           |             12.1 MB |
+| last_modified_on    | 2023-04-20 07:29:08 |
+| accounting_entries  |           2,806,635 |
+| number_of_reports   |              11,635 |
+| first_report        |          2009-01-31 |
+| last_report         |          2023-03-31 |
+| number_of_companies |               1,139 |
 
 ```python
 # Search for a company in database:
@@ -90,10 +89,10 @@ The Company Class allows you to easily access financial data from Brazilian comp
 ```python
 # Create a Company object to acces its financial data:
 # Both CVM (regulator) ID or Fiscal ID can be used as an identifier.
->>> petro = fl.Company(9512, acc_method='sep', acc_unit='m')
+>>> petro = fl.Company(9512, is_consolidated=False, acc_unit='m')
 
 # Change company accounting method back to consolidated (default):
->>> petro.acc_method = 'con'
+>>> petro.is_consolidated = True
 
 # Change company accounting unit to billion (default is 1):
 >>> petro.acc_unit = 'b'
@@ -102,18 +101,18 @@ The Company Class allows you to easily access financial data from Brazilian comp
 >>> petro.info()
 ```
 
-| Company Info               |                             Values |
+|                            |                       Company Info |
 | :------------------------- | ---------------------------------: |
 | Name                       | PETROLEO BRASILEIRO S.A. PETROBRAS |
 | CVM ID                     |                               9512 |
-| Fiscal ID (CNPJ)           |                 33.000.167/0001-01 |
-| Total Accounting Rows      |                             39,292 |
+| Tax ID (CNPJ)              |                 33.000.167/0001-01 |
+| Total Accounting Rows      |                              3,292 |
 | Selected Tax Rate          |                               0.34 |
 | Selected Accounting Method |                       consolidated |
 | Selected Accounting Unit   |                      1,000,000,000 |
-| First Annual Report        |                         2009-12-31 |
-| Last Annual Report         |                         2021-12-31 |
-| Last Quarterly Report      |                         2021-09-30 |
+| First Report               |                         2009-12-31 |
+| Last Report                |                         2021-12-31 |
+| Last Report Type           |                          quarterly |
 
 ```python
 # Show company assets in Brazilian currency:

@@ -3,14 +3,14 @@ import re
 from typing import List
 import zipfile as zf
 from pathlib import Path
+from tqdm import tqdm
 import pandas as pd
+import numpy as np
 import requests
 from . import config as cfg
 
 URL_DFP = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/"
 URL_ITR = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/"
-
-CHECKMARK = "\033[32m\u2714\033[0m"
 
 
 def get_file_urls(cvm_url) -> List[str]:
@@ -54,7 +54,7 @@ def update_raw_file(url: str, s: requests.Session) -> Path:
     headers = s.head(url).headers
     filesize = filepath.stat().st_size if filepath.exists() else 0
     if filesize == int(headers["Content-Length"]):
-        print(f"    - {filename} is the same -> skip.")
+        # file is already updated
         return None
     r = s.get(url)
     if r.status_code != 200:
@@ -62,17 +62,20 @@ def update_raw_file(url: str, s: requests.Session) -> Path:
 
     # Save file with Pathlib
     filepath.write_bytes(r.content)
-    print(f"    {CHECKMARK} {filename} updated.")
-
     return filepath
 
 
 def update_raw_files(urls: str) -> List[Path]:
     """Update CVM raw files."""
     s = requests.Session()
-    updated_filepaths = [update_raw_file(url, s) for url in urls]
+    updated_filepaths = []
+    for url in tqdm(urls, desc="Updating..."):
+        filepath = update_raw_file(url, s)
+        # print(f"    {CHECKMARK} {filename} updated.")
+        if filepath:
+            updated_filepaths.append(filepath)
     s.close()
-    return [filepath for filepath in updated_filepaths if filepath is not None]
+    return updated_filepaths
 
 
 def read_raw_file(filepath: Path) -> pd.DataFrame:
@@ -115,7 +118,7 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
         "CD_CONTA": "acc_code",
         "DS_CONTA": "acc_name",
         "COLUNA_DF": "es_name",  # equity_statement_name
-        "ST_CONTA_FIXA": "acc_fixed",
+        "ST_CONTA_FIXA": "is_acc_fixed",
         "VL_CONTA": "acc_value",
         "GRUPO_DFP": "report_group",
         "MOEDA": "Currency",
@@ -131,27 +134,27 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     # report_version max. value is aprox. 9, so it can be uint8 (0 to 255)
     # df["report_version"] = df["report_version"].astype("uint8")
 
-    # acc_fixed values are ['S', 'N']
+    # is_acc_fixed values are ['S', 'N']
     map_dic = {"S": True, "N": False}
-    df["acc_fixed"] = df["acc_fixed"].map(map_dic).astype(bool)
+    df["is_acc_fixed"] = df["is_acc_fixed"].map(map_dic).astype(bool)
 
-    # Remove rows with acc_value == 0 and acc_fixed == False
-    # df.query("acc_value != 0 or acc_fixed == True", inplace=True)
+    # Remove rows with acc_value == 0 and is_acc_fixed == False
+    # df.query("acc_value != 0 or is_acc_fixed == True", inplace=True)
     df.query("acc_value != 0", inplace=True)
 
-    # acc_fixed is being used used only non fixed accounts with acc_value == 0
+    # is_acc_fixed is being used used only non fixed accounts with acc_value == 0
     # So it can be dropped after the query above.
-    df = df.drop(columns=["acc_fixed"])
+    df = df.drop(columns=["is_acc_fixed"])
 
     # cvm_id max. value is 600_000, so it can be uint32 (0 to 4_294_967_295)
     df["cvm_id"] = df["cvm_id"].astype("uint32")
 
     # There are two types of CVM files: DFP (ANNUAL) and ITR (QUARTERLY).
-    # In database, "report_type" is positioned after "tax_id" -> position = 3
+    # In database, "is_annual" is positioned after "tax_id" -> position = 3
     if filepath.name.startswith("dfp"):
-        df.insert(loc=3, column="report_type", value="ANNUAL")
+        df.insert(loc=3, column="is_annual", value=True)
     else:
-        df.insert(loc=3, column="report_type", value="QUARTERLY")
+        df.insert(loc=3, column="is_annual", value=False)
 
     # For the moment, es_name will not be used since it adds to much complexity to
     # the database. It will be dropped.
@@ -164,10 +167,6 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     # Replace "BCO " with "BANCO " in "name_id" column.
     df["name_id"] = df["name_id"].str.replace("BCO ", "BANCO ")
 
-    # Convert string columns to categorical before mapping.
-    columns = df.select_dtypes(include="object").columns
-    df[columns] = df[columns].astype("category")
-
     # Convert datetime columns
     columns = ["period_reference", "period_begin", "period_end"]
     df[columns] = df[columns].apply(pd.to_datetime)
@@ -176,10 +175,19 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     map_dic = {"UNIDADE": 1, "MIL": 1000}
     df["currency_unit"] = df["currency_unit"].map(map_dic).astype(int)
 
-    # Do not ajust acc_value for 3.99 codes.
-    df["acc_value"] = df["acc_value"].where(
+    # Earnings per share (EPS) values don't need to be adjusted by currency_unit.
+    df["acc_value"] = np.where(
         df["acc_code"].str.startswith("3.99"),
+        df["acc_value"],
         df["acc_value"] * df["currency_unit"],
+    )
+
+    # Change earnings per share codes from 3.99. to 8. to avoid confusion with
+    # 3. (income_statement)
+    df["acc_code"] = np.where(
+        df["acc_code"].str.startswith("3.99"),
+        df["acc_code"].str.replace("3.99", "8"),
+        df["acc_code"],
     )
     # After the adjustment, currency_unit column is not necessary.
     df.drop(columns=["currency_unit"], inplace=True)
@@ -196,10 +204,6 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
            "period_begin" is 2019-01-01
            "period_end" is 2019-12-31
         then "period_order" is "PREVIOUS".
-    Old code:
-        "period_order" values are: 'ÚLTIMO', 'PENÚLTIMO'
-        map_dic = {"ÚLTIMO": "LAST", "PENÚLTIMO": "PREVIOUS"}
-        df["period_order"] = df["period_order"].map(map_dic)
     """
     df = df.drop(columns=["period_order"])
 
@@ -223,8 +227,8 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     if == 'Con' -> consolidated statement
     if == 'Ind' -> separate statement
     """
-    map_dic = {"DF C": "CONSOLIDATED", "DF I": "SEPARATE"}
-    df.insert(9, "acc_method", df["report_group"].str[:4].map(map_dic))
+    map_dic = {"Con": True, "Ind": False}
+    df.insert(4, "is_consolidated", df["report_group"].str[3:6].map(map_dic))
     # 'report_group' data can be inferred from 'acc_code'
     df.drop(columns=["report_group"], inplace=True)
 
@@ -245,8 +249,14 @@ def process_file(raw_filepath: Path) -> Path:
     processed_filepath = cfg.CVM_PROCESSED_DIR / (raw_filepath.stem + ".pickle")
     # save_processed_df(df, processed_filepath)
     df.to_pickle(processed_filepath, compression="zstd")
-    print(f"    {CHECKMARK} {raw_filepath.name} processed.")
     return processed_filepath
+
+
+def process_files_with_progress(filepaths_to_process):
+    """Process CVM files with a progress bar."""
+    for filepath in tqdm(filepaths_to_process, desc="Processing..."):
+        # print(f"    {CHECKMARK} {raw_filepath.name} processed.")
+        process_file(filepath)
 
 
 def get_raw_file_mtimes() -> pd.DataFrame:
@@ -254,43 +264,3 @@ def get_raw_file_mtimes() -> pd.DataFrame:
     filepaths = sorted(cfg.CVM_RAW_DIR.glob("*.zip"))
     d_mtimes = {filepath.name: filepath.stat().st_mtime for filepath in filepaths}
     return pd.DataFrame(d_mtimes.items(), columns=["file_source", "file_mtime"])
-
-
-def read_all_processed_files() -> pd.DataFrame:
-    """Read all processed CVM files."""
-    # list filepaths in processed folder
-    filepaths = sorted(cfg.CVM_PROCESSED_DIR.glob("*.pickle"))
-    df = pd.concat([pd.read_pickle(f, compression="zstd") for f in filepaths])
-    columns = df.columns
-    cat_cols = [c for c in columns if df[c].dtype in ["object", "datetime64[ns]"]]
-    df[cat_cols] = df[cat_cols].astype("category")
-    return df
-
-
-def drop_duplicates(df: pd.DataFrame) -> pd.DataFrame:
-    """Drop duplicates from a before building database
-    Because PREVIOUS value == LAST value for the year before, we can keep only
-    the most recent values by dropping duplicates. By doing this, we guarantee
-    that there is only one valid accounting value in database -> the last one
-    """
-    sort_cols = [
-        "cvm_id",
-        "acc_method",
-        "acc_code",
-        "period_reference",
-        "report_type",
-        "period_begin",
-        "period_end",
-    ]
-    df.sort_values(by=sort_cols, ascending=True, inplace=True, ignore_index=True)
-
-    subset_cols = [
-        "cvm_id",
-        "acc_method",
-        "acc_code",
-        "period_begin",
-        "period_end",
-    ]
-    df.drop_duplicates(subset=subset_cols, keep="last", inplace=True, ignore_index=True)
-
-    return df
