@@ -23,7 +23,7 @@ RuntimeWarning:
 from typing import Literal
 import numpy as np
 import pandas as pd
-from .language import language_df
+from . import language as lng
 from . import data_manager as dm
 
 
@@ -425,7 +425,7 @@ class Company:
                 return "(pt) " + key
 
         if self._language == "English":
-            _pten_dict = dict(language_df.values)
+            _pten_dict = dict(lng._language_df.values)
             _pten_dict = MyDict(_pten_dict)
             df["acc_name"] = df["acc_name"].map(_pten_dict)
 

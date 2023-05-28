@@ -13,8 +13,9 @@ process and merge it into a dataframe.
 from pathlib import Path
 import pandas as pd
 from datetime import datetime
+from . import data_manager as dm
 from . import config as cfg
-from . import fl_duckdb as fdb
+# from . import fl_duckdb as fdb
 
 INTERIM_DIR = cfg.DATA_PATH / "interim"
 CURRENCY_DF_PATH = INTERIM_DIR / "currencies.csv"
@@ -48,16 +49,16 @@ def process_currency_df():
     }
 
     # Get first and last statement dates
-    query = "SELECT MIN(period_end) FROM reports"
-    first_statement = str(fdb.execute(query, "df").iloc[0][0]).split("-")
-    query = "SELECT MAX(period_end) FROM reports"
-    last_statement = str(fdb.execute(query, "df").iloc[0][0]).split("-")
+
+    _df = dm.get_main_df()
+    first_statement = str(_df['period_end'].min()).split()[0].split('-')
+    last_statement = str(_df['period_end'].max()).split()[0].split('-')
 
     # Iterate through currencies, fetch data from BCB's website and merge into
     # a single dataframe
     df_currencies = pd.DataFrame(columns=["date"])
     for moeda in dict_bcb_code.keys():
-        URL_CURRENCY = f"https://ptax.bcb.gov.br/ptax_internet/consultaBoletim.do?method=gerarCSVFechamentoMoedaNoPeriodo&ChkMoeda={dict_bcb_code[moeda]}&DATAINI={first_statement[2][:2]}/{first_statement[1]}/{first_statement[0]}&DATAFIM={last_statement[2][:2]}/{last_statement[1]}/{last_statement[0]}"
+        URL_CURRENCY = f"https://ptax.bcb.gov.br/ptax_internet/consultaBoletim.do?method=gerarCSVFechamentoMoedaNoPeriodo&ChkMoeda={dict_bcb_code[moeda]}&DATAINI={first_statement[2]}/{first_statement[1]}/{first_statement[0]}&DATAFIM={last_statement[2]}/{last_statement[1]}/{last_statement[0]}"
 
         df_moeda = pd.read_csv(
             URL_CURRENCY,

@@ -46,13 +46,6 @@ def update(rebuild: bool = False):
     Returns:
         None
     """
-    # Language files
-    print('\nUpdating "language" database...')
-    lng.process_language_df()
-
-    # Currency files
-    print('\nUpdating "currency" database...')
-    crn.process_currency_df()
 
     # CVM raw files
     # Get files mtimes from the raw folder before updating
@@ -77,8 +70,16 @@ def update(rebuild: bool = False):
     # FinLogic Database
     print("\nBuilding FinLogic main DataFrame...")
     bld.build_main_df()
-    print(f"{CHECKMARK} FinLogic updated!")
 
+    # Language files
+    print('\nUpdating "language" database...')
+    lng._language_df = lng.process_language_df()
+
+    # Currency files
+    print('\nUpdating "currency" database...')
+    crn.process_currency_df()
+
+    print(f"{CHECKMARK} FinLogic updated!")
 
 def info() -> pd.DataFrame:
     """Print a concise summary of FinLogic available data.
