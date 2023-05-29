@@ -102,12 +102,16 @@ def build_main_df():
     df = read_all_processed_files()
     df = drop_duplicated_entries(df)
 
-    # Divide the dataframe in what needs to be adjusted to LTM and what does not
-    # Only last "period_reference" entries are used in the LTM calculation
-    # Only income and cash flow statements are adjusted to LTM (report_type 3 and 6)
+    """Divide the dataframe in what needs to be adjusted to LTM and what does not.
+    Conditions that need to be met to adjust to LTM:
+        - Only last "period_reference" entries will be used
+        - Last "period_reference" in quarterly > last "period_reference" in annual
+        - Only income and cash flow statements are adjusted to LTM (report_type 3 and 6)
+    """
     g_cols = ["cvm_id", "is_annual"]
-    df["max_period"] = df.groupby(g_cols)["period_reference"].transform("max")
-    mask1 = df["period_reference"] == df["max_period"]
+    df["max_pr"] = df.groupby(g_cols)["period_reference"].transform("max")
+    df["max_co_pr"] = df.groupby("cvm_id")["period_reference"].transform("max")
+    mask1 = df["period_reference"] == df["max_pr"]
     mask2 = df["report_type"].isin([3, 6])
     mask = mask1 & mask2
     df.drop(columns=["max_period"], inplace=True)
