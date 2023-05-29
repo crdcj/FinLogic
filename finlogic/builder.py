@@ -35,18 +35,6 @@ def drop_duplicated_entries(df: pd.DataFrame) -> pd.DataFrame:
     return df.drop_duplicates(subset=subset_cols, keep="last", ignore_index=True)
 
 
-def drop_not_last_quarter_reports(df: pd.DataFrame) -> pd.DataFrame:
-    """Keep the only last quarter reports for each company, since they are
-    the only ones that will be used to calculate LTM values.
-    """
-    # Create a temporary column with the max. period_reference for each company
-    df["max_period"] = df.groupby("cvm_id")["period_reference"].transform("max")
-    mask1 = df["period_reference"] == df["max_period"]
-    mask2 = df["is_annual"]
-    mask = mask1 | mask2
-    return df[mask].drop(columns=["max_period"]).reset_index(drop=True)
-
-
 def adjust_ltm(df: pd.DataFrame) -> pd.DataFrame:
     """Adjust income and cash flow statements to LTM (Last Twelve Months).
     To get the LTM values, we     need to sum the current accumulated quarter
@@ -110,20 +98,13 @@ def drop_not_last_quarter_end_period(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_main_df():
-    """Build FinLogic Database from processed CVM files.
-    dfa = annual dataframe
-    dfq = quarterly dataframe
-    """
+    """Build FinLogic Database from processed CVM files."""
     df = read_all_processed_files()
     df = drop_duplicated_entries(df)
-
-    # Only last reports are used for quarterly data
-    # df = drop_not_last_quarter_reports(df)
 
     # Divide the dataframe in what needs to be adjusted to LTM and what does not
     # Only last "period_reference" entries are used in the LTM calculation
     # Only income and cash flow statements are adjusted to LTM (report_type 3 and 6)
-    # Get max. period_reference for each company and is_annual
     g_cols = ["cvm_id", "is_annual"]
     df["max_period"] = df.groupby(g_cols)["period_reference"].transform("max")
     mask1 = df["period_reference"] == df["max_period"]
@@ -132,8 +113,6 @@ def build_main_df():
     df.drop(columns=["max_period"], inplace=True)
     ltm = df[mask].reset_index(drop=True)
     not_ltm = df[~mask].reset_index(drop=True)
-    # Remove not last period end entries from quarterly
-    # not_ltm = drop_not_last_quarter_end_period(not_ltm)
 
     ltm = adjust_ltm(ltm)
 
@@ -147,6 +126,7 @@ def build_main_df():
         "cvm_id",
         "is_annual",
         "is_consolidated",
+        "report_type",
         "acc_code",
         "period_reference",
         "period_begin",
