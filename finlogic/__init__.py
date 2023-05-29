@@ -10,7 +10,7 @@ from .data_manager import update, search_company, info
 from .company import Company
 
 
-__version__ = "0.5.0"
+__version__ = "0.5.1"
 __author__ = "Carlos Carvalho"
 
 __all__ = [
