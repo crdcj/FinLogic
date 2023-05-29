@@ -122,7 +122,7 @@ def build_main_df():
 
     # Divide the dataframe in what needs to be adjusted to LTM and what does not
     # Only last "period_reference" entries are used in the LTM calculation
-    # Only income and cash flow statements are adjusted to LTM
+    # Only income and cash flow statements are adjusted to LTM (report_type 3 and 6)
     # Get max. period_reference for each company and is_annual
     g_cols = ["cvm_id", "is_annual"]
     df["max_period"] = df.groupby(g_cols)["period_reference"].transform("max")
