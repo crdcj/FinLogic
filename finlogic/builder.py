@@ -97,26 +97,45 @@ def drop_not_last_quarter_end_period(df: pd.DataFrame) -> pd.DataFrame:
     return pd.concat([annual, adj_quarterly], ignore_index=True)
 
 
+def get_ltm_mask(df: pd.DataFrame) -> pd.Series:
+    """Build a mask to divide the dataframe in what needs to be adjusted to LTM
+    and what does not.
+    Conditions that need to be met to adjust to LTM:
+        - For annuals reports-> last "period_reference" in the annuals group
+        - For quarterly reports -> last "period_reference" for the company
+        - Only income and cash flow statements are adjusted to LTM (report_type
+          3 and 6)
+    """
+    # Create columns for both max periods types
+    gr_cols = ["cvm_id", "is_annual"]
+    df["max_gr_period"] = df.groupby(gr_cols)["period_reference"].transform("max")
+    df["max_co_period"] = df.groupby("cvm_id")["period_reference"].transform("max")
+    # Filter annual reports
+    mask1 = df["is_annual"]
+    mask2 = df["period_reference"] == df["max_gr_period"]
+    mask_annual = mask1 & mask2
+    # Filter quarterly reports
+    mask1 = ~df["is_annual"]
+    mask2 = df["period_reference"] == df["max_co_period"]
+    mask_quarterly = mask1 & mask2
+    # Join annual and quarterly reports
+    mask_reports = mask_annual | mask_quarterly
+    mask_report_type = df["report_type"].isin([3, 6])
+    # Final mask for the LTM entries
+    mask = mask_reports & mask_report_type
+    df.drop(columns=["max_gr_period", "max_co_period"], inplace=True)
+    return mask
+
+
 def build_main_df():
     """Build FinLogic Database from processed CVM files."""
     df = read_all_processed_files()
     df = drop_duplicated_entries(df)
 
-    """Divide the dataframe in what needs to be adjusted to LTM and what does not.
-    Conditions that need to be met to adjust to LTM:
-        - Only last "period_reference" entries will be used
-        - Last "period_reference" in quarterly > last "period_reference" in annual
-        - Only income and cash flow statements are adjusted to LTM (report_type 3 and 6)
-    """
-    g_cols = ["cvm_id", "is_annual"]
-    df["max_pr"] = df.groupby(g_cols)["period_reference"].transform("max")
-    df["max_co_pr"] = df.groupby("cvm_id")["period_reference"].transform("max")
-    mask1 = df["period_reference"] == df["max_pr"]
-    mask2 = df["report_type"].isin([3, 6])
-    mask = mask1 & mask2
-    df.drop(columns=["max_period"], inplace=True)
-    ltm = df[mask].reset_index(drop=True)
-    not_ltm = df[~mask].reset_index(drop=True)
+    ltm_mask = get_ltm_mask(df)
+    # Separate the df in LTM and non-LTM
+    ltm = df[ltm_mask].reset_index(drop=True)
+    not_ltm = df[~ltm_mask].reset_index(drop=True)
 
     ltm = adjust_ltm(ltm)
 
