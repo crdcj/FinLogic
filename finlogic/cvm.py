@@ -229,8 +229,14 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     """
     map_dic = {"Con": True, "Ind": False}
     df.insert(4, "is_consolidated", df["report_group"].str[3:6].map(map_dic))
+
     # 'report_group' data can be inferred from 'acc_code'
     df.drop(columns=["report_group"], inplace=True)
+
+    # "report_type" will be used to fast filter the data. Otherwise, it would be
+    # necessary to use str.startswith() or str.contains() methods.
+    df.insert(5, "report_type", df["acc_code"].str[0])
+    df["report_type"] = df["report_type"].astype("uint8")
 
     # In "itr_cia_aberta_2022.zip", as an example, 2742 rows are duplicated.
     # Few of them have different values in "acc_value". Only one them will be kept.
