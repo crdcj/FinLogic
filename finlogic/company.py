@@ -266,12 +266,18 @@ class Company:
         cat_cols = [c for c in columns if df[c].dtype == "category"]
         df[cat_cols] = df[cat_cols].astype("string")
 
-        # Change acc_value only when it is not earnings_per_share (acc_code 8)
+        # Change acc_value only when it is not earnings_per_share (report_type 8)
         df["acc_value"] = np.where(
-            df["acc_code"].str.startswith("8"),
+            df["report_type"] == 8,
             df["acc_value"],
             df["acc_value"] / self._acc_unit,
         )
+
+        # Remove quarters entries that are not the last one
+        mask1 = ~df["is_annual"]
+        mask2 = df["period_end"] != df["period_end"].max()
+        mask = mask1 & mask2
+        df = df[~mask].reset_index(drop=True)
 
         self._first_period = df["period_end"].min()
         self._last_period = df["period_end"].max()
@@ -444,6 +450,7 @@ class Company:
             8 -> Earnings per Share
         """
         report_types = {
+            "balance_sheet": ("1", "2"),
             "assets": ("1"),
             "cash": ("1.01.01", "1.01.02"),
             "current_assets": ("1.01"),
@@ -454,7 +461,6 @@ class Company:
             "non_current_liabilities": ("2.02"),
             "liabilities_and_equity": ("2"),
             "equity": ("2.03"),
-            "balance_sheet": ("1", "2"),
             "income_statement": ("3"),
             "comprehensive_income": ("4"),
             "cash_flow": ("6"),
