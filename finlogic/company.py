@@ -130,7 +130,7 @@ class Company:
         Raises:
             ValueError: If the accounting method is invalid.
         """
-        return self._acc_unit
+        return self._is_consolidated
 
     @is_consolidated.setter
     def is_consolidated(self, value: bool):
