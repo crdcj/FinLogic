@@ -60,7 +60,7 @@ class Company:
         self,
         identifier: int | str,
         is_consolidated: bool = True,
-        acc_unit: int | float | Literal["t", "m", "b"] = 1,
+        acc_unit: float | Literal["t", "m", "b"] = 1.0,
         tax_rate: float = 0.34,
         language: Literal["english", "portuguese"] = "english",
     ):
@@ -130,7 +130,7 @@ class Company:
         Raises:
             ValueError: If the accounting method is invalid.
         """
-        return self._acc_unit
+        return self._is_consolidated
 
     @is_consolidated.setter
     def is_consolidated(self, value: bool):
@@ -169,14 +169,14 @@ class Company:
         return self._acc_unit
 
     @acc_unit.setter
-    def acc_unit(self, value: int | float | Literal["t", "m", "b"]):
+    def acc_unit(self, value: float | Literal["t", "m", "b"]):
         match value:
             case "t":
-                self._acc_unit = 1_000
+                self._acc_unit = 1_000.0
             case "m":
-                self._acc_unit = 1_000_000
+                self._acc_unit = 1_000_000.0
             case "b":
-                self._acc_unit = 1_000_000_000
+                self._acc_unit = 1_000_000_000.0
             case str():  # Add this case to catch invalid strings
                 raise ValueError("Invalid string for Accounting Unit")
             case v if v > 0:
@@ -273,12 +273,6 @@ class Company:
             df["acc_value"] / self._acc_unit,
         )
 
-        # Remove quarters entries that are not the last one
-        mask1 = ~df["is_annual"]
-        mask2 = df["period_end"] != df["period_end"].max()
-        mask = mask1 & mask2
-        df = df[~mask].reset_index(drop=True)
-
         self._first_period = df["period_end"].min()
         self._last_period = df["period_end"].max()
 
@@ -321,7 +315,8 @@ class Company:
         s.name = "Company Info"
         return s.to_frame()
 
-    def _build_report_index(self, dfi: pd.DataFrame) -> pd.DataFrame:
+    @staticmethod
+    def _build_report_index(dfi: pd.DataFrame) -> pd.DataFrame:
         """Build the index for the report. This function is used by the
         _build_report function. The index is built from the annual reports
         "acc_code" works as a primary key. Other columns set the preference order
@@ -349,6 +344,26 @@ class Company:
             dfo = pd.merge(dfo, df_year, how="left", on=["acc_code"])
         dfo.fillna(0, inplace=True)
         return dfo.sort_values("acc_code", ignore_index=True)
+
+    @staticmethod
+    def _remove_not_last_quarters(df: pd.DataFrame) -> pd.DataFrame:
+        """Remove quarters that are not the last one.
+
+        This function removes quarters that are not the last one.
+        This is useful when generating reports.
+
+        Args:
+            df: Dataframe with the financial statements.
+
+        Returns:
+            Dataframe with the financial statements without the quarters that are not
+            the last one.
+        """
+        mask1 = ~df["is_annual"]
+        mask2 = df["period_end"] != df["period_end"].max()
+        mask = mask1 & mask2
+        df = df[~mask].reset_index(drop=True)
+        return df
 
     def report(
         self,
@@ -414,6 +429,7 @@ class Company:
         """
         # Copy company dataframe to avoid changing it
         df = self._df.copy()
+        df = self._remove_not_last_quarters(df)
         # Check input arguments.
         if acc_level not in [0, 1, 2, 3, 4]:
             raise ValueError("acc_level expects 0, 1, 2, 3 or 4")
@@ -508,15 +524,12 @@ class Company:
         return df
 
     @staticmethod
-    def _prior_values(s: pd.Series, is_prior: bool) -> pd.Series:
+    def _prior_values(s: pd.Series) -> pd.Series:
         """Shift row to the right in order to obtain series previous values"""
-        if is_prior:
-            arr = s.iloc[:-1].values
-            return np.append(np.nan, arr)
-        else:
-            return s
+        arr = s.iloc[:-1].values
+        return np.append(np.nan, arr)
 
-    def indicators(self, num_years: int = 0, is_prior: bool = True) -> pd.DataFrame:
+    def indicators(self, num_years: int = 0) -> pd.DataFrame:
         """Calculate the company main operating indicators.
 
         Args:
@@ -556,9 +569,9 @@ class Company:
         # capex = df.loc["6.02"]
         net_income = df.loc["3.11"]
         total_assets = df.loc["1"]
-        total_assets_p = self._prior_values(total_assets, is_prior)
+        total_assets_p = self._prior_values(total_assets)
         equity = df.loc["2.03"]
-        equity_p = self._prior_values(equity, is_prior)
+        equity_p = self._prior_values(equity)
         total_cash = df.loc["1.01.01"] + df.loc["1.01.02"]
         current_assets = df.loc["1.01"]
         current_liabilities = df.loc["2.01"]
@@ -566,7 +579,7 @@ class Company:
         total_debt = df.loc["2.01.04"] + df.loc["2.02.01"]
         net_debt = total_debt - total_cash
         invested_capital = total_debt + equity - total_cash
-        invested_capital_p = self._prior_values(invested_capital, is_prior)
+        invested_capital_p = self._prior_values(invested_capital)
 
         # Output Dataframe (dfo)
         dfo = pd.DataFrame(columns=df.columns)
