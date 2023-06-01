@@ -24,6 +24,7 @@ from typing import Literal
 import numpy as np
 import pandas as pd
 from . import language as lng
+from . import currency as crn
 from . import data_manager as dm
 
 
@@ -35,17 +36,22 @@ class Company:
      has an AI generated dictionary to translate from Portuguese to English.
 
     Attributes:
-         identifier: A unique identifier for the company. Both CVM ID (int) and
+        identifier: A unique identifier for the company. Both CVM ID (int) and
             Fiscal ID (str) can be used.
-         is_consolidated: The accounting methods can be either 'con' for consolidated or
+        is_consolidated: The accounting methods can be either 'con' for consolidated or
             'sep' for separate. Defaults to 'con' (str).
-         acc_unit: The accounting unit for the financial statements where "t"
+        acc_unit: The accounting unit for the financial statements where "t"
             represents thousands, "m" represents millions and "b" represents
             billions (int, float or str). Defaults to 1.
-         tax_rate: The tax rate for the company. Defaults to 0.34, which is
+        tax_rate: The tax rate for the company. Defaults to 0.34, which is
             the standard corporate tax rate in Brazil (float).
-         language: The language for the financial reports. Options are "english"
+        language: The language for the financial reports. Options are "english"
             or "portuguese". Defaults to "english" (str).
+        currency: The currency for the financial statements. Accepted options
+            are 'ARS','BRL','CLP','CNY','EUR','GBP','INR' and 'JPY'.
+            Defaults to 'BRL' (str).
+        conversion_type: The method for currency conversion. Options are
+            "historical" and "current". Defaults to "historical" (str).
 
      Methods:
          report: Creates a financial report for the company.
@@ -63,6 +69,17 @@ class Company:
         acc_unit: float | Literal["t", "m", "b"] = 1.0,
         tax_rate: float = 0.34,
         language: Literal["english", "portuguese"] = "english",
+        currency: Literal[
+            "ARS",
+            "BRL",
+            "CLP",
+            "CNY",
+            "EUR",
+            "GBP",
+            "INR",
+            "JPY",
+        ] = "BRL",
+        conversion_type: Literal["historical", "current", "average"] = "historical",
     ):
         """Initializes a new instance of the Company class."""
         self._initialized = False
@@ -71,6 +88,8 @@ class Company:
         self.acc_unit = acc_unit
         self.tax_rate = tax_rate
         self.language = language
+        self.currency = currency
+        self.conversion_type = conversion_type
         self._initialized = True
         # Only set _df after identifier, is_consolidated and acc_unit are setted
         self._set_df()
@@ -246,6 +265,92 @@ class Company:
             sup_lang = f"Supported languages: {', '.join(list_languages)}"
             raise KeyError(f"'{language}' not supported. {sup_lang}")
 
+    @property
+    def currency(self) -> str:
+        """Gets or sets company 'currency' property.
+
+        The "currency" is used to represent the company's
+        financial values (revenues, costs, expenses, etc.) in a specific
+        currency.
+
+        Accepted Currencies:
+            - 'ARS': Argentinean Peso
+            - 'BRL': Brazilian Real
+            - 'CLP': Chilean Peso
+            - 'CNY': Renminbi
+            - 'EUR': Euro
+            - 'GBP': Pound Sterling
+            - 'INR': Indian Rupee
+            - 'JPY': Japanese Yen
+            - 'USD': US Dollar
+
+        The default value is 'BRL', the standard currency in Brazil.
+
+        Returns:
+            The currency value.
+
+        Raises:
+            ValueError: If the currency is not in the cur_list.
+
+        Examples:
+            To set the currency to US Dollar (USD):
+                company.currency = 'USD'
+
+            To set the currency to Brazilian Real (BRL):
+                company.currency = 'BRL'
+        """
+        return self._currency
+
+    @currency.setter
+    def currency(self, value: str):
+        cur_list = ["ARS", "BRL", "CLP", "CNY", "EUR", "GBP", "INR", "JPY"]
+        if value in cur_list:
+            self._currency = value
+        else:
+            valid_currencies = ", ".join(cur_list)
+            raise ValueError(
+                f"Company 'currency' value is invalid. Accepted currencies\
+                are {valid_currencies}."
+            )
+
+    @property
+    def conversion_type(self) -> str:
+        """Gets or sets company 'conversion_type' property.
+
+        The "conversion_type" is used for converting one currency to another.
+        The accepted methods are:
+            - 'historical': Uses historical exchange rates
+            - 'current': Uses current exchange rates
+
+        The default value is 'historical'.
+
+        Returns:
+            The conversion_type value.
+
+        Raises:
+            ValueError: If the conversion_type is not one of the accepted methods.
+
+        Examples:
+            To set the conversion_type to historical rates:
+                company.conversion_type = 'historical'
+
+            To set the conversion_type to current rates:
+                company.conversion_type = 'current'
+        """
+        return self._conversion_type
+
+    @conversion_type.setter
+    def conversion_type(self, value: str):
+        valid_conversion_types = ["historical", "current"]
+        if value in valid_conversion_types:
+            self._conversion_type = value
+        else:
+            valid_types = ", ".join(valid_conversion_types)
+            raise ValueError(
+                f"Company 'conversion_type' value is invalid.\
+                             Accepted conversion types are {valid_types}."
+            )
+
     def _set_df(self) -> pd.DataFrame:
         """Sets the company data frame.
 
@@ -291,6 +396,9 @@ class Company:
             columns=["name_id", "cvm_id", "tax_id", "is_consolidated"],
             inplace=True,
         )
+
+        # Set the dataframe currency
+        df = crn._set_currency_df(df)
 
         # Set company data frame
         self._df = df

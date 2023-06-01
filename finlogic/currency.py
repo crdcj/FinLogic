@@ -15,6 +15,7 @@ import pandas as pd
 from datetime import datetime
 from . import data_manager as dm
 from . import config as cfg
+
 # from . import fl_duckdb as fdb
 
 INTERIM_DIR = cfg.DATA_PATH / "interim"
@@ -51,8 +52,8 @@ def process_currency_df():
     # Get first and last statement dates
 
     _df = dm.get_main_df()
-    first_statement = str(_df['period_end'].min()).split()[0].split('-')
-    last_statement = str(_df['period_end'].max()).split()[0].split('-')
+    first_statement = str(_df["period_end"].min()).split()[0].split("-")
+    last_statement = str(_df["period_end"].max()).split()[0].split("-")
 
     # Iterate through currencies, fetch data from BCB's website and merge into
     # a single dataframe
@@ -78,3 +79,7 @@ def process_currency_df():
     # Sort by date and save to CSV file
     df_currencies = df_currencies.sort_values(by="date")
     df_currencies.to_csv(CURRENCY_DF_PATH, index=False)
+
+
+# (self, dfi: pd.DataFrame) -> pd.DataFrame:
+# def _set_currency_df(df: pd.DataFrame) -> pd.DataFrame:
