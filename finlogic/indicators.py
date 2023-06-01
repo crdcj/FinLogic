@@ -2,16 +2,21 @@ import pandas as pd
 from . import data_manager as dm
 
 
-def build_indicators(df: pd.DataFrame) -> pd.DataFrame:
+def build_indicators() -> pd.DataFrame:
     stock_codes = ["2.03", "1.01.01", "1.01.02", "2.01.04", "2.02.01"]
-    flow_codes = ["3.05"]
+    flow_codes = ["3.01", "3.05"]
     codes = stock_codes + flow_codes  # noqa
-    df = dm.get_main_df().query("acc_code in @codes")
-    df.drop(columns=["name_id", "tax_id", "acc_name"], inplace=True)
+    df = (
+        dm.get_main_df()
+        .query("acc_code in @codes and not is_annual")
+        .drop(columns=["name_id", "tax_id", "acc_name", "period_begin"])
+    )
+    df = df.query("cvm_id == 9512").copy()  # TODO: Remove this line
     df["acc_code"] = df["acc_code"].astype("string")
-    df["period_begin"].fillna(df["period_end"], inplace=True)
+    # df["period_begin"].fillna(df["period_end"], inplace=True)
 
     index_cols = ["cvm_id", "is_annual", "is_consolidated", "period_end"]
+
     dfs = pd.pivot_table(
         df.query("acc_code in @stock_codes"),
         values="acc_value",
@@ -31,16 +36,26 @@ def build_indicators(df: pd.DataFrame) -> pd.DataFrame:
     # Divide in annual and quarterly, because the shit is different
     # Annual data will be shifted 1 year and quarterly 4 quarters
     # Annual dataframe
-    # dfsa = dfs.query("is_annual").copy()
-    dfsq = dfs.query("not is_annual").copy()
 
-    dfsq["ic_prev_4"] = dfsq.groupby(by=gp_cols)["invested_capital"].shift(4)
-    dfsq["ic_prev_1"] = dfsq.groupby(by=gp_cols)["invested_capital"].shift(1)
-    dfsq["ic_prev"] = dfsq["ic_prev_4"]
-    dfsq["ic_prev"].fillna(dfsq["ic_prev_1"], inplace=True)
-    dfsq["average_invested_capital"] = (dfsq["invested_capital"] + dfsq["ic_prev"]) / 2
+    dfs["ic_prev_4"] = dfs.groupby(by=gp_cols)["invested_capital"].shift(4)
+    dfs["ic_prev_1"] = dfs.groupby(by=gp_cols)["invested_capital"].shift(1)
+    dfs["ic_prev"] = dfs["ic_prev_4"]
+    dfs["ic_prev"].fillna(dfs["ic_prev_1"], inplace=True)
+    dfs["ic_prev"].fillna(dfs["invested_capital"], inplace=True)
+    dfs["average_invested_capital"] = (dfs["invested_capital"] + dfs["ic_prev"]) / 2
     # Drop intermediary columns
-    dfsq.drop(columns=["ic_prev", "ic_prev_1", "ic_prev_4"], inplace=True)
-    dfsq = dfsq.groupby(by=gp_cols).tail(1)
+    dfs.drop(columns=["ic_prev", "ic_prev_1", "ic_prev_4"], inplace=True)
+    dfs = dfs.groupby(by=gp_cols).tail(1).dropna().reset_index(drop=True)
 
-    return dfsq
+    dff = pd.pivot_table(
+        df.query("acc_code in @flow_codes"),
+        values="acc_value",
+        index=index_cols,
+        columns=["acc_code"],
+    ).reset_index()
+
+    dff = dff.groupby(by=gp_cols).tail(1)
+    # dff.drop()
+    on_cols = ["cvm_id", "is_annual", "is_consolidated", "period_end"]
+    df = dfs.merge(dff, how="inner", on=on_cols)
+    return df
