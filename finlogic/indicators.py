@@ -79,7 +79,8 @@ def build_indicators() -> pd.DataFrame:
     gp_cols = ["cvm_id", "is_annual", "is_consolidated"]
     dfp = dfp.groupby(by=gp_cols).tail(1).dropna().reset_index(drop=True)
 
-    dfp["roic"] = dfp["ebit"] * (1 - TAX_RATE) / dfp["avg_invested_capital"]
+    dfp["roa"] = dfp["ebit"] * (1 - TAX_RATE) / dfp["avg_total_assets"]
     dfp["roe"] = dfp["ebit"] * (1 - TAX_RATE) / dfp["avg_equity"]
+    dfp["roic"] = dfp["ebit"] * (1 - TAX_RATE) / dfp["avg_invested_capital"]
 
     return dfp
