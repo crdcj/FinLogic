@@ -4,6 +4,22 @@ from . import data_manager as dm
 TAX_RATE = 0.34
 
 
+def insert_avg_column(col_name: str, df: pd.DataFrame) -> pd.DataFrame:
+    gp_cols = ["cvm_id", "is_annual", "is_consolidated"]
+    col_name_p4 = f"{col_name}_p4"
+    col_name_p1 = f"{col_name}_p1"
+    col_name_p = f"{col_name}_p"
+    avg_col_name = f"avg_{col_name}"
+    df[col_name_p4] = df.groupby(by=gp_cols)[col_name].shift(4)
+    df[col_name_p1] = df.groupby(by=gp_cols)[col_name].shift(1)
+    df[col_name_p] = df[col_name_p4]
+    df[col_name_p].fillna(df[col_name_p1], inplace=True)
+    df[col_name_p].fillna(df[col_name], inplace=True)
+    df[avg_col_name] = (df[col_name] + df[col_name_p]) / 2
+    df.drop(columns=[col_name_p4, col_name_p1, col_name_p], inplace=True)
+    return df
+
+
 def build_indicators() -> pd.DataFrame:
     indicators_codes = {
         "1": "total_assets",
@@ -56,40 +72,11 @@ def build_indicators() -> pd.DataFrame:
     dfp["ebitda"] = dfp["ebit"] + dfp["depreciation_amortization"]
 
     dfp["invested_capital"] = dfp["total_debt"] + dfp["equity"] - dfp["total_cash"]
+    dfp = insert_avg_column("invested_capital", dfp)
 
+    dfp = insert_avg_column("total_assets", dfp)
+    dfp = insert_avg_column("equity", dfp)
     gp_cols = ["cvm_id", "is_annual", "is_consolidated"]
-    dfp["invested_capital_p4"] = dfp.groupby(by=gp_cols)["invested_capital"].shift(4)
-    dfp["invested_capital_p1"] = dfp.groupby(by=gp_cols)["invested_capital"].shift(1)
-
-    dfp["invested_capital_p"] = dfp["invested_capital_p4"]
-    dfp["invested_capital_p"].fillna(dfp["invested_capital_p1"], inplace=True)
-    dfp["invested_capital_p"].fillna(dfp["invested_capital"], inplace=True)
-
-    dfp["avg_invested_capital"] = (
-        dfp["invested_capital"] + dfp["invested_capital_p"]
-    ) / 2
-
-    dfp["equity_p4"] = dfp.groupby(by=gp_cols)["equity"].shift(4)
-    dfp["equity_p1"] = dfp.groupby(by=gp_cols)["equity"].shift(1)
-
-    dfp["equity_p"] = dfp["equity_p4"]
-    dfp["equity_p"].fillna(dfp["equity_p1"], inplace=True)
-    dfp["equity_p"].fillna(dfp["equity"], inplace=True)
-    dfp["avg_equity"] = (dfp["equity"] + dfp["equity_p"]) / 2
-
-    # Drop temporary columns
-    dfp.drop(
-        columns=[
-            "invested_capital_p",
-            "invested_capital_p1",
-            "invested_capital_p4",
-            "equity_p",
-            "equity_p1",
-            "equity_p4",
-        ],
-        inplace=True,
-    )
-
     dfp = dfp.groupby(by=gp_cols).tail(1).dropna().reset_index(drop=True)
 
     dfp["roic"] = dfp["ebit"] * (1 - TAX_RATE) / dfp["avg_invested_capital"]
