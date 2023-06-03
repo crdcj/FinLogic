@@ -9,11 +9,13 @@ URL_LANGUAGE = "https://raw.githubusercontent.com/fe-lipe-c/finlogic_datasets/ma
 # Create interim folder if it does not exist.
 Path.mkdir(INTERIM_DIR, parents=True, exist_ok=True)
 
+
 def process_language_df():
     """Process language dataframe."""
     _language_df = pd.read_csv(URL_LANGUAGE)
     _language_df.to_csv(LANGUAGE_DF_PATH, index=False)
     return _language_df
+
 
 # Start/load language file data
 if LANGUAGE_DF_PATH.is_file():

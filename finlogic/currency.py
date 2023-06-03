@@ -24,11 +24,18 @@ CURRENCY_DF_PATH = INTERIM_DIR / "currencies.csv"
 # Create interim folder if itdoes not exist.
 Path.mkdir(INTERIM_DIR, parents=True, exist_ok=True)
 
+
 # Start/load currency file data
-if CURRENCY_DF_PATH.is_file():
-    currency_df = pd.read_csv(CURRENCY_DF_PATH)
-else:
-    currency_df = pd.DataFrame()
+def load_currency_data():
+    """Load currency data."""
+
+    if CURRENCY_DF_PATH.is_file():
+        _df_currency = pd.read_csv(CURRENCY_DF_PATH)
+        _df_currency["date"] = pd.to_datetime(_df_currency["date"])
+    else:
+        _df_currency = pd.DataFrame()
+
+    return _df_currency
 
 
 def process_currency_df():
@@ -81,5 +88,31 @@ def process_currency_df():
     df_currencies.to_csv(CURRENCY_DF_PATH, index=False)
 
 
-# (self, dfi: pd.DataFrame) -> pd.DataFrame:
-# def _set_currency_df(df: pd.DataFrame) -> pd.DataFrame:
+def _set_currency_df(
+    df: pd.DataFrame, currency: str, conversion_type: str
+) -> pd.DataFrame:
+    """place_holder"""
+
+    df_currency = load_currency_data()
+    df_currency["date"] = pd.to_datetime(df_currency["date"])
+
+    if currency == "BRL":
+        _df = df
+
+    elif conversion_type == "historical":
+        _df = df.copy()
+        _df["date"] = pd.to_datetime(_df["period_reference"])
+
+        _df = pd.merge_asof(
+            _df.sort_values("date"),
+            df_currency[[currency, "date"]].sort_values("date"),
+            on="date",
+            direction="forward",
+        )
+        _df["acc_value"] = _df["acc_value"] / _df[currency]
+        _df.drop(columns=["date", currency], inplace=True)
+
+    elif conversion_type == "current":
+        _df = df
+
+    return _df

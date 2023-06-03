@@ -48,8 +48,8 @@ class Company:
         language: The language for the financial reports. Options are "english"
             or "portuguese". Defaults to "english" (str).
         currency: The currency for the financial statements. Accepted options
-            are 'ARS','BRL','CLP','CNY','EUR','GBP','INR' and 'JPY'.
-            Defaults to 'BRL' (str).
+            are 'ARS','BRL','CLP','CNY','EUR','GBP','INR','JPY','MXN','RUB',
+            'USD' and 'ZAR'. Defaults to 'BRL' (str).
         conversion_type: The method for currency conversion. Options are
             "historical" and "current". Defaults to "historical" (str).
 
@@ -78,6 +78,10 @@ class Company:
             "GBP",
             "INR",
             "JPY",
+            "MXN",
+            "RUB",
+            "USD",
+            "ZAR",
         ] = "BRL",
         conversion_type: Literal["historical", "current", "average"] = "historical",
     ):
@@ -282,7 +286,10 @@ class Company:
             - 'GBP': Pound Sterling
             - 'INR': Indian Rupee
             - 'JPY': Japanese Yen
+            - 'MXN': Mexican Peso
+            - 'RUB': Russian Ruble
             - 'USD': US Dollar
+            - 'ZAR': South African Rand
 
         The default value is 'BRL', the standard currency in Brazil.
 
@@ -303,7 +310,21 @@ class Company:
 
     @currency.setter
     def currency(self, value: str):
-        cur_list = ["ARS", "BRL", "CLP", "CNY", "EUR", "GBP", "INR", "JPY"]
+        cur_list = [
+            "ARS",
+            "BRL",
+            "CLP",
+            "CNY",
+            "EUR",
+            "GBP",
+            "INR",
+            "JPY",
+            "MXN",
+            "RUB",
+            "USD",
+            "ZAR",
+        ]
+
         if value in cur_list:
             self._currency = value
         else:
@@ -396,9 +417,6 @@ class Company:
             columns=["name_id", "cvm_id", "tax_id", "is_consolidated"],
             inplace=True,
         )
-
-        # Set the dataframe currency
-        df = crn._set_currency_df(df)
 
         # Set company data frame
         self._df = df
@@ -558,6 +576,9 @@ class Company:
             _pten_dict = dict(lng._language_df.values)
             _pten_dict = MyDict(_pten_dict)
             df["acc_name"] = df["acc_name"].map(_pten_dict)
+
+        # Set the dataframe currency
+        df = crn._set_currency_df(df, self._currency, self._conversion_type)
 
         """
         Filter dataframe for selected report_type (report type)
