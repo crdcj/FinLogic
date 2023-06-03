@@ -12,7 +12,7 @@ import pandas as pd
 from . import config as cfg
 from . import cvm
 from . import language as lng
-from . import builder as bld
+from . import reports as bld
 
 CHECKMARK = "\033[32m\u2714\033[0m"
 
@@ -71,7 +71,7 @@ def update(rebuild: bool = False):
 
     # FinLogic Database
     print("\nBuilding FinLogic main DataFrame...")
-    bld.build_main_df()
+    bld.build_reports_df()
     print(f"{CHECKMARK} FinLogic updated!")
 
 

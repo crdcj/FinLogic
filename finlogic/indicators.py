@@ -53,13 +53,13 @@ def build_pivot_table(df) -> pd.DataFrame:
     }
     codes = list(indicators_codes.keys())  # noqa: used in query below
     df = df.query("acc_code in @codes").drop(
-        columns=["name_id", "tax_id", "acc_name", "period_begin"]
+        columns=["name_id", "tax_id", "acc_name", "period_begin", "report_type"]
     )
     df["acc_code"] = df["acc_code"].astype("string")
     # df["period_begin"].fillna(df["period_end"], inplace=True)
 
     dfp = (
-        pd.pivot_table(
+        pd.pivot(
             df,
             values="acc_value",
             index=["cvm_id", "is_annual", "is_consolidated", "period_end"],
@@ -117,3 +117,5 @@ def save_indicators() -> None:
     annual_indicators = build_indicators(True, insert_annual_avg_col)
     df = pd.concat([quarterly_indicators, annual_indicators], ignore_index=True)
     df.to_csv("indicators.csv", index=False)
+    df.to_pickle("indicators.pkl")
+    return df
