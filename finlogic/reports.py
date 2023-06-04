@@ -28,50 +28,66 @@ def drop_duplicated_entries(df: pd.DataFrame) -> pd.DataFrame:
         "period_end",
     ]
     df.sort_values(by=sort_cols, ascending=True, inplace=True, ignore_index=True)
-
     subset_cols = sort_cols.copy()
     subset_cols.remove("period_reference")
+    df.drop_duplicates(subset=subset_cols, keep="last", ignore_index=True, inplace=True)
 
-    return df.drop_duplicates(subset=subset_cols, keep="last", ignore_index=True)
+    return df
 
 
-def get_ltm_mask(dfi: pd.DataFrame) -> pd.Series:
+def drop_uncessary_quarters(df: pd.DataFrame) -> pd.DataFrame:
+    """Drop quarters that will not be used for building the reports and the
+    indicators dataframes."""
+    mask = ~df["is_annual"]
+    gr_last_quarter = df[mask].groupby(["cvm_id"])["period_end"].max()
+    df["last_quarter"] = df["cvm_id"].map(gr_last_quarter)
+
+    mask = df["is_annual"]
+    gr_last_annual = df[mask].groupby(["cvm_id"])["period_end"].max()
+    df["last_annual"] = df["cvm_id"].map(gr_last_annual)
+
+    # Annual mask
+    annual_mask = df["is_annual"]
+
+    # Quarter mask
+    mask1 = ~df["is_annual"]
+    mask2 = df["last_quarter"] > df["last_annual"]
+    mask3 = df["period_end"] == df["last_quarter"]
+    mask4 = df["period_end"] == (df["last_quarter"] - pd.DateOffset(years=1))
+    quarter_mask = mask1 & mask2 & (mask3 | mask4)
+
+    mask = annual_mask | quarter_mask
+
+    # df.drop(columns=["last_quarter", "last_annual"], inplace=True)
+    df = df[mask].reset_index(drop=True).copy()
+    return df
+
+
+def get_ltm_mask(df: pd.DataFrame) -> pd.Series:
     """Build a mask to divide the dataframe between data used in the LTM adjustment
     and data that it not used in LTM adjustment.
     The annual reports are not adjusted to LTM, only the quarterly reports are
     adjusted. But we need to use the last annual report to adjust the quarterly
     reports.
     Conditions that need to be met for each company:
-        (1) Last quarter "period_reference" > last annual "period_reference"
-        (2) Last "period_end" of annual reports
-        (3) Last "period_reference" of quarterly reports
-        (4) Only income and cash flow statements are adjusted to LTM
+        (1) Last "period_end" of annual reports
+        (2) Last "period_reference" of quarterly reports
+        (3) Only income and cash flow statements are adjusted to LTM
     """
-    df = dfi.drop(columns=["name_id", "tax_id", "acc_name"])
     # Condition (1)
-    mask = ~df["is_annual"]
-    gr_last_quarter = df[mask].groupby(["cvm_id"])["period_reference"].max()
-    df["last_quarter"] = df["cvm_id"].map(gr_last_quarter)
-
-    mask = df["is_annual"]
-    gr_last_annual = df[mask].groupby(["cvm_id"])["period_reference"].max()
-    df["last_annual"] = df["cvm_id"].map(gr_last_annual)
-    cond1 = df["last_quarter"] > df["last_annual"]
-
-    # Condition (2)
     mask1 = df["is_annual"]
     mask2 = df["period_end"] == df["last_annual"]
+    cond1 = mask1 & mask2
+
+    # Condition (2)
+    mask1 = ~df["is_annual"]
+    mask2 = df["period_reference"] == df["last_quarter"]
     cond2 = mask1 & mask2
 
     # Condition (3)
-    mask1 = ~df["is_annual"]
-    mask2 = df["period_reference"] == df["last_quarter"]
-    cond3 = mask1 & mask2
+    cond3 = df["report_type"].isin([3, 6])
 
-    # Condition (4)
-    cond4 = df["report_type"].isin([3, 6])
-
-    return cond1 & (cond2 | cond3) & cond4
+    return (cond1 | cond2) & cond3
 
 
 def adjust_ltm(df: pd.DataFrame) -> pd.DataFrame:
@@ -114,30 +130,15 @@ def adjust_ltm(df: pd.DataFrame) -> pd.DataFrame:
     ltm = pd.merge(current_quarter, ltm)
     ltm["period_begin"] = quarters["period_end"] - pd.DateOffset(years=1)
 
-    # df = annuals + previous_quarter + current_quarter (adjusted to LTM)
-    return pd.concat([annuals, previous_quarter, ltm], ignore_index=True)
-
-
-def drop_not_last_quarter_end_period(df: pd.DataFrame) -> pd.DataFrame:
-    """Drop not last period end entries from df."""
-    # Separate the df in annual and quarterly
-    mask = df["is_annual"]
-    annual = df[mask].reset_index(drop=True)
-    quarterly = df[~mask].reset_index(drop=True)
-
-    # Remove not last period end entries from quarterly
-    grouped = quarterly.groupby(["cvm_id"])["period_end"]
-    mask = quarterly["period_end"] == grouped.transform("max")
-    adj_quarterly = quarterly[mask].reset_index(drop=True)
-
-    # Concatenate the adjusted and non-adjusted dataframes
-    return pd.concat([annual, adj_quarterly], ignore_index=True)
+    # Previous quarter will not be used anymore
+    return pd.concat([annuals, ltm], ignore_index=True)
 
 
 def build_reports_df():
     """Build FinLogic Database from processed CVM files."""
     df = read_all_processed_files()
     df = drop_duplicated_entries(df)
+    df = drop_uncessary_quarters(df)
 
     ltm_mask = get_ltm_mask(df)
     # Separate the df in LTM and non-LTM
