@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from . import config as cfg
 
 
@@ -100,35 +101,28 @@ def adjust_ltm(df: pd.DataFrame) -> pd.DataFrame:
     Example for 1Q23: LTM = 1Q23 + (A22 - 1Q22)
     Example for 3Q23: LTM = 3Q23 + (A23 - 3Q23)
     """
-    # Get quarters dataframe
-    quarters = df.query("not is_annual").reset_index(drop=True)
-
-    # Get current quarter dataframe
-    grouped = quarters.groupby(["cvm_id", "is_consolidated", "acc_code"])["period_end"]
-    mask = quarters["period_end"] == grouped.transform("max")
-    current_quarter = quarters[mask].reset_index(drop=True)
-
-    # Get previous quarter dataframe and adjust values
-    mask = quarters["period_end"] == grouped.transform("min")
-    previous_quarter = quarters[mask].reset_index(drop=True)
-    previous_quarter["acc_value"] = (-1) * previous_quarter["acc_value"]
-
-    # Get annuals dataframe
-    annuals = df.query("is_annual").reset_index(drop=True)
+    # Get previous quarter dataframe and invert the values
+    mask1 = ~df["is_annual"]
+    mask2 = df["period_end"] == (df["last_quarter"] - pd.DateOffset(years=1))
+    mask = mask1 & mask2
+    df["acc_value"] = np.where(mask, -1 * df["acc_value"], df["acc_value"])
 
     # Build LTM adjusted dataframe
     ltm = (
-        pd.concat([current_quarter, previous_quarter, annuals], ignore_index=True)[
-            ["cvm_id", "is_consolidated", "acc_code", "acc_value"]
-        ]
+        df[["cvm_id", "is_consolidated", "acc_code", "acc_value"]]
         .groupby(by=["cvm_id", "is_consolidated", "acc_code"])
         .sum()
         .reset_index()
     )
     # current_quarter receives LTM values
-    current_quarter.drop(columns="acc_value", inplace=True)
+    current_quarter = df.query("not is_annual and period_end == period_end.max()").drop(
+        columns="acc_value"
+    )
     ltm = pd.merge(current_quarter, ltm)
-    ltm["period_begin"] = quarters["period_end"] - pd.DateOffset(years=1)
+    ltm["period_begin"] = ltm["period_end"] - pd.DateOffset(years=1)
+
+    # Get annuals dataframe
+    annuals = df.query("is_annual").copy()
 
     # Previous quarter will not be used anymore
     return pd.concat([annuals, ltm], ignore_index=True)
