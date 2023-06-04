@@ -32,7 +32,7 @@ def insert_quarterly_avg_col(col_name: str, df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def build_pivot_table(df) -> pd.DataFrame:
+def pivot_df(df) -> pd.DataFrame:
     indicators_codes = {
         "1": "total_assets",
         "1.01": "current_assets",
@@ -52,9 +52,7 @@ def build_pivot_table(df) -> pd.DataFrame:
         "6.01.01.04": "depreciation_amortization",
     }
     codes = list(indicators_codes.keys())  # noqa: used in query below
-    df = df.query("acc_code in @codes").drop(
-        columns=["name_id", "tax_id", "acc_name", "period_begin", "report_type"]
-    )
+    df = df.query("acc_code in @codes").copy()
     df["acc_code"] = df["acc_code"].astype("string")
     # df["period_begin"].fillna(df["period_end"], inplace=True)
 
@@ -62,7 +60,13 @@ def build_pivot_table(df) -> pd.DataFrame:
         pd.pivot(
             df,
             values="acc_value",
-            index=["cvm_id", "is_annual", "is_consolidated", "period_end"],
+            index=[
+                "cvm_id",
+                "is_annual",
+                "is_consolidated",
+                "period_begin",
+                "period_end",
+            ],
             columns=["acc_code"],
         )
         .reset_index()
@@ -91,9 +95,10 @@ def build_indicators(is_annual: bool, insert_avg_col) -> pd.DataFrame:
     df = (
         dm.get_main_df()
         .query(f"is_annual == {is_annual}")
+        .drop(columns=["name_id", "tax_id", "acc_name", "report_type"])
         .query("cvm_id == 9512")  # TODO: Remove this line
     )
-    dfp = build_pivot_table(df)
+    dfp = pivot_df(df)
     dfp = insert_key_cols(dfp)
 
     avg_cols = ["invested_capital", "total_assets", "equity"]

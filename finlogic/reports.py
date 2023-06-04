@@ -7,9 +7,8 @@ def read_all_processed_files() -> pd.DataFrame:
     # list filepaths in processed folder
     filepaths = sorted(cfg.CVM_PROCESSED_DIR.glob("*.pickle"))
     df = pd.concat([pd.read_pickle(f, compression="zstd") for f in filepaths])
-    df.query(
-        "cvm_id == 19151 and (acc_code == '3.08' or acc_code == '1')", inplace=True
-    )
+    # expr = "cvm_id == 9512 and (acc_code == '3.01' or acc_code == '1')"
+    # df.query(expr=expr, inplace=True)
     return df.reset_index(drop=True)
 
 
@@ -44,30 +43,36 @@ def get_ltm_mask(dfi: pd.DataFrame) -> pd.Series:
     adjusted. But we need to use the last annual report to adjust the quarterly
     reports.
     Conditions that need to be met for each company:
-        - For annuals reports-> last "period_reference"
-        - For quarterly reports -> last "period_reference"
-        - Only income and cash flow statements are adjusted to LTM (report_type
-          3 and 6)
+        (1) Last quarter "period_reference" > last annual "period_reference"
+        (2) Last "period_reference" of annual reports
+        (3) Last "period_reference" of quarterly reports
+        (4) Only income and cash flow statements are adjusted to LTM
     """
-    df = dfi.copy()
-    # Create columns for both max periods types
-    gr_cols = ["cvm_id", "is_annual"]
-    df["max_gr_period"] = df.groupby(gr_cols)["period_reference"].transform("max")
-    df["max_co_period"] = df.groupby("cvm_id")["period_reference"].transform("max")
-    # Filter annual reports
+    df = dfi.drop(columns=["name_id", "tax_id", "acc_name"])
+    # Condition (1)
+    mask = ~df["is_annual"]
+    gr_last_quarter = df[mask].groupby(["cvm_id"])["period_reference"].max()
+    df["last_quarter"] = df["cvm_id"].map(gr_last_quarter)
+
+    mask = df["is_annual"]
+    gr_last_annual = df[mask].groupby(["cvm_id"])["period_reference"].max()
+    df["last_annual"] = df["cvm_id"].map(gr_last_annual)
+    cond1 = df["last_quarter"] > df["last_annual"]
+
+    # Condition (2)
     mask1 = df["is_annual"]
-    mask2 = df["period_reference"] == df["max_gr_period"]
-    mask_annual = mask1 & mask2
-    # Filter quarterly reports
+    mask2 = df["period_reference"] == df["last_annual"]
+    cond2 = mask1 & mask2
+
+    # Condition (3)
     mask1 = ~df["is_annual"]
-    mask2 = df["period_reference"] == df["max_co_period"]
-    mask_quarterly = mask1 & mask2
-    # Join annual and quarterly reports
-    mask_reports = mask_annual | mask_quarterly
-    mask_report_type = df["report_type"].isin([3, 6])
-    # Final mask for the LTM entries
-    mask = mask_reports & mask_report_type
-    return mask
+    mask2 = df["period_reference"] == df["last_quarter"]
+    cond3 = mask1 & mask2
+
+    # Condition (4)
+    cond4 = df["report_type"].isin([3, 6])
+
+    return cond1 & (cond2 | cond3) & cond4
 
 
 def adjust_ltm(df: pd.DataFrame) -> pd.DataFrame:
@@ -95,25 +100,23 @@ def adjust_ltm(df: pd.DataFrame) -> pd.DataFrame:
 
     # Annuals dataframe
     annuals = df.query("is_annual").reset_index(drop=True)
-    # Last annual dataframe
-    grouped = annuals.groupby(["cvm_id", "is_consolidated", "acc_code"])["period_end"]
-    last_annual = annuals[annuals["period_end"] == grouped.transform("max")].copy()
 
     # Build LTM adjusted dataframe
     ltm = (
-        pd.concat([current_quarter, previous_quarter, last_annual], ignore_index=True)[
+        pd.concat([current_quarter, previous_quarter, annuals], ignore_index=True)[
             ["cvm_id", "is_consolidated", "acc_code", "acc_value"]
         ]
         .groupby(by=["cvm_id", "is_consolidated", "acc_code"])
         .sum()
         .reset_index()
     )
-    # Use current_quarter as reference to insert the LTM values
+    # current_quarter receives the LTM values
     current_quarter.drop(columns="acc_value", inplace=True)
     ltm = pd.merge(current_quarter, ltm)
     ltm["period_begin"] = quarters["period_end"] - pd.DateOffset(years=1)
 
-    return pd.concat([annuals, ltm], ignore_index=True)
+    # df = annuals + previous_quarter + current_quarter (adjusted to LTM)
+    return pd.concat([annuals, previous_quarter, ltm], ignore_index=True)
 
 
 def drop_not_last_quarter_end_period(df: pd.DataFrame) -> pd.DataFrame:
