@@ -54,7 +54,9 @@ def pivot_df(df) -> pd.DataFrame:
     codes = list(indicators_codes.keys())  # noqa: used in query below
     df = df.query("acc_code in @codes").copy()
     df["acc_code"] = df["acc_code"].astype("string")
-    # df["period_begin"].fillna(df["period_end"], inplace=True)
+    df["period_begin"].fillna(
+        df["period_end"] - pd.DateOffset(years=1) + pd.DateOffset(days=1), inplace=True
+    )
 
     dfp = (
         pd.pivot(
@@ -94,10 +96,9 @@ def insert_key_cols(df: pd.DataFrame) -> pd.DataFrame:
 def build_indicators(is_annual: bool, insert_avg_col) -> pd.DataFrame:
     df = (
         dm.get_reports()
-        # .query(f"is_annual == {is_annual}")
-        .drop(columns=["name_id", "tax_id", "acc_name", "report_type"]).query(
-            "cvm_id == 9512"
-        )  # TODO: Remove this line
+        .query(f"is_annual == {is_annual}")
+        .drop(columns=["name_id", "tax_id", "acc_name", "report_type"])
+        .query("cvm_id == 9512")  # TODO: Remove this line
     )
     dfp = pivot_df(df)
     dfp = insert_key_cols(dfp)

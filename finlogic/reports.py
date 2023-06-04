@@ -118,7 +118,9 @@ def adjust_ltm(df: pd.DataFrame) -> pd.DataFrame:
         columns="acc_value"
     )
     ltm = pd.merge(current_quarter, ltm)
-    ltm["period_begin"] = ltm["period_end"] - pd.DateOffset(years=1)
+    ltm["period_begin"] = (
+        ltm["period_end"] - pd.DateOffset(years=1) + pd.DateOffset(days=1)
+    )
 
     # Get annuals dataframe
     annuals = df.query("is_annual").copy()
