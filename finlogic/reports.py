@@ -2,6 +2,16 @@ import pandas as pd
 import numpy as np
 from . import config as cfg
 
+SORT_COLS = [
+    "cvm_id",
+    "is_annual",
+    "is_consolidated",
+    "acc_code",
+    "period_reference",
+    "period_begin",
+    "period_end",
+]
+
 
 def read_all_processed_files() -> pd.DataFrame:
     """Read all processed CVM files."""
@@ -19,17 +29,8 @@ def drop_duplicated_entries(df: pd.DataFrame) -> pd.DataFrame:
     remove entries that are not most recent one. By doing this, we guarantee
     that there is only one valid accounting entry, the most recent one.
     """
-    sort_cols = [
-        "cvm_id",
-        "is_annual",
-        "is_consolidated",
-        "acc_code",
-        "period_reference",
-        "period_begin",
-        "period_end",
-    ]
-    df.sort_values(by=sort_cols, ascending=True, inplace=True, ignore_index=True)
-    subset_cols = sort_cols.copy()
+    df.sort_values(by=SORT_COLS, ascending=True, inplace=True, ignore_index=True)
+    subset_cols = SORT_COLS.copy()
     subset_cols.remove("period_reference")
     df.drop_duplicates(subset=subset_cols, keep="last", ignore_index=True, inplace=True)
 
@@ -147,17 +148,7 @@ def build_reports_df():
     # After the drop_unecessary entries, period_reference is not necessary anymore
     # df.drop(columns=["period_reference"], inplace=True)
 
-    sort_cols = [
-        "cvm_id",
-        "is_annual",
-        "is_consolidated",
-        "report_type",
-        "acc_code",
-        "period_reference",
-        "period_begin",
-        "period_end",
-    ]
-    df.sort_values(by=sort_cols, ascending=True, inplace=True, ignore_index=True)
+    df.sort_values(by=SORT_COLS, ascending=True, inplace=True, ignore_index=True)
 
     cat_cols = [c for c in df.columns if df[c].dtype in ["object"]]
     df[cat_cols] = df[cat_cols].astype("category")

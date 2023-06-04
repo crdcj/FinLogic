@@ -17,7 +17,7 @@ from . import reports as bld
 CHECKMARK = "\033[32m\u2714\033[0m"
 
 
-def get_main_df() -> pd.DataFrame:
+def get_reports() -> pd.DataFrame:
     """Return a DataFrame with all accounting data"""
     if cfg.DF_PATH.is_file():
         df = pd.read_pickle(cfg.DF_PATH, compression="zstd")
@@ -91,7 +91,7 @@ def info() -> pd.DataFrame:
     Returns: None
     """
     info = {}
-    df = get_main_df()
+    df = get_reports()
     if df.empty:
         return pd.DataFrame()
 
@@ -136,7 +136,7 @@ def search_company(
             matches the search criteria.
     """
     search_cols = ["name_id", "cvm_id", "tax_id"]
-    df = get_main_df()[search_cols].drop_duplicates(ignore_index=True)
+    df = get_reports()[search_cols].drop_duplicates(ignore_index=True)
     match search_by:
         case "name_id":
             # Company name is stored in uppercase in the database

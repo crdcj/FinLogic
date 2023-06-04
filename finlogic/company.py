@@ -102,7 +102,7 @@ class Company:
     def identifier(self, identifier: int | str):
         # Create custom data frame for ID selection
         df = (
-            dm.get_main_df()[["cvm_id", "tax_id", "name_id"]]
+            dm.get_reports()[["cvm_id", "tax_id", "name_id"]]
             .query("cvm_id == @identifier or tax_id == @identifier")
             .drop_duplicates(ignore_index=True)
         )
@@ -253,7 +253,7 @@ class Company:
         statements.
         """
         df = (
-            dm.get_main_df()
+            dm.get_reports()
             .query(
                 "cvm_id == @self._cvm_id and \
                  is_consolidated == @self._is_consolidated"
