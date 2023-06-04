@@ -94,9 +94,10 @@ def insert_key_cols(df: pd.DataFrame) -> pd.DataFrame:
 def build_indicators(is_annual: bool, insert_avg_col) -> pd.DataFrame:
     df = (
         dm.get_reports()
-        .query(f"is_annual == {is_annual}")
-        .drop(columns=["name_id", "tax_id", "acc_name", "report_type"])
-        .query("cvm_id == 9512")  # TODO: Remove this line
+        # .query(f"is_annual == {is_annual}")
+        .drop(columns=["name_id", "tax_id", "acc_name", "report_type"]).query(
+            "cvm_id == 9512"
+        )  # TODO: Remove this line
     )
     dfp = pivot_df(df)
     dfp = insert_key_cols(dfp)

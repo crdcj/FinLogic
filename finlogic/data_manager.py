@@ -19,8 +19,8 @@ CHECKMARK = "\033[32m\u2714\033[0m"
 
 def get_reports() -> pd.DataFrame:
     """Return a DataFrame with all accounting data"""
-    if cfg.DF_PATH.is_file():
-        df = pd.read_pickle(cfg.DF_PATH, compression="zstd")
+    if cfg.REPORTS_PATH.is_file():
+        df = pd.read_pickle(cfg.REPORTS_PATH, compression="zstd")
     else:
         df = pd.DataFrame()
 
@@ -96,8 +96,8 @@ def info() -> pd.DataFrame:
         return pd.DataFrame()
 
     info["data_path"] = f"{cfg.DATA_PATH}"
-    info["data_size"] = f"{cfg.DF_PATH.stat().st_size / 1024**2:.1f} MB"
-    db_last_modified = datetime.fromtimestamp(cfg.DF_PATH.stat().st_mtime)
+    info["data_size"] = f"{cfg.REPORTS_PATH.stat().st_size / 1024**2:.1f} MB"
+    db_last_modified = datetime.fromtimestamp(cfg.REPORTS_PATH.stat().st_mtime)
     info["updated_on"] = db_last_modified.strftime("%Y-%m-%d %H:%M:%S")
 
     info["accounting_entries"] = df.shape[0]

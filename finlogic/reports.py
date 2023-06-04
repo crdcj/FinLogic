@@ -60,9 +60,7 @@ def drop_uncessary_quarters(df: pd.DataFrame) -> pd.DataFrame:
 
     mask = annual_mask | quarter_mask
 
-    # df.drop(columns=["last_quarter", "last_annual"], inplace=True)
-    df = df[mask].reset_index(drop=True).copy()
-    return df
+    return df[mask].reset_index(drop=True)
 
 
 def get_ltm_mask(df: pd.DataFrame) -> pd.Series:
@@ -145,12 +143,12 @@ def build_reports_df():
     # Concatenate the adjusted and non-adjusted dataframes
     df = pd.concat([ltm, not_ltm], ignore_index=True)
 
-    # After the drop_unecessary entries, period_reference is not necessary anymore
-    # df.drop(columns=["period_reference"], inplace=True)
+    df.sort_values(by=SORT_COLS, ignore_index=True, inplace=True)
 
-    df.sort_values(by=SORT_COLS, ascending=True, inplace=True, ignore_index=True)
+    # Drop unnecessary columns
+    df.drop(columns=["period_reference", "last_quarter", "last_annual"], inplace=True)
 
     cat_cols = [c for c in df.columns if df[c].dtype in ["object"]]
     df[cat_cols] = df[cat_cols].astype("category")
 
-    df.to_pickle(cfg.DF_PATH, compression="zstd")
+    df.to_pickle(cfg.REPORTS_PATH, compression="zstd")
