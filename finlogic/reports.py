@@ -18,7 +18,7 @@ def read_all_processed_files() -> pd.DataFrame:
     # list filepaths in processed folder
     filepaths = sorted(cfg.CVM_PROCESSED_DIR.glob("*.pickle"))
     df = pd.concat([pd.read_pickle(f, compression="zstd") for f in filepaths])
-    # df.query("cvm_id == 9512", inplace=True)
+    # df.query("cvm_id == 9512 and (acc_code == '1' or acc_code == '3.01')", inplace=True) # noqa
     return df.reset_index(drop=True)
 
 
@@ -29,7 +29,7 @@ def drop_duplicated_entries(df: pd.DataFrame) -> pd.DataFrame:
     remove entries that are not most recent one. By doing this, we guarantee
     that there is only one valid accounting entry, the most recent one.
     """
-    df.sort_values(by=SORT_COLS, ascending=True, inplace=True, ignore_index=True)
+    df.sort_values(by=SORT_COLS, inplace=True, ignore_index=True)
     subset_cols = SORT_COLS.copy()
     subset_cols.remove("period_reference")
     df.drop_duplicates(subset=subset_cols, keep="last", ignore_index=True, inplace=True)
@@ -37,30 +37,45 @@ def drop_duplicated_entries(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def drop_uncessary_quarters(df: pd.DataFrame) -> pd.DataFrame:
-    """Drop quarters that will not be used for building the reports and the
-    indicators dataframes."""
-    mask = ~df["is_annual"]
-    gr_last_quarter = df[mask].groupby(["cvm_id"])["period_end"].max()
-    df["last_quarter"] = df["cvm_id"].map(gr_last_quarter)
-
+def insert_last_annual_col(df: pd.DataFrame) -> pd.DataFrame:
+    """Insert reference columns to help filter the dataframe."""
     mask = df["is_annual"]
     gr_last_annual = df[mask].groupby(["cvm_id"])["period_end"].max()
     df["last_annual"] = df["cvm_id"].map(gr_last_annual)
 
-    # Annual mask
-    annual_mask = df["is_annual"]
+
+def insert_last_quarter_col(df: pd.DataFrame) -> pd.DataFrame:
+    mask = ~df["is_annual"]
+    gr_last_quarter = df[mask].groupby(["cvm_id"])["period_end"].max()
+    df["last_quarter"] = df["cvm_id"].map(gr_last_quarter)
+
+
+def drop_uncessary_quarters(df: pd.DataFrame) -> pd.DataFrame:
+    """Drop quarters that will not be used for building the reports and the
+    indicators dataframes."""
+
+    # Divide dataframe between annual and quarterly reports
+    dfq = df.query("not is_annual").copy()
+    dfa = df.query("is_annual").copy()
+
+    # The quarterly reports have two types of periods: accumulated and not
+    # accumulated. Only the accumulated periods will be used.
+    dfq.sort_values(by=SORT_COLS, inplace=True, ignore_index=True)
+    subset_cols = SORT_COLS.copy()
+    subset_cols.remove("period_begin")
+    dfq.drop_duplicates(
+        subset=subset_cols, keep="first", ignore_index=True, inplace=True
+    )
 
     # Quarter mask
-    mask1 = ~df["is_annual"]
-    mask2 = df["last_quarter"] > df["last_annual"]
-    mask3 = df["period_end"] == df["last_quarter"]
-    mask4 = df["period_end"] == (df["last_quarter"] - pd.DateOffset(years=1))
-    quarter_mask = mask1 & mask2 & (mask3 | mask4)
+    mask1 = df["last_quarter"] > df["last_annual"]
+    mask2 = df["period_end"] == df["last_quarter"]
+    mask3 = df["period_end"] == (df["last_quarter"] - pd.DateOffset(years=1))
+    mask = mask1 & (mask2 | mask3)
 
-    mask = annual_mask | quarter_mask
+    dfq = dfq.loc[mask].reset_index(drop=True)
 
-    return df[mask].reset_index(drop=True)
+    return pd.concat([dfa, dfq], ignore_index=True)
 
 
 def get_ltm_mask(df: pd.DataFrame) -> pd.Series:
@@ -133,6 +148,8 @@ def build_reports_df():
     """Build FinLogic Database from processed CVM files."""
     df = read_all_processed_files()
     df = drop_duplicated_entries(df)
+    insert_last_annual_col(df)
+    insert_last_quarter_col(df)
     df = drop_uncessary_quarters(df)
 
     ltm_mask = get_ltm_mask(df)
