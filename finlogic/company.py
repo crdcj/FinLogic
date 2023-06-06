@@ -609,3 +609,50 @@ class Company:
         if num_years > 0:
             dfo = dfo[dfo.columns[-num_years:]]
         return dfo
+
+    @staticmethod
+    def _format_indicators(df: pd.DataFrame) -> pd.DataFrame:
+        df = pd.melt(
+            df,
+            id_vars=["cvm_id", "is_annual", "is_consolidated", "period_end"],
+            var_name="indicator",
+            value_name="value",
+        )
+
+        sort_cols = ["cvm_id", "is_consolidated", "period_end", "indicator"]
+        df.sort_values(by=sort_cols, inplace=True)
+
+        df["period_end"] = df["period_end"].astype("string")
+
+        df = (
+            pd.pivot(
+                df,
+                values="value",
+                index=["cvm_id", "is_consolidated", "indicator"],
+                columns=["period_end"],
+            )
+            .reset_index()
+            .set_index("indicator")
+        )
+        df.columns.name = None
+        df.index.name = None
+        return df
+
+    def indicators2(self, num_years: int = 0) -> pd.DataFrame:
+        """Calculate the company main operating indicators.
+
+        Args:
+            num_years: Number of years to consider for calculation. If 0, use
+                all available years. Defaults to 0.
+
+        Returns:
+            pd.DataFrame: Dataframe containing calculated financial indicators.
+        """
+        expr = "cvm_id == @self._cvm_id and is_consolidated == @self._is_consolidated"
+        dfi = dm.get_indicators().query(expr)
+        dfo = self._format_indicators(dfi)
+        # Show only the selected number of years
+        if num_years > 0:
+            dfo = dfo[dfo.columns[-num_years:]]
+
+        return dfo

@@ -1,36 +1,37 @@
 import pandas as pd
+from . import config as cf
 from . import data_manager as dm
 
 TAX_RATE = 0.34
+INDICATORS_CODES = {
+    "1": "total_assets",
+    "1.01": "current_assets",
+    "1.01.01": "cash_equivalents",
+    "1.01.02": "financial_investments",
+    "2.01": "current_liabilities",
+    "2.01.04": "short_term_debt",
+    "2.02.01": "long_term_debt",
+    "2.03": "equity",
+    "3.01": "revenues",
+    "3.03": "gross_profit",
+    "3.05": "ebit",
+    "3.07": "ebt",
+    "3.08": "effective_tax",
+    "3.11": "net_income",
+    "6.01": "operating_cash_flow",
+    "6.01.01.04": "depreciation_amortization",
+}
 
 
-def build_indicators(is_annual: bool, insert_avg_col) -> pd.DataFrame:
-    indicators_codes = {
-        "1": "total_assets",
-        "1.01": "current_assets",
-        "1.01.01": "cash_equivalents",
-        "1.01.02": "financial_investments",
-        "2.01": "current_liabilities",
-        "2.01.04": "short_term_debt",
-        "2.02.01": "long_term_debt",
-        "2.03": "equity",
-        "3.01": "revenues",
-        "3.03": "gross_profit",
-        "3.05": "ebit",
-        "3.07": "ebt",
-        "3.08": "effective_tax",
-        "3.11": "net_income",
-        "6.01": "operating_cash_flow",
-        "6.01.01.04": "depreciation_amortization",
-    }
-    codes = list(indicators_codes.keys())  # noqa: used in query below
+def get_indicators_data() -> pd.DataFrame:
+    codes = list(INDICATORS_CODES.keys())  # noqa: used in query below
 
     """There are 137 repeated entries in 208784 rows. These are from companies
     with some exotic period_end dates, as for cvm_id 3450. These entries will be
     removed in the next step, when we drop duplicates and the last entry
     published will be kept.
     """
-    drop_cols = ["name_id", "tax_id", "acc_name", "report_type"]
+    drop_cols = ["name_id", "tax_id", "acc_name", "report_type", "period_begin"]
     sort_cols = [
         "cvm_id",
         "is_consolidated",
@@ -42,7 +43,6 @@ def build_indicators(is_annual: bool, insert_avg_col) -> pd.DataFrame:
 
     df = (
         dm.get_reports()
-        .query(f"is_annual == {is_annual}")
         .query("acc_code in @codes")
         .drop(columns=drop_cols)
         # .query("cvm_id == 9512")
@@ -50,30 +50,31 @@ def build_indicators(is_annual: bool, insert_avg_col) -> pd.DataFrame:
         .drop_duplicates(subset=subset_cols, keep="last", ignore_index=True)
         .astype({"acc_code": "string"})
     )
+    return df
 
-    dfp = pivot_df(df)
 
-    dfp.rename(columns=indicators_codes, inplace=True)
-    dfp = insert_key_cols(dfp)
+def build_indicators(df, is_annual: bool, insert_avg_col) -> pd.DataFrame:
+    df.rename(columns=INDICATORS_CODES, inplace=True)
+    df = insert_key_cols(df)
 
     avg_cols = ["invested_capital", "total_assets", "equity"]
     for col_name in avg_cols:
-        dfp = insert_avg_col(col_name, dfp)
+        df = insert_avg_col(col_name, df)
 
     # For quarterly data, we need only the last row of each group
     if not is_annual:
         gp_cols = ["cvm_id", "is_annual", "is_consolidated"]
-        dfp = dfp.groupby(by=gp_cols).tail(1).dropna().reset_index(drop=True)
+        df = df.groupby(by=gp_cols).tail(1).dropna().reset_index(drop=True)
 
-    dfp["roa"] = dfp["ebit"] * (1 - TAX_RATE) / dfp["avg_total_assets"]
-    dfp["roe"] = dfp["ebit"] * (1 - TAX_RATE) / dfp["avg_equity"]
-    dfp["roic"] = dfp["ebit"] * (1 - TAX_RATE) / dfp["avg_invested_capital"]
+    df["roa"] = df["ebit"] * (1 - TAX_RATE) / df["avg_total_assets"]
+    df["roe"] = df["ebit"] * (1 - TAX_RATE) / df["avg_equity"]
+    df["roic"] = df["ebit"] * (1 - TAX_RATE) / df["avg_invested_capital"]
 
     # Drop avg_cols
     avg_cols = ["avg_total_assets", "avg_equity", "avg_invested_capital"]
-    dfp.drop(columns=avg_cols, inplace=True)
+    df.drop(columns=avg_cols, inplace=True)
 
-    return dfp
+    return df
 
 
 def insert_annual_avg_col(col_name: str, df: pd.DataFrame) -> pd.DataFrame:
@@ -105,27 +106,9 @@ def insert_quarterly_avg_col(col_name: str, df: pd.DataFrame) -> pd.DataFrame:
 
 
 def pivot_df(df) -> pd.DataFrame:
-    # The min_end_period is used to fill the missing begin periods
-    # in stock accounting entries. This is necessary for the pivot.
-    # There a many cases where the begin period is not period_end - 1 year
-    gr_cols = ["cvm_id", "is_annual", "is_consolidated", "period_end"]
-    df["min_end_period"] = df.groupby(by=gr_cols)["period_begin"].transform("min")
-    df["period_begin"].fillna(df["min_end_period"], inplace=True)
-    df.drop(columns=["min_end_period"], inplace=True)
-
-    dfp = pd.pivot(
-        df,
-        values="acc_value",
-        index=[
-            "cvm_id",
-            "is_annual",
-            "is_consolidated",
-            # "period_begin",
-            "period_end",
-        ],
-        columns=["acc_code"],
-    ).reset_index()
-    return dfp
+    index_cols = ["cvm_id", "is_annual", "is_consolidated", "period_end"]
+    dfp = pd.pivot(df, values="acc_value", index=index_cols, columns=["acc_code"])
+    return dfp.reset_index()
 
 
 def insert_key_cols(df: pd.DataFrame) -> pd.DataFrame:
@@ -144,40 +127,25 @@ def insert_key_cols(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def format_indicators(df: pd.DataFrame) -> pd.DataFrame:
-    df = pd.melt(
-        df,
-        id_vars=["cvm_id", "is_annual", "is_consolidated", "period_end"],
-        var_name="indicator",
-        value_name="value",
-    )
-
-    sort_cols = ["cvm_id", "is_consolidated", "period_end", "indicator"]
-    df.sort_values(by=sort_cols, inplace=True)
-
-    df["period_end"] = df["period_end"].astype("string")
-
-    df = (
-        pd.pivot(
-            df,
-            values="value",
-            index=["cvm_id", "is_consolidated", "indicator"],
-            columns=["period_end"],
-        )
-        .reset_index()
-        .set_index("indicator")
-    )
-    return df
-
-
 def save_indicators() -> None:
-    annual_indicators = build_indicators(True, insert_annual_avg_col)
-    quarterly_indicators = build_indicators(False, insert_quarterly_avg_col)
-    df = pd.concat([quarterly_indicators, annual_indicators]).sort_values(
-        by=["cvm_id", "is_consolidated", "period_end"], ignore_index=True
-    )
-    # df.drop(columns=["period_begin"], inplace=True)
-    # df = format_indicators(df)
-    df.to_csv("indicators.csv", index=False)
-    df.to_pickle("indicators.pkl")
-    return df
+    """Save indicators as csv and pickle files.
+    dfi = input dataframe
+    dfo = output dataframe
+    """
+    dfi = get_indicators_data()
+
+    # Construct pivot tables for annual and quarterly
+    dfa = pivot_df(dfi.query("is_annual"))
+    dfq = pivot_df(dfi.query("not is_annual"))
+
+    # Build indicators
+    dfai = build_indicators(dfa, True, insert_annual_avg_col)
+    dfqi = build_indicators(dfq, False, insert_quarterly_avg_col)
+
+    # Build output dataframe
+    sort_cols = ["cvm_id", "is_consolidated", "period_end"]
+    dfo = pd.concat([dfai, dfqi]).sort_values(by=sort_cols, ignore_index=True)
+
+    dfo.to_csv("indicators.csv", index=False)
+    dfo.to_pickle(cf.INDICATORS_PATH)
+    return dfo

@@ -23,7 +23,15 @@ def get_reports() -> pd.DataFrame:
         df = pd.read_pickle(cfg.REPORTS_PATH, compression="zstd")
     else:
         df = pd.DataFrame()
+    return df
 
+
+def get_indicators() -> pd.DataFrame:
+    """Return a DataFrame with all indicators data"""
+    if cfg.INDICATORS_PATH.is_file():
+        df = pd.read_pickle(cfg.INDICATORS_PATH)
+    else:
+        df = pd.DataFrame()
     return df
 
 
