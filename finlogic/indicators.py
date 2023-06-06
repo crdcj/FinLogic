@@ -54,9 +54,14 @@ def pivot_df(df) -> pd.DataFrame:
     codes = list(indicators_codes.keys())  # noqa: used in query below
     df = df.query("acc_code in @codes").copy()
     df["acc_code"] = df["acc_code"].astype("string")
-    df["period_begin"].fillna(
-        df["period_end"] - pd.DateOffset(years=1) + pd.DateOffset(days=1), inplace=True
-    )
+
+    # The min_end_period is used to fill the missing begin periods
+    # in stock accounting entries. This is necessary for the pivot.
+    # There a many cases where the begin period is not period_end - 1 year
+    gr_cols = ["cvm_id", "is_annual", "is_consolidated", "period_end"]
+    df["min_end_period"] = df.groupby(by=gr_cols)["period_begin"].transform("min")
+    df["period_begin"].fillna(df["min_end_period"], inplace=True)
+    df.drop(columns=["min_end_period"], inplace=True)
 
     dfp = (
         pd.pivot(
@@ -98,7 +103,7 @@ def build_indicators(is_annual: bool, insert_avg_col) -> pd.DataFrame:
         dm.get_reports()
         .query(f"is_annual == {is_annual}")
         .drop(columns=["name_id", "tax_id", "acc_name", "report_type"])
-        # .query("cvm_id == 9512")  # TODO: Remove this line
+        # .query("cvm_id == 9512")
     )
     dfp = pivot_df(df)
     dfp = insert_key_cols(dfp)
@@ -150,8 +155,8 @@ def format_indicators(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def save_indicators() -> None:
-    quarterly_indicators = build_indicators(False, insert_quarterly_avg_col)
     annual_indicators = build_indicators(True, insert_annual_avg_col)
+    quarterly_indicators = build_indicators(False, insert_quarterly_avg_col)
     df = pd.concat([quarterly_indicators, annual_indicators], ignore_index=True)
     df.drop(columns=["period_begin"], inplace=True)
     df = format_indicators(df)
