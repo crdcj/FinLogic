@@ -1,6 +1,6 @@
 import pandas as pd
-from . import config as cf
-from . import data_manager as dm
+from . import config as cfg
+from . import reports as rep
 
 TAX_RATE = 0.34
 INDICATORS_CODES = {
@@ -42,7 +42,7 @@ def get_indicators_data() -> pd.DataFrame:
     subset_cols = ["cvm_id", "is_consolidated", "acc_code", "period_end"]
 
     df = (
-        dm.get_reports()
+        rep.get_reports()
         .query("acc_code in @codes")
         .drop(columns=drop_cols)
         # .query("cvm_id == 9512")
@@ -147,5 +147,97 @@ def save_indicators() -> None:
     dfo = pd.concat([dfai, dfqi]).sort_values(by=sort_cols, ignore_index=True)
 
     dfo.to_csv("indicators.csv", index=False)
-    dfo.to_pickle(cf.INDICATORS_PATH)
+    dfo.to_pickle(cfg.INDICATORS_PATH)
     return dfo
+
+
+def adjust_unit(df: pd.DataFrame, unit: float) -> pd.DataFrame:
+    currency_cols = [
+        "total_assets",
+        "current_assets",
+        "current_liabilities",
+        "equity",
+        "revenues",
+        "gross_profit",
+        "ebit",
+        "ebt",
+        "effective_tax",
+        "net_income",
+        "operating_cash_flow",
+        "depreciation_amortization",
+        "total_cash",
+        "total_debt",
+        "net_debt",
+        "working_capital",
+        "ebitda",
+        "invested_capital",
+    ]
+    df[currency_cols] = df[currency_cols].div(unit)
+    return df
+
+
+def reorder_index(df: pd.DataFrame) -> pd.DataFrame:
+    new_order = [
+        "total_assets",
+        "current_assets",
+        "total_cash",
+        "working_capital",
+        "invested_capital",
+        "current_liabilities",
+        "total_debt",
+        "net_debt",
+        "equity",
+        "revenues",
+        "gross_profit",
+        "net_income",
+        "ebitda",
+        "ebit",
+        "ebt",
+        "effective_tax",
+        "operating_cash_flow",
+        "depreciation_amortization",
+        "effective_tax_rate",
+        "roa",
+        "roe",
+        "roic",
+    ]
+    return df.reindex(new_order)
+
+
+def format_indicators(df: pd.DataFrame, unit: float) -> pd.DataFrame:
+    df = adjust_unit(df, unit)
+    df = pd.melt(
+        df,
+        id_vars=["cvm_id", "is_annual", "is_consolidated", "period_end"],
+        var_name="indicator",
+        value_name="value",
+    )
+
+    sort_cols = ["cvm_id", "is_consolidated", "period_end", "indicator"]
+    df.sort_values(by=sort_cols, inplace=True)
+
+    df["period_end"] = df["period_end"].astype("string")
+
+    df = (
+        pd.pivot(
+            df,
+            values="value",
+            index=["cvm_id", "is_consolidated", "indicator"],
+            columns=["period_end"],
+        )
+        .reset_index()
+        .set_index("indicator")
+    )
+    df.columns.name = None
+    df.index.name = None
+    df = reorder_index(df)
+    return df
+
+
+def get_indicators() -> pd.DataFrame:
+    """Return a DataFrame with all indicators data"""
+    if cfg.INDICATORS_PATH.is_file():
+        df = pd.read_pickle(cfg.INDICATORS_PATH)
+    else:
+        df = pd.DataFrame()
+    return df

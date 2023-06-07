@@ -24,7 +24,8 @@ from typing import Literal
 import numpy as np
 import pandas as pd
 from .language import language_df
-from . import data_manager as dm
+from . import reports as rep
+from . import indicators as ind
 
 
 class Company:
@@ -102,7 +103,7 @@ class Company:
     def identifier(self, identifier: int | str):
         # Create custom data frame for ID selection
         df = (
-            dm.get_reports()[["cvm_id", "tax_id", "name_id"]]
+            rep.get_reports()[["cvm_id", "tax_id", "name_id"]]
             .query("cvm_id == @identifier or tax_id == @identifier")
             .drop_duplicates(ignore_index=True)
         )
@@ -253,7 +254,7 @@ class Company:
         statements.
         """
         df = (
-            dm.get_reports()
+            rep.get_reports()
             .query(
                 "cvm_id == @self._cvm_id and \
                  is_consolidated == @self._is_consolidated"
@@ -610,34 +611,6 @@ class Company:
             dfo = dfo[dfo.columns[-num_years:]]
         return dfo
 
-    @staticmethod
-    def _format_indicators(df: pd.DataFrame) -> pd.DataFrame:
-        df = pd.melt(
-            df,
-            id_vars=["cvm_id", "is_annual", "is_consolidated", "period_end"],
-            var_name="indicator",
-            value_name="value",
-        )
-
-        sort_cols = ["cvm_id", "is_consolidated", "period_end", "indicator"]
-        df.sort_values(by=sort_cols, inplace=True)
-
-        df["period_end"] = df["period_end"].astype("string")
-
-        df = (
-            pd.pivot(
-                df,
-                values="value",
-                index=["cvm_id", "is_consolidated", "indicator"],
-                columns=["period_end"],
-            )
-            .reset_index()
-            .set_index("indicator")
-        )
-        df.columns.name = None
-        df.index.name = None
-        return df
-
     def indicators2(self, num_years: int = 0) -> pd.DataFrame:
         """Calculate the company main operating indicators.
 
@@ -649,10 +622,12 @@ class Company:
             pd.DataFrame: Dataframe containing calculated financial indicators.
         """
         expr = "cvm_id == @self._cvm_id and is_consolidated == @self._is_consolidated"
-        dfi = dm.get_indicators().query(expr)
-        dfo = self._format_indicators(dfi)
+        dfi = ind.get_indicators().query(expr)
+        dfo = ind.format_indicators(dfi, unit=self._acc_unit)
+        # Columns cvm_id and is_consolidated are redundant for the Company class
+        dfo.drop(columns=["cvm_id", "is_consolidated"], inplace=True)
         # Show only the selected number of years
         if num_years > 0:
-            dfo = dfo[dfo.columns[-num_years:]]
+            dfo = dfo[dfo.columns[-num_years:]].copy()
 
         return dfo
