@@ -124,9 +124,11 @@ def build_indicators(df, is_annual: bool, insert_avg_col) -> pd.DataFrame:
     df["net_margin"] = df["net_income"] / df["revenues"]
 
     # Return ratios
-    df["roa"] = df["ebit"] * (1 - TAX_RATE) / df["avg_total_assets"]
-    df["roe"] = df["ebit"] * (1 - TAX_RATE) / df["avg_equity"]
-    df["roic"] = df["ebit"] * (1 - TAX_RATE) / df["avg_invested_capital"]
+    df["return_on_assets"] = df["ebit"] * (1 - TAX_RATE) / df["avg_total_assets"]
+    df["return_on_equity"] = df["ebit"] * (1 - TAX_RATE) / df["avg_equity"]
+    df["return_on_invested_capital"] = (
+        df["ebit"] * (1 - TAX_RATE) / df["avg_invested_capital"]
+    )
 
     # Drop avg_cols
     avg_cols = ["avg_total_assets", "avg_equity", "avg_invested_capital"]
@@ -154,7 +156,6 @@ def save_indicators() -> None:
     sort_cols = ["cvm_id", "is_consolidated", "period_end"]
     dfo = pd.concat([dfai, dfqi]).sort_values(by=sort_cols, ignore_index=True)
 
-    dfo.to_csv("indicators.csv", index=False)
     dfo.to_pickle(cfg.INDICATORS_PATH)
     return dfo
 
@@ -205,9 +206,9 @@ def reorder_index(df: pd.DataFrame) -> pd.DataFrame:
         "operating_cash_flow",
         "depreciation_amortization",
         "effective_tax_rate",
-        "roa",
-        "roe",
-        "roic",
+        "return_on_assets",
+        "return_on_equity",
+        "return_on_invested_capital",
         "gross_margin",
         "ebitda_margin",
         "pre_tax_operating_margin",
