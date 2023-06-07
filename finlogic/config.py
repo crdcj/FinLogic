@@ -2,6 +2,7 @@ from pathlib import Path
 
 DATA_PATH = Path(__file__).parent / "data"
 REPORTS_PATH = DATA_PATH / "reports.pickle"
+INDICATORS_PATH = DATA_PATH / "indicators.pickle"
 Path.mkdir(DATA_PATH, parents=True, exist_ok=True)
 
 CVM_RAW_DIR = DATA_PATH / "cvm" / "raw"

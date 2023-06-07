@@ -179,3 +179,12 @@ def build_reports_df():
     df[cat_cols] = df[cat_cols].astype("category")
 
     df.to_pickle(cfg.REPORTS_PATH, compression="zstd")
+
+
+def get_reports() -> pd.DataFrame:
+    """Return a DataFrame with all accounting data"""
+    if cfg.REPORTS_PATH.is_file():
+        df = pd.read_pickle(cfg.REPORTS_PATH, compression="zstd")
+    else:
+        df = pd.DataFrame()
+    return df

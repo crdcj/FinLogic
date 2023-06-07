@@ -1,9 +1,9 @@
-"""Finlogic Database module.
+"""Finlogic manager module.
 
-This module provides functions to handle financial data from the CVM Portal. It
-allows updating, processing and consolidating financial statements, as well as
-searching for company names in the FinLogic Database and retrieving information
-about the database itself.
+This module provides upper level functions to handle financial data from the CVM
+Portal. It allows updating, processing and consolidating financial statements,
+as well as searching for company names in the FinLogic Database and retrieving
+information about the database itself.
 """
 from pathlib import Path
 from typing import Literal
@@ -12,19 +12,9 @@ import pandas as pd
 from . import config as cfg
 from . import cvm
 from . import language as lng
-from . import reports as bld
+from . import reports as rep
 
 CHECKMARK = "\033[32m\u2714\033[0m"
-
-
-def get_reports() -> pd.DataFrame:
-    """Return a DataFrame with all accounting data"""
-    if cfg.REPORTS_PATH.is_file():
-        df = pd.read_pickle(cfg.REPORTS_PATH, compression="zstd")
-    else:
-        df = pd.DataFrame()
-
-    return df
 
 
 def get_filepaths_to_process(df1: pd.DataFrame, df2: pd.DataFrame) -> list[Path]:
@@ -71,7 +61,7 @@ def update(rebuild: bool = False):
 
     # FinLogic Database
     print("\nBuilding FinLogic main DataFrame...")
-    bld.build_reports_df()
+    rep.build_reports_df()
     print(f"{CHECKMARK} FinLogic updated!")
 
 
@@ -91,7 +81,7 @@ def info() -> pd.DataFrame:
     Returns: None
     """
     info = {}
-    df = get_reports()
+    df = rep.get_reports()
     if df.empty:
         return pd.DataFrame()
 
@@ -136,7 +126,7 @@ def search_company(
             matches the search criteria.
     """
     search_cols = ["name_id", "cvm_id", "tax_id"]
-    df = get_reports()[search_cols].drop_duplicates(ignore_index=True)
+    df = rep.get_reports()[search_cols].drop_duplicates(ignore_index=True)
     match search_by:
         case "name_id":
             # Company name is stored in uppercase in the database
