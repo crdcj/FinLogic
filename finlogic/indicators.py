@@ -53,28 +53,10 @@ def get_indicators_data() -> pd.DataFrame:
     return df
 
 
-def build_indicators(df, is_annual: bool, insert_avg_col) -> pd.DataFrame:
-    df.rename(columns=INDICATORS_CODES, inplace=True)
-    df = insert_key_cols(df)
-
-    avg_cols = ["invested_capital", "total_assets", "equity"]
-    for col_name in avg_cols:
-        df = insert_avg_col(col_name, df)
-
-    # For quarterly data, we need only the last row of each group
-    if not is_annual:
-        gp_cols = ["cvm_id", "is_annual", "is_consolidated"]
-        df = df.groupby(by=gp_cols).tail(1).dropna().reset_index(drop=True)
-
-    df["roa"] = df["ebit"] * (1 - TAX_RATE) / df["avg_total_assets"]
-    df["roe"] = df["ebit"] * (1 - TAX_RATE) / df["avg_equity"]
-    df["roic"] = df["ebit"] * (1 - TAX_RATE) / df["avg_invested_capital"]
-
-    # Drop avg_cols
-    avg_cols = ["avg_total_assets", "avg_equity", "avg_invested_capital"]
-    df.drop(columns=avg_cols, inplace=True)
-
-    return df
+def pivot_df(df) -> pd.DataFrame:
+    index_cols = ["cvm_id", "is_annual", "is_consolidated", "period_end"]
+    dfp = pd.pivot(df, values="acc_value", index=index_cols, columns=["acc_code"])
+    return dfp.reset_index()
 
 
 def insert_annual_avg_col(col_name: str, df: pd.DataFrame) -> pd.DataFrame:
@@ -105,12 +87,6 @@ def insert_quarterly_avg_col(col_name: str, df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def pivot_df(df) -> pd.DataFrame:
-    index_cols = ["cvm_id", "is_annual", "is_consolidated", "period_end"]
-    dfp = pd.pivot(df, values="acc_value", index=index_cols, columns=["acc_code"])
-    return dfp.reset_index()
-
-
 def insert_key_cols(df: pd.DataFrame) -> pd.DataFrame:
     df["total_cash"] = df["cash_equivalents"] + df["financial_investments"]
     df.drop(columns=["cash_equivalents", "financial_investments"], inplace=True)
@@ -123,6 +99,38 @@ def insert_key_cols(df: pd.DataFrame) -> pd.DataFrame:
     df["effective_tax_rate"] = -1 * df["effective_tax"] / df["ebt"]
     df["ebitda"] = df["ebit"] + df["depreciation_amortization"]
     df["invested_capital"] = df["total_debt"] + df["equity"] - df["total_cash"]
+
+    return df
+
+
+def build_indicators(df, is_annual: bool, insert_avg_col) -> pd.DataFrame:
+    df.rename(columns=INDICATORS_CODES, inplace=True)
+    df = insert_key_cols(df)
+
+    avg_cols = ["invested_capital", "total_assets", "equity"]
+    for col_name in avg_cols:
+        df = insert_avg_col(col_name, df)
+
+    # For quarterly data, we need only the last row of each group
+    if not is_annual:
+        gp_cols = ["cvm_id", "is_annual", "is_consolidated"]
+        df = df.groupby(by=gp_cols).tail(1).dropna().reset_index(drop=True)
+
+    # Margin ratios
+    df["gross_margin"] = df["gross_profit"] / df["revenues"]
+    df["ebitda_margin"] = df["ebitda"] / df["revenues"]
+    df["pre_tax_operating_margin"] = df["ebit"] / df["revenues"]
+    df["after_tax_operating_margin"] = df["ebit"] * (1 - TAX_RATE) / df["revenues"]
+    df["net_margin"] = df["net_income"] / df["revenues"]
+
+    # Return ratios
+    df["roa"] = df["ebit"] * (1 - TAX_RATE) / df["avg_total_assets"]
+    df["roe"] = df["ebit"] * (1 - TAX_RATE) / df["avg_equity"]
+    df["roic"] = df["ebit"] * (1 - TAX_RATE) / df["avg_invested_capital"]
+
+    # Drop avg_cols
+    avg_cols = ["avg_total_assets", "avg_equity", "avg_invested_capital"]
+    df.drop(columns=avg_cols, inplace=True)
 
     return df
 
@@ -200,31 +208,28 @@ def reorder_index(df: pd.DataFrame) -> pd.DataFrame:
         "roa",
         "roe",
         "roic",
+        "gross_margin",
+        "ebitda_margin",
+        "pre_tax_operating_margin",
+        "after_tax_operating_margin",
+        "net_margin",
     ]
     return df.reindex(new_order)
 
 
 def format_indicators(df: pd.DataFrame, unit: float) -> pd.DataFrame:
     df = adjust_unit(df, unit)
-    df = pd.melt(
-        df,
-        id_vars=["cvm_id", "is_annual", "is_consolidated", "period_end"],
-        var_name="indicator",
-        value_name="value",
-    )
+    melt_cols = ["cvm_id", "is_annual", "is_consolidated", "period_end"]
+    df = pd.melt(df, id_vars=melt_cols, var_name="indicator", value_name="value")
 
     sort_cols = ["cvm_id", "is_consolidated", "period_end", "indicator"]
     df.sort_values(by=sort_cols, inplace=True)
 
     df["period_end"] = df["period_end"].astype("string")
 
+    index_cols = ["cvm_id", "is_consolidated", "indicator"]
     df = (
-        pd.pivot(
-            df,
-            values="value",
-            index=["cvm_id", "is_consolidated", "indicator"],
-            columns=["period_end"],
-        )
+        pd.pivot(df, values="value", index=index_cols, columns=["period_end"])
         .reset_index()
         .set_index("indicator")
     )
