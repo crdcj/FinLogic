@@ -1,9 +1,9 @@
-"""Finlogic Database module.
+"""Finlogic manager module.
 
-This module provides functions to handle financial data from the CVM Portal. It
-allows updating, processing and consolidating financial statements, as well as
-searching for company names in the FinLogic Database and retrieving information
-about the database itself.
+This module provides upper level functions to handle financial data from the CVM
+Portal. It allows updating, processing and consolidating financial statements,
+as well as searching for company names in the FinLogic Database and retrieving
+information about the database itself.
 """
 from pathlib import Path
 from typing import Literal
