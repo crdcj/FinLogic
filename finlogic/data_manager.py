@@ -1,9 +1,9 @@
-"""Finlogic Database module.
+"""Finlogic manager module.
 
-This module provides functions to handle financial data from the CVM Portal. It
-allows updating, processing and consolidating financial statements, as well as
-searching for company names in the FinLogic Database and retrieving information
-about the database itself.
+This module provides upper level functions to handle financial data from the CVM
+Portal. It allows updating, processing and consolidating financial statements,
+as well as searching for company names in the FinLogic Database and retrieving
+information about the database itself.
 """
 from pathlib import Path
 from typing import Literal
@@ -12,20 +12,10 @@ import pandas as pd
 from . import config as cfg
 from . import cvm
 from . import language as lng
-from . import builder as bld
+from . import reports as rep
 from . import currency as crn
 
 CHECKMARK = "\033[32m\u2714\033[0m"
-
-
-def get_main_df() -> pd.DataFrame:
-    """Return a DataFrame with all accounting data"""
-    if cfg.DF_PATH.is_file():
-        df = pd.read_pickle(cfg.DF_PATH, compression="zstd")
-    else:
-        df = pd.DataFrame()
-
-    return df
 
 
 def get_filepaths_to_process(df1: pd.DataFrame, df2: pd.DataFrame) -> list[Path]:
@@ -69,7 +59,12 @@ def update(rebuild: bool = False):
 
     # FinLogic Database
     print("\nBuilding FinLogic main DataFrame...")
+<<<<<<< HEAD
     bld.build_main_df()
+=======
+    rep.build_reports_df()
+    print(f"{CHECKMARK} FinLogic updated!")
+>>>>>>> b33b914946aa9d142cea20666fc686ecd0c60569
 
     # Language files
     print('\nUpdating "language" database...')
@@ -97,13 +92,13 @@ def info() -> pd.DataFrame:
     Returns: None
     """
     info = {}
-    df = get_main_df()
+    df = rep.get_reports()
     if df.empty:
         return pd.DataFrame()
 
     info["data_path"] = f"{cfg.DATA_PATH}"
-    info["data_size"] = f"{cfg.DF_PATH.stat().st_size / 1024**2:.1f} MB"
-    db_last_modified = datetime.fromtimestamp(cfg.DF_PATH.stat().st_mtime)
+    info["data_size"] = f"{cfg.REPORTS_PATH.stat().st_size / 1024**2:.1f} MB"
+    db_last_modified = datetime.fromtimestamp(cfg.REPORTS_PATH.stat().st_mtime)
     info["updated_on"] = db_last_modified.strftime("%Y-%m-%d %H:%M:%S")
 
     info["accounting_entries"] = df.shape[0]
@@ -142,7 +137,7 @@ def search_company(
             matches the search criteria.
     """
     search_cols = ["name_id", "cvm_id", "tax_id"]
-    df = get_main_df()[search_cols].drop_duplicates(ignore_index=True)
+    df = rep.get_reports()[search_cols].drop_duplicates(ignore_index=True)
     match search_by:
         case "name_id":
             # Company name is stored in uppercase in the database

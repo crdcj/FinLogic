@@ -12,7 +12,7 @@ process and merge it into a dataframe.
 
 from pathlib import Path
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, date
 from . import data_manager as dm
 from . import config as cfg
 
@@ -89,12 +89,15 @@ def process_currency_df():
 
 
 def _set_currency_df(
-    df: pd.DataFrame, currency: str, conversion_type: str
+    df: pd.DataFrame,
+    currency: str,
+    conversion_type: str,
+    current_rate=None,
 ) -> pd.DataFrame:
     """place_holder"""
 
-    df_currency = load_currency_data()
-    df_currency["date"] = pd.to_datetime(df_currency["date"])
+    _df_currency = load_currency_data()
+    _df_currency["date"] = pd.to_datetime(_df_currency["date"])
 
     if currency == "BRL":
         _df = df
@@ -105,7 +108,7 @@ def _set_currency_df(
 
         _df = pd.merge_asof(
             _df.sort_values("date"),
-            df_currency[[currency, "date"]].sort_values("date"),
+            _df_currency[[currency, "date"]].sort_values("date"),
             on="date",
             direction="forward",
         )
@@ -113,6 +116,21 @@ def _set_currency_df(
         _df.drop(columns=["date", currency], inplace=True)
 
     elif conversion_type == "current":
-        _df = df
+        if current_rate is None:
+            current_rate = _df_currency[currency].iloc[-1]
+
+        try:
+            current_rate = float(current_rate)
+        except ValueError:
+            raise ValueError("Incorrect data format, should be integer or a float")
+
+        _df = df.copy()
+        _df["acc_value"] = _df["acc_value"] * current_rate
+
+    else:
+        raise ValueError(
+            "Incorrect currency conversion method. Only\
+                'historical' or 'current' methods available."
+        )
 
     return _df

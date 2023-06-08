@@ -3,7 +3,7 @@ import pandas as pd
 from . import config as cfg
 
 INTERIM_DIR = cfg.DATA_PATH / "interim"
-LANGUAGE_DF_PATH = INTERIM_DIR / "pten_df.csv"
+LANGUAGE_REPORTS_PATH = INTERIM_DIR / "pten_df.csv"
 URL_LANGUAGE = "https://raw.githubusercontent.com/fe-lipe-c/finlogic_datasets/master/data/pten_df.csv"  # noqa
 
 # Create interim folder if it does not exist.
@@ -13,12 +13,12 @@ Path.mkdir(INTERIM_DIR, parents=True, exist_ok=True)
 def process_language_df():
     """Process language dataframe."""
     _language_df = pd.read_csv(URL_LANGUAGE)
-    _language_df.to_csv(LANGUAGE_DF_PATH, index=False)
+    _language_df.to_csv(LANGUAGE_REPORTS_PATH, index=False)
     return _language_df
 
 
 # Start/load language file data
-if LANGUAGE_DF_PATH.is_file():
-    _language_df = pd.read_csv(LANGUAGE_DF_PATH)
+if LANGUAGE_REPORTS_PATH.is_file():
+    _language_df = pd.read_csv(LANGUAGE_REPORTS_PATH)
 else:
     _language_df = pd.DataFrame()

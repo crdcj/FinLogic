@@ -56,7 +56,7 @@ class TestCompany(unittest.TestCase):
             petro_indicators_sep.at["total_debt", "2015-12-31"], 4
         )
         roic_2021_sep = round(
-            petro_indicators_sep.at["return_on_capital", "2021-12-31"], 4
+            petro_indicators_sep.at["return_on_invested_capital", "2021-12-31"], 4
         )
         # Get the indicators (rounded to 4 decimals)
         revenues_2009_con = round(petro_indicators_con.at["revenues", "2009-12-31"], 4)
@@ -64,14 +64,14 @@ class TestCompany(unittest.TestCase):
             petro_indicators_con.at["total_debt", "2015-12-31"], 4
         )
         roic_2021_con = round(
-            petro_indicators_con.at["return_on_capital", "2021-12-31"], 4
+            petro_indicators_con.at["return_on_invested_capital", "2021-12-31"], 4
         )
         # Check the indicators
-        self.assertEqual(roic_2021_sep, 0.1623)
+        self.assertEqual(roic_2021_sep, 0.1512)
         self.assertEqual(revenues_2009_sep, 134.0339)
         self.assertEqual(total_debt_2015_sep, 305.3460)
         # Check the indicators
-        self.assertEqual(roic_2021_con, 0.2176)
+        self.assertEqual(roic_2021_con, 0.2149)
         self.assertEqual(revenues_2009_con, 182.8338)
         self.assertEqual(total_debt_2015_con, 493.0230)
 
