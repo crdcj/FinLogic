@@ -167,9 +167,9 @@ The Company Class allows you to easily access financial data from Brazilian comp
 | net_debt                     |    317.867 |    328.268 |    265.778 |
 | working_capital              |     -4.046 |      6.036 |     33.334 |
 | invested_capital             |    617.004 |    639.418 |    655.359 |
-| return_on_assets             |      0.062 |      0.035 |      0.140 |
-| return_on_capital            |      0.097 |      0.053 |      0.217 |
-| return_on_equity             |      0.144 |      0.020 |      0.344 |
+| roa                          |      0.062 |      0.035 |      0.140 |
+| roic                         |      0.097 |      0.053 |      0.217 |
+| roe                          |      0.144 |      0.020 |      0.344 |
 | gross_margin                 |      0.403 |      0.455 |      0.485 |
 | ebitda_margin                |      0.463 |      0.396 |      0.605 |
 | operating_margin             |      0.178 |      0.120 |      0.307 |

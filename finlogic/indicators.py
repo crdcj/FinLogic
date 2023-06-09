@@ -20,6 +20,7 @@ INDICATORS_CODES = {
     "3.11": "net_income",
     "6.01": "operating_cash_flow",
     "6.01.01.04": "depreciation_amortization",
+    "8.01.01": "eps",
 }
 
 
@@ -45,7 +46,7 @@ def get_indicators_data() -> pd.DataFrame:
         rep.get_reports()
         .query("acc_code in @codes")
         .drop(columns=drop_cols)
-        # .query("cvm_id == 9512")
+        # .query("cvm_id == 9512 and is_consolidated")  # for testing
         .sort_values(by=sort_cols, ignore_index=True)
         .drop_duplicates(subset=subset_cols, keep="last", ignore_index=True)
         .astype({"acc_code": "string"})
@@ -55,8 +56,12 @@ def get_indicators_data() -> pd.DataFrame:
 
 def pivot_df(df) -> pd.DataFrame:
     index_cols = ["cvm_id", "is_annual", "is_consolidated", "period_end"]
-    dfp = pd.pivot(df, values="acc_value", index=index_cols, columns=["acc_code"])
-    return dfp.reset_index()
+    dfp = (
+        pd.pivot(df, values="acc_value", index=index_cols, columns=["acc_code"])
+        .fillna(0)
+        .reset_index()
+    )
+    return dfp
 
 
 def insert_annual_avg_col(col_name: str, df: pd.DataFrame) -> pd.DataFrame:
@@ -124,11 +129,13 @@ def build_indicators(df, is_annual: bool, insert_avg_col) -> pd.DataFrame:
     df["net_margin"] = df["net_income"] / df["revenues"]
 
     # Return ratios
-    df["return_on_assets"] = df["ebit"] * (1 - TAX_RATE) / df["avg_total_assets"]
-    df["return_on_equity"] = df["ebit"] * (1 - TAX_RATE) / df["avg_equity"]
-    df["return_on_invested_capital"] = (
-        df["ebit"] * (1 - TAX_RATE) / df["avg_invested_capital"]
-    )
+    CUT_OFF_VALUE = 1_000_000
+    df["roa"] = df["ebit"] * (1 - TAX_RATE) / df["avg_total_assets"]
+    df.loc[df["avg_total_assets"] <= CUT_OFF_VALUE, "roa"] = 0
+    df["roe"] = df["ebit"] * (1 - TAX_RATE) / df["avg_equity"]
+    df.loc[df["avg_equity"] <= CUT_OFF_VALUE, "roe"] = 0
+    df["roic"] = df["ebit"] * (1 - TAX_RATE) / df["avg_invested_capital"]
+    df.loc[df["avg_invested_capital"] <= CUT_OFF_VALUE, "roic"] = 0
 
     # Drop avg_cols
     avg_cols = ["avg_total_assets", "avg_equity", "avg_invested_capital"]
@@ -181,7 +188,7 @@ def adjust_unit(df: pd.DataFrame, unit: float) -> pd.DataFrame:
         "ebitda",
         "invested_capital",
     ]
-    df[currency_cols] = df[currency_cols].div(unit)
+    df[currency_cols] = df[currency_cols] / unit
     return df
 
 
@@ -206,14 +213,15 @@ def reorder_index(df: pd.DataFrame) -> pd.DataFrame:
         "operating_cash_flow",
         "depreciation_amortization",
         "effective_tax_rate",
-        "return_on_assets",
-        "return_on_equity",
-        "return_on_invested_capital",
+        "roa",
+        "roe",
+        "roic",
         "gross_margin",
         "ebitda_margin",
         "pre_tax_operating_margin",
         "after_tax_operating_margin",
         "net_margin",
+        "eps",
     ]
     return df.reindex(new_order)
 
