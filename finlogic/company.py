@@ -28,6 +28,8 @@ from . import currency as crn
 from . import reports as rep
 from . import indicators as ind
 
+pd.options.display.float_format = "{:,.0f}".format
+
 
 class Company:
     """A class to represent a company financial data.

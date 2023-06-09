@@ -59,12 +59,8 @@ def update(rebuild: bool = False):
 
     # FinLogic Database
     print("\nBuilding FinLogic main DataFrame...")
-<<<<<<< HEAD
-    bld.build_main_df()
-=======
     rep.build_reports_df()
     print(f"{CHECKMARK} FinLogic updated!")
->>>>>>> b33b914946aa9d142cea20666fc686ecd0c60569
 
     # Language files
     print('\nUpdating "language" database...')
@@ -75,6 +71,7 @@ def update(rebuild: bool = False):
     crn.process_currency_df()
 
     print(f"{CHECKMARK} FinLogic updated!")
+
 
 def info() -> pd.DataFrame:
     """Print a concise summary of FinLogic available data.
