@@ -21,7 +21,6 @@ RuntimeWarning:
 
 """
 from typing import Literal
-import numpy as np
 import pandas as pd
 from .language import language_df
 from . import reports as rep
@@ -267,12 +266,9 @@ class Company:
         cat_cols = [c for c in columns if df[c].dtype == "category"]
         df[cat_cols] = df[cat_cols].astype("string")
 
-        # Change acc_value only when it is not earnings_per_share (report_type 8)
-        df["acc_value"] = np.where(
-            df["report_type"] == 8,
-            df["acc_value"],
-            df["acc_value"] / self._acc_unit,
-        )
+        # Adjust for unit change only where it is not EPS (report_type 8)
+        mask = df["report_type"] != 8
+        df.loc[mask, "acc_value"] = df.loc[mask, "acc_value"] / self._acc_unit
 
         self._first_period = df["period_end"].min()
         self._last_period = df["period_end"].max()
@@ -298,6 +294,11 @@ class Company:
 
     def info(self) -> pd.DataFrame:
         """Print a concise summary of a company."""
+        if self._df.empty:
+            acc_method = "consolidated" if self._is_consolidated else "separate"
+            print("There is no avaible accounting data for:")
+            print(f"    cvm_id = {self._cvm_id} and accounting method = {acc_method}")
+            return None
         company_info = {
             "Name": self.name_id,
             "CVM ID": self._cvm_id,
