@@ -124,16 +124,15 @@ def build_indicators(df, is_annual: bool, insert_avg_col) -> pd.DataFrame:
     # Margin ratios
     df["gross_margin"] = df["gross_profit"] / df["revenues"]
     df["ebitda_margin"] = df["ebitda"] / df["revenues"]
-    df["pre_tax_operating_margin"] = df["ebit"] / df["revenues"]
-    df["after_tax_operating_margin"] = df["ebit"] * (1 - TAX_RATE) / df["revenues"]
+    df["operating_margin"] = df["ebit"] / df["revenues"]
     df["net_margin"] = df["net_income"] / df["revenues"]
 
     # Return ratios
     CUT_OFF_VALUE = 1_000_000
-    df["roa"] = df["ebit"] * (1 - TAX_RATE) / df["avg_total_assets"]
-    df.loc[df["avg_total_assets"] <= CUT_OFF_VALUE, "roa"] = 0
-    df["roe"] = df["ebit"] * (1 - TAX_RATE) / df["avg_equity"]
-    df.loc[df["avg_equity"] <= CUT_OFF_VALUE, "roe"] = 0
+    df["return_on_assets"] = df["ebit"] * (1 - TAX_RATE) / df["avg_total_assets"]
+    df.loc[df["avg_total_assets"] <= CUT_OFF_VALUE, "return_on_assets"] = 0
+    df["return_on_equity"] = df["ebit"] * (1 - TAX_RATE) / df["avg_equity"]
+    df.loc[df["avg_equity"] <= CUT_OFF_VALUE, "return_on_equity"] = 0
     df["roic"] = df["ebit"] * (1 - TAX_RATE) / df["avg_invested_capital"]
     df.loc[df["avg_invested_capital"] <= CUT_OFF_VALUE, "roic"] = 0
 
@@ -213,13 +212,12 @@ def reorder_index(df: pd.DataFrame) -> pd.DataFrame:
         "operating_cash_flow",
         "depreciation_amortization",
         "effective_tax_rate",
-        "roa",
-        "roe",
+        "return_on_assets",
+        "return_on_equity",
         "roic",
         "gross_margin",
         "ebitda_margin",
-        "pre_tax_operating_margin",
-        "after_tax_operating_margin",
+        "operating_margin",
         "net_margin",
         "eps",
     ]
