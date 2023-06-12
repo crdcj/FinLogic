@@ -1,4 +1,4 @@
-cvm_id,company_code,industry,is_restructuring,most_traded_stock,stock_type,close,trades,quantity,volume,trading_date
+cvm_id,company_code,company_segment,is_restructuring,most_traded_stock,stock_type,close,trades,quantity,volume,trading_date
 25291,RRRP,Exploration. Refining and Distribution,False,RRRP3,ON      NM,32.57,33214,11158600,371456353.0,2023-06-09
 25283,AERI,Machines and Industrial Equipments,False,AERI3,ON      NM,1.55,6240,6824000,10741407.0,2023-06-09
 25640,AESB,Electric Utilities,False,AESB3,ON      NM,12.49,7621,1628300,20269469.0,2023-06-09
