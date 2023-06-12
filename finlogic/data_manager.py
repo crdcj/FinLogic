@@ -105,8 +105,18 @@ def info() -> pd.DataFrame:
     return s.to_frame()
 
 
+def search_segment(search_value: str):
+    series = (
+        cfg.LAST_SESSION_DF["segment"].drop_duplicates().sort_values(ignore_index=True)
+    )
+    mask = series.str.contains(search_value)
+    return series[mask].reset_index(drop=True)
+
+
 def search_company(
-    search_value: str, search_by: Literal["name_id", "cvm_id", "tax_id"] = "name_id"
+    search_value: str,
+    search_by: Literal["name_id", "cvm_id", "tax_id", "segment"] = "name_id",
+    is_listed: bool = True,
 ) -> pd.DataFrame:
     """Search for a company name in FinLogic Database.
 
@@ -126,7 +136,12 @@ def search_company(
             matches the search criteria.
     """
     search_cols = ["name_id", "cvm_id", "tax_id"]
-    df = rep.get_reports()[search_cols].drop_duplicates(ignore_index=True)
+    df = rep.get_reports()[search_cols].drop_duplicates(
+        subset=["cvm_id"], ignore_index=True
+    )
+    if is_listed:
+        listed_df = cfg.LAST_SESSION_DF[["cvm_id", "segment"]]
+        df = pd.merge(df, listed_df, on="cvm_id")
     match search_by:
         case "name_id":
             # Company name is stored in uppercase in the database
@@ -135,6 +150,8 @@ def search_company(
             df.query(f"cvm_id == {search_value}", inplace=True)
         case "tax_id":
             df.query(f"tax_id == '{search_value}'", inplace=True)
+        case "segment":
+            df.query(f"segment.str.contains('{search_value}')", inplace=True)
         case _:
             raise ValueError("Invalid value for 'search_by' argument.")
 
