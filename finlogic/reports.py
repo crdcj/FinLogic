@@ -83,10 +83,10 @@ def get_ltm_mask(df: pd.DataFrame) -> pd.Series:
     adjusted. But we need to use the last annual report to adjust the quarterly
     reports.
     Conditions that need to be met for each company:
-        (1) Last quarter > last annual and
-        (2a) Last "period_end" of annual reports or
-        (2b) Last "period_reference" of quarterly reports and
-        (3) Only income and cash flow statements are adjusted to LTM
+        1  - Last quarter > last annual and
+        2a - Last "period_end" of annual reports or
+        2b - Last "period_reference" of quarterly reports and
+        3  - Only income, cash flow statements and EPS are adjusted to LTM
     """
     # Condition (1)
     cond1 = df["last_quarter"] > df["last_annual"]
@@ -102,7 +102,7 @@ def get_ltm_mask(df: pd.DataFrame) -> pd.Series:
     cond2b = mask1 & mask2
 
     # Condition (4)
-    cond3 = df["report_type"].isin([3, 6])
+    cond3 = df["report_type"].isin([3, 6, 8])
 
     return cond1 & (cond2a | cond2b) & cond3
 
