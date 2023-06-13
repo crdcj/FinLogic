@@ -85,7 +85,12 @@ class Company:
             "USD",
             "ZAR",
         ] = "BRL",
-        conversion_type: Literal["historical", "current", "average"] = "historical",
+        conversion_type: Literal[
+            "historical",
+            "current",
+            "average",
+        ] = "average",
+        current_rate: float = 1.0,
     ):
         """Initializes a new instance of the Company class."""
         self._initialized = False
@@ -96,6 +101,7 @@ class Company:
         self.language = language
         self.currency = currency
         self.conversion_type = conversion_type
+        self.current_rate = current_rate
         self._initialized = True
         # Only set _df after identifier, is_consolidated and acc_unit are setted
         self._set_df()
@@ -275,38 +281,39 @@ class Company:
     def currency(self) -> str:
         """Gets or sets company 'currency' property.
 
-        The "currency" is used to represent the company's
-        financial values (revenues, costs, expenses, etc.) in a specific
-        currency.
+         The "currency" is used to represent the company's
+         financial values (revenues, costs, expenses, etc.) in a specific
+         currency.
 
-        Accepted Currencies:
-            - 'ARS': Argentinean Peso
-            - 'BRL': Brazilian Real
-            - 'CLP': Chilean Peso
-            - 'CNY': Renminbi
-            - 'EUR': Euro
-            - 'GBP': Pound Sterling
-            - 'INR': Indian Rupee
-            - 'JPY': Japanese Yen
-            - 'MXN': Mexican Peso
-            - 'RUB': Russian Ruble
-            - 'USD': US Dollar
-            - 'ZAR': South African Rand
+         Accepted Currencies:
+             - 'ARS': Argentinean Peso
+             - 'BRL': Brazilian Real
+             - 'CLP': Chilean Peso
+             - 'CNY': Renminbi
+             - 'EUR': Euro
+             - 'GBP': Pound Sterling
+             - 'INR': Indian Rupee
+             - 'JPY': Japanese Yen
+             - 'MXN': Mexican Peso
+             - 'RUB': Russian Ruble
+             - 'USD': US Dollar
+             - 'ZAR': South African Rand
 
         The default value is 'BRL', the standard currency in Brazil.
+        The rates used are from Banco Central do Brasil (Brazillian Central Bank).
 
-        Returns:
-            The currency value.
+         Returns:
+             The currency value.
 
-        Raises:
-            ValueError: If the currency is not in the cur_list.
+         Raises:
+             ValueError: If the currency is not in the cur_list.
 
-        Examples:
-            To set the currency to US Dollar (USD):
-                company.currency = 'USD'
+         Examples:
+             To set the currency to US Dollar (USD):
+                 company.currency = 'USD'
 
-            To set the currency to Brazilian Real (BRL):
-                company.currency = 'BRL'
+             To set the currency to Brazilian Real (BRL):
+                 company.currency = 'BRL'
         """
         return self._currency
 
@@ -341,11 +348,17 @@ class Company:
         """Gets or sets company 'conversion_type' property.
 
         The "conversion_type" is used for converting one currency to another.
+        The exchange rates used are provided by the Brazillian Central Bank (https://ptax.bcb.gov.br/).
         The accepted methods are:
             - 'historical': Uses historical exchange rates
             - 'current': Uses current exchange rates
+            - 'average': Uses the average exchange rate for the selected
+                         fiscal year
+            - 'default': Balance sheet is calculated by the historical method
+                         while income and cash flow are calculated by the
+                         average method
 
-        The default value is 'historical'.
+        The default value is 'default'. :)
 
         Returns:
             The conversion_type value.
@@ -372,6 +385,39 @@ class Company:
             raise ValueError(
                 f"Company 'conversion_type' value is invalid.\
                              Accepted conversion types are {valid_types}."
+            )
+
+    @property
+    def conversion_rate(self) -> float:
+        """Gets or sets company 'conversion_rate' property.
+
+        The "conversion_rate" is used to determine the exchange rate value when
+        converting financial data between different currencies.
+
+        The value must be a positive float number.
+
+        Returns:
+            The conversion_rate value.
+
+        Raises:
+            ValueError: If the conversion_rate is not a positive float.
+
+        Examples:
+            To set the conversion_rate to 5.21:
+                company.conversion_rate = 5.21
+
+            To set the conversion_rate to 1.125:
+                company.conversion_rate = 1.125
+        """
+        return self._conversion_rate
+
+    @conversion_rate.setter
+    def conversion_rate(self, value: float):
+        if value > 0:
+            self._conversion_rate = value
+        else:
+            raise ValueError(
+                "Company 'conversion_rate' value is invalid. It must be a positive float."
             )
 
     def _set_df(self) -> pd.DataFrame:

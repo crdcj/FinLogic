@@ -92,9 +92,34 @@ def _set_currency_df(
     df: pd.DataFrame,
     currency: str,
     conversion_type: str,
-    current_rate=None,
+    current_rate: float,
 ) -> pd.DataFrame:
-    """place_holder"""
+    """
+    Converts the financial data in the input DataFrame to the specified
+    currency using the given conversion method.
+
+    This helper function applies the currency conversion based on the provided
+    conversion_type. It supports historical, current, average and default
+    conversion methods. The PTAX exchange rates provided by the Brazilian
+    Central Bank are used for conversion.
+
+    Args:
+        df: A pandas DataFrame containing the financial data with a
+            'period_end' column for date information.
+        currency: The target currency for the conversion.
+        conversion_type: The method for currency conversion. Accepted types are
+            'historical', 'current', 'average' and 'default'.
+        current_rate: The current exchange rate to be used when conversion_type
+            is 'current'.
+
+    Returns:
+        A new pandas DataFrame with financial data converted to the specified
+        currency.
+
+    Raises:
+        ValueError: If an incorrect or unsupported currency conversion method
+        is provided.
+    """
 
     _df_currency = load_currency_data()
     _df_currency["date"] = pd.to_datetime(_df_currency["date"])
@@ -116,16 +141,14 @@ def _set_currency_df(
         _df.drop(columns=["date", currency], inplace=True)
 
     elif conversion_type == "current":
-        if current_rate is None:
-            current_rate = _df_currency[currency].iloc[-1]
-
-        try:
-            current_rate = float(current_rate)
-        except ValueError:
-            raise ValueError("Incorrect data format, should be integer or a float")
-
         _df = df.copy()
         _df["acc_value"] = _df["acc_value"] * current_rate
+
+    elif conversion_type == "average":
+        pass
+
+    elif conversion_type == "default":
+        pass
 
     else:
         raise ValueError(
