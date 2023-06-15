@@ -59,14 +59,14 @@ def process_currency_df():
     # Get first and last statement dates
 
     _df = rep.get_reports()
-    first_statement = str(_df["period_end"].min()).split()[0].split("-")
+    first_statement = str(_df["period_begin"].min()).split()[0].split("-")
     last_statement = str(_df["period_end"].max()).split()[0].split("-")
 
     # Iterate through currencies, fetch data from BCB's website and merge into
     # a single dataframe
     df_currencies = pd.DataFrame(columns=["date"])
     for moeda in dict_bcb_code.keys():
-        URL_CURRENCY = f"https://ptax.bcb.gov.br/ptax_internet/consultaBoletim.do?method=gerarCSVFechamentoMoedaNoPeriodo&ChkMoeda={dict_bcb_code[moeda]}&DATAINI={str(int(first_statement[2])-5)}/{first_statement[1]}/{first_statement[0]}&DATAFIM={last_statement[2]}/{last_statement[1]}/{last_statement[0]}"
+        URL_CURRENCY = f"https://ptax.bcb.gov.br/ptax_internet/consultaBoletim.do?method=gerarCSVFechamentoMoedaNoPeriodo&ChkMoeda={dict_bcb_code[moeda]}&DATAINI={str(int(first_statement[2]))}/{first_statement[1]}/{first_statement[0]}&DATAFIM={last_statement[2]}/{last_statement[1]}/{last_statement[0]}"
 
         df_moeda = pd.read_csv(
             URL_CURRENCY,
@@ -145,6 +145,9 @@ def _set_currency_df(
         _df["acc_value"] = _df["acc_value"] * current_rate
 
     elif conversion_type == "average":
+        pass
+
+    elif conversion_type == "normalized":
         pass
 
     elif conversion_type == "default":

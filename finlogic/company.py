@@ -90,7 +90,7 @@ class Company:
             "current",
             "average",
         ] = "average",
-        current_rate: float = 1.0,
+        conversion_rate: float = 1.0,
     ):
         """Initializes a new instance of the Company class."""
         self._initialized = False
@@ -101,7 +101,7 @@ class Company:
         self.language = language
         self.currency = currency
         self.conversion_type = conversion_type
-        self.current_rate = current_rate
+        self.conversion_rate = conversion_rate
         self._initialized = True
         # Only set _df after identifier, is_consolidated and acc_unit are setted
         self._set_df()
@@ -628,7 +628,9 @@ class Company:
             df["acc_name"] = df["acc_name"].map(_pten_dict)
 
         # Set the dataframe currency
-        df = crn._set_currency_df(df, self._currency, self._conversion_type)
+        df = crn._set_currency_df(
+            df, self._currency, self._conversion_type, self._conversion_rate
+        )
 
         """
         Filter dataframe for selected report_type (report type)
