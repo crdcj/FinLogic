@@ -153,7 +153,7 @@ def adjust_ltm(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def save_reports_df():
+def save_reports():
     """Save FinLogic Database from processed CVM files."""
     df = read_all_processed_files()
     df = drop_duplicated_entries(df)

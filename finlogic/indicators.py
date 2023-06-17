@@ -145,8 +145,8 @@ def build_indicators(df, is_annual: bool, insert_avg_col) -> pd.DataFrame:
     return df
 
 
-def save_indicators() -> None:
-    """Save indicators as csv and pickle files.
+def save_indicators() -> pd.DataFrame:
+    """Save indicators as pickle file.
     dfi = input dataframe
     dfo = output dataframe
     """
@@ -164,7 +164,7 @@ def save_indicators() -> None:
     sort_cols = ["cvm_id", "is_consolidated", "period_end"]
     dfo = pd.concat([dfai, dfqi]).sort_values(by=sort_cols, ignore_index=True)
     dfo.columns.name = None
-    dfo.to_pickle(cfg.INDICATORS_PATH)
+    dfo.to_pickle(cfg.INDICATORS_PATH, compression="zstd")
     return dfo
 
 
@@ -251,7 +251,7 @@ def format_indicators(df: pd.DataFrame, unit: float) -> pd.DataFrame:
 def get_indicators() -> pd.DataFrame:
     """Return a DataFrame with all indicators data"""
     if cfg.INDICATORS_PATH.is_file():
-        df = pd.read_pickle(cfg.INDICATORS_PATH)
+        df = pd.read_pickle(cfg.INDICATORS_PATH, compression="zstd")
     else:
         df = pd.DataFrame()
     return df
