@@ -32,7 +32,7 @@ def get_indicators_data() -> pd.DataFrame:
     removed in the next step, when we drop duplicates and the last entry
     published will be kept.
     """
-    drop_cols = ["name_id", "tax_id", "acc_name", "report_type", "period_begin"]
+    drop_cols = ["tax_id", "acc_name", "period_begin"]
     sort_cols = [
         "cvm_id",
         "is_consolidated",
@@ -55,7 +55,7 @@ def get_indicators_data() -> pd.DataFrame:
 
 
 def pivot_df(df) -> pd.DataFrame:
-    index_cols = ["cvm_id", "is_annual", "is_consolidated", "period_end"]
+    index_cols = ["cvm_id", "name_id", "is_annual", "is_consolidated", "period_end"]
     dfp = (
         pd.pivot(df, values="acc_value", index=index_cols, columns=["acc_code"])
         .fillna(0)
@@ -122,13 +122,15 @@ def build_indicators(df, is_annual: bool, insert_avg_col) -> pd.DataFrame:
         df = df.groupby(by=gp_cols).tail(1).dropna().reset_index(drop=True)
 
     # Margin ratios
+    CUT_OFF_VALUE = 1_000_000
     df["gross_margin"] = df["gross_profit"] / df["revenues"]
     df["ebitda_margin"] = df["ebitda"] / df["revenues"]
     df["operating_margin"] = df["ebit"] / df["revenues"]
     df["net_margin"] = df["net_income"] / df["revenues"]
+    margin_cols = ["gross_margin", "ebitda_margin", "operating_margin", "net_margin"]
+    df.loc[df["revenues"] <= CUT_OFF_VALUE, margin_cols] = 0
 
     # Return ratios
-    CUT_OFF_VALUE = 1_000_000
     df["return_on_assets"] = df["ebit"] * (1 - TAX_RATE) / df["avg_total_assets"]
     df.loc[df["avg_total_assets"] <= CUT_OFF_VALUE, "return_on_assets"] = 0
     df["return_on_equity"] = df["ebit"] * (1 - TAX_RATE) / df["avg_equity"]
@@ -161,7 +163,7 @@ def save_indicators() -> None:
     # Build output dataframe
     sort_cols = ["cvm_id", "is_consolidated", "period_end"]
     dfo = pd.concat([dfai, dfqi]).sort_values(by=sort_cols, ignore_index=True)
-
+    dfo.columns.name = None
     dfo.to_pickle(cfg.INDICATORS_PATH)
     return dfo
 

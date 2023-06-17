@@ -13,6 +13,7 @@ from . import config as cfg
 from . import cvm
 from . import language as lng
 from . import reports as rep
+from . import indicators as ind
 
 CHECKMARK = "\033[32m\u2714\033[0m"
 
@@ -26,12 +27,14 @@ def get_filepaths_to_process(df1: pd.DataFrame, df2: pd.DataFrame) -> list[Path]
     return [cfg.CVM_RAW_DIR / file_source for file_source in file_sources]
 
 
-def update(rebuild: bool = False):
+def update(rebuild: bool = False, is_listed: bool = True):
     """Verify changes in CVM files and update Finlogic Database if necessary.
 
     Args:
-        rebuild (bool, optional): If True, processes all CVM files and rebuilds
+        rebuild (bool, optional): If True, process all CVM files and rebuilds
             the database. Defaults to False.
+        is_listed (bool, optional): If True, only currently listed companies are
+        processed.
     Returns:
         None
     """
@@ -57,11 +60,12 @@ def update(rebuild: bool = False):
         filepaths_to_process = get_filepaths_to_process(df1=df_raw1, df2=df_raw2)
     print(f"Number of new files to process = {len(filepaths_to_process)}")
 
-    cvm.process_files_with_progress(filepaths_to_process)
+    cvm.process_files_with_progress(filepaths_to_process, is_listed)
 
     # FinLogic Database
     print("\nBuilding FinLogic main DataFrame...")
-    rep.build_reports_df()
+    rep.save_reports_df()
+    ind.save_indicators()
     print(f"{CHECKMARK} FinLogic updated!")
 
 
@@ -116,7 +120,7 @@ def search_segment(search_value: str):
 def search_company(
     search_value: str,
     search_by: Literal["name_id", "cvm_id", "tax_id", "segment"] = "name_id",
-    is_listed: bool = True,
+    min_volume: int = 100_000,
 ) -> pd.DataFrame:
     """Search for a company name in FinLogic Database.
 
@@ -129,6 +133,9 @@ def search_company(
         search_value (str): The search expression.
         search_by (str): The column where the id search will be performed. Valid
             values are 'name_id', 'cvm_id', and 'tax_id'. Defaults to 'name_id'.
+        min_volume (int): The minimum daily volume of the stock. Defaults
+            to 100,000, which is a reasonable value to remove extremely illiquid
+            stocks.
 
     Returns:
         pd.DataFrame: A DataFrame containing the search results, with columns
@@ -139,9 +146,10 @@ def search_company(
     df = rep.get_reports()[search_cols].drop_duplicates(
         subset=["cvm_id"], ignore_index=True
     )
-    if is_listed:
-        listed_df = cfg.LAST_SESSION_DF[["cvm_id", "segment"]]
-        df = pd.merge(df, listed_df, on="cvm_id")
+    df = pd.merge(df, cfg.LAST_SESSION_DF, on="cvm_id")
+    df = df[df["volume"] >= min_volume].reset_index(drop=True)
+    drop_cols = ["stock_type", "close_price", "trading_date", "volume"]
+    df.drop(columns=drop_cols, inplace=True)
     match search_by:
         case "name_id":
             # Company name is stored in uppercase in the database
@@ -156,3 +164,32 @@ def search_company(
             raise ValueError("Invalid value for 'search_by' argument.")
 
     return df.reset_index(drop=True)
+
+
+def rank(segment: str = None, n: int = 10, rank_by: str = "roic") -> pd.DataFrame:
+    fixed_cols = ["cvm_id", "name_id", "is_annual", "is_consolidated", "period_end"]
+    show_cols = fixed_cols + ["operating_margin"]
+    drop_cols = [
+        "b3_id",
+        "stock_type",
+        "close_price",
+        "trading_date",
+        "volume",
+        "is_annual",
+        "is_consolidated",
+    ]
+    df = (
+        ind.get_indicators()
+        .sort_values(by=["cvm_id", "period_end", "is_consolidated"], ignore_index=True)
+        # .query("cvm_id == 922")
+        .drop_duplicates(subset=["cvm_id"], keep="last")
+        .sort_values(by=["operating_margin"], ascending=False, ignore_index=True)[
+            show_cols
+        ]
+        .merge(cfg.LAST_SESSION_DF, on="cvm_id")
+        .drop(columns=drop_cols)
+        .query("segment.str.contains(@segment)")
+        .head(n)
+    )
+
+    return df

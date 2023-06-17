@@ -266,8 +266,8 @@ class Company:
         cat_cols = [c for c in columns if df[c].dtype == "category"]
         df[cat_cols] = df[cat_cols].astype("string")
 
-        # Adjust for unit change only where it is not EPS (report_type 8)
-        mask = df["report_type"] != 8
+        # Adjust for unit change only where it is not EPS (acc_code 8...)
+        mask = ~df["acc_code"].str.startswith("8")
         df.loc[mask, "acc_value"] = df.loc[mask, "acc_value"] / self._acc_unit
 
         self._first_period = df["period_end"].min()
@@ -454,7 +454,7 @@ class Company:
             df["acc_name"] = df["acc_name"].map(_pten_dict)
 
         """
-        Filter dataframe for selected report_type (report type)
+        Filter dataframe for selected acc_code
         df['acc_code'].str[0].unique() -> [1, 2, 3, 4, 5, 6, 7]
         The first part of 'acc_code' is the report type
         Table of reports correspondence:

@@ -17,3 +17,4 @@ URL_LAST_SESSION = (
     "https://raw.githubusercontent.com/crdcj/FinLogic/main/data/last_session_data.csv"
 )
 LAST_SESSION_DF = pd.read_csv(URL_LAST_SESSION)
+LISTED_COMPANIES = sorted(LAST_SESSION_DF["cvm_id"])
