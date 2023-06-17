@@ -91,18 +91,18 @@ def get_ltm_mask(df: pd.DataFrame) -> pd.Series:
     # Condition (1)
     cond1 = df["last_quarter"] > df["last_annual"]
 
-    # Condition (2)
+    # Condition (2a)
     mask1 = df["is_annual"]
     mask2 = df["period_end"] == df["last_annual"]
     cond2a = mask1 & mask2
 
-    # Condition (3)
+    # Condition (2b)
     mask1 = ~df["is_annual"]
     mask2 = df["period_reference"] == df["last_quarter"]
     cond2b = mask1 & mask2
 
-    # Condition (4)
-    cond3 = df["report_type"].isin([3, 6, 8])
+    # Condition (3)
+    cond3 = df["acc_code"].str.startswith(("3", "6", "8"))
 
     return cond1 & (cond2a | cond2b) & cond3
 
@@ -153,8 +153,8 @@ def adjust_ltm(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def build_reports_df():
-    """Build FinLogic Database from processed CVM files."""
+def save_reports():
+    """Save FinLogic Database from processed CVM files."""
     df = read_all_processed_files()
     df = drop_duplicated_entries(df)
     insert_auxiliary_cols(df)
