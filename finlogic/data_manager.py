@@ -13,6 +13,7 @@ from . import config as cfg
 from . import cvm
 from . import language as lng
 from . import reports as rep
+from . import indicators as ind
 
 CHECKMARK = "\033[32m\u2714\033[0m"
 
@@ -26,12 +27,22 @@ def get_filepaths_to_process(df1: pd.DataFrame, df2: pd.DataFrame) -> list[Path]
     return [cfg.CVM_RAW_DIR / file_source for file_source in file_sources]
 
 
-def update(rebuild: bool = False):
+def update(
+    rebuild: bool = False,
+    is_listed: bool = True,
+    min_volume: int = 100_000,
+):
     """Verify changes in CVM files and update Finlogic Database if necessary.
 
     Args:
-        rebuild (bool, optional): If True, processes all CVM files and rebuilds
+        rebuild (bool, optional): If True, process all CVM files and rebuilds
             the database. Defaults to False.
+        is_listed (bool, optional): If True, only currently listed companies are
+        processed.
+        min_volume (int): The minimum daily volume of the stock. Defaults
+            to 100,000, which is a reasonable value to remove extremely illiquid
+            stocks.
+
     Returns:
         None
     """
@@ -57,11 +68,20 @@ def update(rebuild: bool = False):
         filepaths_to_process = get_filepaths_to_process(df1=df_raw1, df2=df_raw2)
     print(f"Number of new files to process = {len(filepaths_to_process)}")
 
-    cvm.process_files_with_progress(filepaths_to_process)
+    # Determine which companies to process
+    if is_listed:
+        companies_to_process = sorted(
+            cfg.LAST_SESSION_DF.query("volume >= @min_volume")["cvm_id"]
+        )
+    else:
+        companies_to_process = None
+
+    cvm.process_files_with_progress(filepaths_to_process, companies_to_process)
 
     # FinLogic Database
     print("\nBuilding FinLogic main DataFrame...")
-    rep.build_reports_df()
+    rep.save_reports()
+    ind.save_indicators()
     print(f"{CHECKMARK} FinLogic updated!")
 
 
@@ -105,8 +125,17 @@ def info() -> pd.DataFrame:
     return s.to_frame()
 
 
+def search_segment(search_value: str):
+    series = (
+        cfg.LAST_SESSION_DF["segment"].drop_duplicates().sort_values(ignore_index=True)
+    )
+    mask = series.str.contains(search_value)
+    return series[mask].reset_index(drop=True)
+
+
 def search_company(
-    search_value: str, search_by: Literal["name_id", "cvm_id", "tax_id"] = "name_id"
+    search_value: str,
+    search_by: Literal["name_id", "cvm_id", "tax_id", "segment"] = "name_id",
 ) -> pd.DataFrame:
     """Search for a company name in FinLogic Database.
 
@@ -126,7 +155,10 @@ def search_company(
             matches the search criteria.
     """
     search_cols = ["name_id", "cvm_id", "tax_id"]
-    df = rep.get_reports()[search_cols].drop_duplicates(ignore_index=True)
+    df = rep.get_reports()[search_cols].drop_duplicates(
+        subset=["cvm_id"], ignore_index=True
+    )
+    df = pd.merge(df, cfg.LAST_SESSION_DF, on="cvm_id")
     match search_by:
         case "name_id":
             # Company name is stored in uppercase in the database
@@ -135,7 +167,60 @@ def search_company(
             df.query(f"cvm_id == {search_value}", inplace=True)
         case "tax_id":
             df.query(f"tax_id == '{search_value}'", inplace=True)
+        case "segment":
+            df.query(f"segment.str.contains('{search_value}')", inplace=True)
         case _:
             raise ValueError("Invalid value for 'search_by' argument.")
 
-    return df.reset_index(drop=True)
+    show_cols = [
+        "name_id",
+        "cvm_id",
+        "tax_id",
+        "segment",
+        "is_restructuring",
+        "most_traded_stock",
+    ]
+    return df[show_cols].reset_index(drop=True)
+
+
+def rank(
+    segment: str = None, n: int = 10, rank_by: str = "operating_margin"
+) -> pd.DataFrame:
+    """Rank companies by a given indicator.
+
+    This function returns a DataFrame containing the top n companies in the
+    specified segment, ranked by the given indicator.
+
+    Args:
+        segment (str): The segment to be ranked. Defaults to None, which
+            returns the top n companies in all segments.
+        n (int): The number of companies to be returned. Defaults to 10.
+        rank_by (str): The indicator to be used for ranking. Defaults to
+            'operating_margin'. Valid values are 'total_assets', 'equity',
+            'revenues', 'gross_profit', 'ebit', 'ebt', 'net_income',
+            'operating_cash_flow', 'eps', 'total_cash', 'total_debt',
+            'net_debt', 'ebitda', 'gross_margin', 'ebitda_margin',
+            'operating_margin', 'net_margin', 'return_on_assets',
+            'return_on_equity', 'roic'.
+    """
+    show_cols = [
+        "name_id",
+        "cvm_id",
+        "most_traded_stock",
+        "segment",
+        "is_restructuring",
+        "period_end",
+        rank_by,
+    ]
+    df = (
+        ind.get_indicators()
+        .sort_values(by=["cvm_id", "period_end", "is_consolidated"], ignore_index=True)
+        # .query("cvm_id == 922")
+        .drop_duplicates(subset=["cvm_id"], keep="last")
+        .merge(cfg.LAST_SESSION_DF, on="cvm_id")
+        .query("segment.str.contains(@segment)")
+        .sort_values(by=[rank_by], ascending=False, ignore_index=True)
+        .head(n)[show_cols]
+    )
+
+    return df

@@ -78,7 +78,7 @@ def update_raw_files(urls: str) -> List[Path]:
     return updated_filepaths
 
 
-def read_raw_file(filepath: Path) -> pd.DataFrame:
+def read_raw_file(filepath: Path, companies_to_process: List[int]) -> pd.DataFrame:
     """Read annual file, process it, save the result and return the file path."""
     cvm_zipfile = zf.ZipFile(filepath)
     child_filenames = cvm_zipfile.namelist()
@@ -91,6 +91,8 @@ def read_raw_file(filepath: Path) -> pd.DataFrame:
     for child_filename in child_filenames:
         child_zf = cvm_zipfile.open(child_filename)
         child_df = pd.read_csv(child_zf, sep=";", encoding="iso-8859-1")
+        if companies_to_process:
+            child_df.query("CD_CVM in @companies_to_process", inplace=True)
         df_list.append(child_df)
     df = pd.concat(df_list, ignore_index=True)
     return df
@@ -233,11 +235,6 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     # 'report_group' data can be inferred from 'acc_code'
     df.drop(columns=["report_group"], inplace=True)
 
-    # "report_type" will be used to fast filter the data. Otherwise, it would be
-    # necessary to use str.startswith() or str.contains() methods.
-    df.insert(5, "report_type", df["acc_code"].str[0])
-    df["report_type"] = df["report_type"].astype("uint8")
-
     # In "itr_cia_aberta_2022.zip", as an example, 2742 rows are duplicated.
     # Few of them have different values in "acc_value". Only one them will be kept.
     # REMOVE ALL VALUES OR MARK THESE ROWS AS ERRORS?
@@ -248,9 +245,9 @@ def process_df(df: pd.DataFrame, filepath: Path) -> pd.DataFrame:
     return df
 
 
-def process_file(raw_filepath: Path) -> Path:
+def process_file(raw_filepath: Path, companies_to_process: List[int]) -> Path:
     """Read, process and save a CVM file."""
-    df = read_raw_file(raw_filepath)
+    df = read_raw_file(raw_filepath, companies_to_process)
     df = process_df(df, raw_filepath)
     processed_filepath = cfg.CVM_PROCESSED_DIR / (raw_filepath.stem + ".pickle")
     # save_processed_df(df, processed_filepath)
@@ -258,11 +255,13 @@ def process_file(raw_filepath: Path) -> Path:
     return processed_filepath
 
 
-def process_files_with_progress(filepaths_to_process):
+def process_files_with_progress(
+    filepaths_to_process: List[Path], companies_to_process: List[int]
+):
     """Process CVM files with a progress bar."""
     for filepath in tqdm(filepaths_to_process, desc="Processing..."):
         # print(f"    {CHECKMARK} {raw_filepath.name} processed.")
-        process_file(filepath)
+        process_file(filepath, companies_to_process)
 
 
 def get_raw_file_mtimes() -> pd.DataFrame:
