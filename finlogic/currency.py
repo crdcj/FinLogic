@@ -90,6 +90,7 @@ def process_currency_df():
 
 def _set_currency_df(
     df: pd.DataFrame,
+    report_type: str,
     currency: str,
     conversion_type: str,
     current_rate: float,
@@ -121,37 +122,48 @@ def _set_currency_df(
         is provided.
     """
 
+    stock_statement = [
+        "balance_sheet",
+        "assets",
+        "cash",
+        "current_assets",
+        "non_current_assets",
+        "liabilities",
+        "debt",
+        "current_liabilities",
+        "non_current_liabilities",
+        "liabilities_and_equity",
+        "equity",
+    ]
+
     _df_currency = load_currency_data()
     _df_currency["date"] = pd.to_datetime(_df_currency["date"])
 
     if currency == "BRL":
         _df = df
 
-    elif conversion_type == "historical":
-        _df = df.copy()
-        _df["date"] = pd.to_datetime(_df["period_end"])
+    elif conversion_type == "default":
+        if report_type in stock_statement:
+            _df = df.copy()
+            _df["date"] = pd.to_datetime(_df["period_end"])
 
-        _df = pd.merge_asof(
-            _df.sort_values("date"),
-            _df_currency[[currency, "date"]].sort_values("date"),
-            on="date",
-            direction="backward",
-        )
-        _df["acc_value"] = _df["acc_value"] / _df[currency]
-        _df.drop(columns=["date", currency], inplace=True)
+            _df = pd.merge_asof(
+                _df.sort_values("date"),
+                _df_currency[[currency, "date"]].sort_values("date"),
+                on="date",
+                direction="backward",
+            )
+            _df["acc_value"] = _df["acc_value"] / _df[currency]
+            _df.drop(columns=["date", currency], inplace=True)
+        else:  # use average of rates of [period_begin , period_end]
+            _df = df.copy()
 
     elif conversion_type == "current":
         _df = df.copy()
-        _df["acc_value"] = _df["acc_value"] * current_rate
-
-    elif conversion_type == "average":
-        pass
+        _df["acc_value"] = _df["acc_value"] / current_rate
 
     elif conversion_type == "normalized":
-        pass
-
-    elif conversion_type == "default":
-        pass
+        _df = df
 
     else:
         raise ValueError(

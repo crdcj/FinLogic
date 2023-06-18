@@ -53,7 +53,7 @@ class Company:
             are 'ARS','BRL','CLP','CNY','EUR','GBP','INR','JPY','MXN','RUB',
             'USD' and 'ZAR'. Defaults to 'BRL' (str).
         conversion_type: The method for currency conversion. Options are
-            "historical" and "current". Defaults to "historical" (str).
+             "current" and "default". Defaults to "default" :) (str).
 
      Methods:
          report: Creates a financial report for the company.
@@ -86,10 +86,9 @@ class Company:
             "ZAR",
         ] = "BRL",
         conversion_type: Literal[
-            "historical",
             "current",
-            "average",
-        ] = "average",
+            "default",
+        ] = "default",
         conversion_rate: float = 1.0,
     ):
         """Initializes a new instance of the Company class."""
@@ -350,13 +349,30 @@ class Company:
         The "conversion_type" is used for converting one currency to another.
         The exchange rates used are provided by the Brazillian Central Bank (https://ptax.bcb.gov.br/).
         The accepted methods are:
-            - 'historical': Uses historical exchange rates
-            - 'current': Uses current exchange rates
-            - 'average': Uses the average exchange rate for the selected
-                         fiscal year
-            - 'default': Balance sheet is calculated by the historical method
-                         while income and cash flow are calculated by the
-                         average method
+
+            - 'current': Uses the exchange rate provided by the user. This
+                        method allows for greater control over the currency
+                        conversion process, as users can specify a custom
+                        exchange rate. This is particularly useful for cases
+                        where the user has access to more accurate or up-to-date
+                        currency information when carrying out financial
+                        calculations.
+            - 'default': Utilizes different exchange rates for various financial
+                        statements according to the timeframe. The balance sheet,
+                        which is a snapshot of the company's financial position
+                        at a specific point in time, is calculated using the
+                        exchange rate of the last day of its accounting period.
+                        Meanwhile, both income and cash flow statements, which
+                        depict the financial performance over an extended duration,
+                        are calculated by taking the average of the exchange
+                        rates throughout that entire period. As the historical
+                        rates are provided by the Brazilian Central Bank, users
+                        can trust that these rates are accurate and widely accepted
+                        references for financial calculations. This method is
+                        recommended for users who seek a convenient and reliable
+                        approach to currency conversion without needing to input
+                        their own values or refer to external sources.
+
 
         The default value is 'default'. :)
 
@@ -367,8 +383,6 @@ class Company:
             ValueError: If the conversion_type is not one of the accepted methods.
 
         Examples:
-            To set the conversion_type to historical rates:
-                company.conversion_type = 'historical'
 
             To set the conversion_type to current rates:
                 company.conversion_type = 'current'
@@ -377,7 +391,7 @@ class Company:
 
     @conversion_type.setter
     def conversion_type(self, value: str):
-        valid_conversion_types = ["historical", "current"]
+        valid_conversion_types = ["default", "current"]
         if value in valid_conversion_types:
             self._conversion_type = value
         else:
@@ -627,11 +641,6 @@ class Company:
             _pten_dict = MyDict(_pten_dict)
             df["acc_name"] = df["acc_name"].map(_pten_dict)
 
-        # Set the dataframe currency
-        df = crn._set_currency_df(
-            df, self._currency, self._conversion_type, self._conversion_rate
-        )
-
         """
         Filter dataframe for selected acc_code
         df['acc_code'].str[0].unique() -> [1, 2, 3, 4, 5, 6, 7]
@@ -672,6 +681,15 @@ class Company:
         all_periods = sorted(df["period_end"].drop_duplicates())
         selected_periods = all_periods[-num_years:]  # noqa
         df.query("period_end in @selected_periods", inplace=True)
+
+        # Set the dataframe currency
+        df = crn._set_currency_df(
+            df,
+            report_type,
+            self._currency,
+            self._conversion_type,
+            self._conversion_rate,
+        )
 
         return self._build_report(df)
 
