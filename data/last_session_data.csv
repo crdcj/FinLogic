@@ -1,311 +1,312 @@
 b3_id,cvm_id,segment,is_restructuring,most_traded_stock,stock_type,volume
-AALR,24058,med hosp serv. anal and diagnostics,False,AALR3,ON      NM,3545538
-ABCB,20958,banks,False,ABCB4,PN  EJS N2,21717410
-ABEV,23264,beer and soft drinks,False,ABEV3,ON,253248492
-AERI,25283,machines and industrial equipments,False,AERI3,ON      NM,6260302
-AESB,25640,electric utilities,False,AESB3,ON      NM,13591920
-AFLT,22179,electric utilities,False,AFLT3,ON,11669
-AGRO,20036,agriculture,False,AGRO3,ON      NM,22120145
-AGXY,25658,agriculture,False,AGXY3,ON      NM,1454057
-ALLD,25330,electronics and household appliance,False,ALLD3,ON      NM,472265
-ALPA,10456,footwear,False,ALPA4,PN      N1,54953949
-ALPK,24953,diversified services,False,ALPK3,ON      NM,2615655
-ALSO,22357,real estate,False,ALSO3,ON      NM,130625278
-ALUP,21490,electric utilities,False,ALUP3,ON      N2,496011
-AMAR,22055,apparel. fabric and footwear,False,AMAR3,ON      NM,4630242
-AMBP,24961,water utilities,False,AMBP3,ON      NM,28419503
-AMER,20990,diversified retailers,True,AMER3,ON      NM,9463149
-ANIM,23248,education services,False,ANIM3,ON      NM,47451215
-APER,22217,insurance and reinsurance brokers,False,APER3,ON      NM,297095
-ARML,26069,machines and industrial equipments,False,ARML3,ON      NM,20755065
-ARZZ,22349,apparel. fabric and footwear,False,ARZZ3,ON  EJ  NM,264959567
-ASAI,25372,food retailers,False,ASAI3,ON      NM,130624900
-ATMP,19100,diversified services,True,ATMP3,ON,379548
-ATOM,15423,others,False,ATOM3,ON,197888
-AURE,26620,electric utilities,False,AURE3,ON      NM,72261208
-AVLL,25275,real estate,False,AVLL3,ON      NM,64052
-AZEV,11975,heavy construction,False,AZEV3,ON,1465066
-AZUL,24112,airlines,False,AZUL4,PN      N2,248830676
-B3SA,21610,diversified financial services,False,B3SA3,ON  EDJ NM,580471570
-BAHI,701,education services,False,BAHI3,ON      MA,461278
-BALM,1562,equipments,False,BALM4,PN,4925
-BAZA,922,banks,False,BAZA3,ON,56111
-BBAS,1023,banks,False,BBAS3,ON      NM,281657224
-BBDC,906,banks,False,BBDC3,ON  EJ  N1,45446608
-BBSE,23159,insurance,False,BBSE3,ON      NM,110654516
-BDLL,1520,machines and industrial equipments,True,BDLL3,ON,1200
-BEEF,20931,meat. poultry and others,False,BEEF3,ON      NM,137386313
-BEES,1155,banks,False,BEES4,PN  EJ,26634
-BGIP,1120,banks,False,BGIP4,PN,36965
-BIOM,19305,pharmaceutical and others products,False,BIOM3,ON      MA,9749
-BLAU,24627,pharmaceutical and others products,False,BLAU3,ON  EJ  NM,11861802
-BMEB,1325,banks,False,BMEB3,ON      N1,2465
-BMGB,24600,banks,False,BMGB4,PN      N1,2917800
-BMKS,1694,bicycles,False,BMKS3,ON,2135
-BMOB,25500,software and services,False,BMOB3,ON      NM,6026422
-BNBR,1228,banks,False,BNBR3,ON,8700
-BOAS,25135,diversified financial services,False,BOAS3,ON      NM,59998542
-BOBR,12190,cleaning products,False,BOBR4,PN,53837
-BPAC,22616,banks,False,BPAC5,PNA     N2,82164
-BPAN,21199,banks,False,BPAN4,PN      N1,33947769
-BRAP,18724,metalic minerals,False,BRAP3,ON      N1,2537757
-BRBI,25860,banks,False,BRBI11,UNT     N2,1310714
-BRFS,16292,meat. poultry and others,False,BRFS3,ON      NM,285546442
-BRGE,4707,insurance,False,BRGE3,ON,3749
-BRIT,26085,telecommunications,False,BRIT3,ON      NM,3121431
-BRKM,4820,petrochemicals,False,BRKM5,PNA     N1,235551416
-BRPR,19925,real estate,False,BRPR3,ON,2603296
-BRSR,1210,banks,False,BRSR3,ON      N1,52666
-BSLI,14206,banks,False,BSLI4,PN,3666
-CAMB,2100,footwear,False,CAMB3,ON,254129
-CAML,24228,other food manufacturing,False,CAML3,ON      NM,11465793
-CASH,25232,software and services,False,CASH3,ON      NM,14342272
-CBAV,25984,metalic minerals,False,CBAV3,ON      NM,34924310
-CCRO,18821,toll roads and highways,False,CCRO3,ON      NM,106197649
-CEAB,24848,apparel. fabric and footwear,False,CEAB3,ON      NM,23403919
-CEBR,14451,electric utilities,False,CEBR3,ON,36375
-CEDO,3077,fabric. thread and fibers,False,CEDO3,ON      N1,125320
-CEEB,14524,electric utilities,False,CEEB3,ON  EJ,153941
-CEED,20648,electric utilities,False,CEED3,ON,28064
-CGAS,15636,gas utilities,False,CGAS3,ON,12002
-CGRA,4537,apparel. fabric and footwear,False,CGRA4,PN,117969
-CIEL,21733,diversified financial services,False,CIEL3,ON      NM,119473933
-CLSA,26093,diversified financial services,False,CLSA3,ON      NM,2148957
-CLSC,2461,electric utilities,False,CLSC4,PN  EJ  N2,1240244
-CMIG,2453,electric utilities,False,CMIG3,ON  EJ  N1,6243919
-CMIN,25585,metalic minerals,False,CMIN3,ON      N2,25710048
-COCE,14869,electric utilities,False,COCE5,PNA,1027185
-COGN,17973,education services,False,COGN3,ON      NM,71210092
-CPFE,18660,electric utilities,False,CPFE3,ON      NM,83021158
-CPLE,14311,electric utilities,False,CPLE6,PNB     N2,161193358
-CRFB,24171,food retailers,False,CRFB3,ON      NM,56745534
-CRIV,3891,savings and loans,False,CRIV3,ON,552
-CRPG,11398,chemicals - others,False,CRPG5,PNA,126372
-CSAN,19836,exploration. refining and distribution,False,CSAN3,ON      NM,247629973
-CSED,25526,education services,False,CSED3,ON      NM,2726424
-CSMG,19445,water utilities,False,CSMG3,ON      NM,46044124
-CSNA,4030,steel,False,CSNA3,ON,77833192
-CSUD,20044,diversified financial services,False,CSUD3,ON  EJ  NM,879967
-CTNM,3158,fabric. thread and fibers,False,CTNM4,PN,204661
-CTSA,4081,fabric. thread and fibers,False,CTSA3,ON,49807
-CURY,25100,real estate,False,CURY3,ON      NM,49874818
-CVCB,23310,travel and tourism,False,CVCB3,ON  ATZ NM,103215429
-CXSE,23795,insurance,False,CXSE3,ON      NM,17418758
-CYRE,14460,real estate,False,CYRE3,ON      NM,98926174
-DASA,19623,med hosp serv. anal and diagnostics,False,DASA3,ON      NM,8330229
-DESK,26026,telecommunications,False,DESK3,ON      NM,3190610
-DEXP,16632,petrochemicals,False,DEXP3,ON      N1,419073
-DIRR,21350,real estate,False,DIRR3,ON      NM,84271320
-DMVF,25046,pharmaceutical and others products,False,DMVF3,ON      NM,50825
-DOHL,5207,fabric. thread and fibers,False,DOHL4,PN,7574
-DOTZ,25836,loyalty programs,False,DOTZ3,ON      NM,1065160
-DXCO,21091,wood,False,DXCO3,ON      NM,53042560
-EALT,5380,machines and industrial equipments,False,EALT4,PN,38904
-ECOR,19453,toll roads and highways,False,ECOR3,ON      NM,30590637
-EGIE,17329,electric utilities,False,EGIE3,ON      NM,66549414
-EKTR,17485,electric utilities,False,EKTR4,PN  EJ,3937
-ELET,2437,electric utilities,False,ELET6,PNB     N1,87415130
-ELMD,25569,adversiting,False,ELMD3,ON      NM,2537835
-EMAE,16993,electric utilities,False,EMAE4,PN,589611
-EMBR,20087,aerospace and defense,False,EMBR3,ON      NM,98011559
-ENAT,22365,exploration. refining and distribution,False,ENAT3,ON      NM,20888952
-ENBR,19763,electric utilities,False,ENBR3,ON      NM,270710615
-ENEV,21237,electric utilities,False,ENEV3,ON      NM,62789978
-ENGI,15253,electric utilities,False,ENGI11,UNT     N2,151660928
-ENJU,25259,software and services,False,ENJU3,ON      NM,5200489
-ENMT,14605,electric utilities,False,ENMT3,ON,172447
-EQMA,16608,electric utilities,False,EQMA3B,ON      MB,4835660
-EQPA,18309,electric utilities,False,EQPA3,ON,26192
-EQTL,20010,electric utilities,False,EQTL3,ON      NM,341377492
-ESPA,25445,diversified retailers,False,ESPA3,ON      NM,8002108
-ETER,5762,building products,True,ETER3,ON      NM,2661163
-EUCA,5770,wood,False,EUCA3,ON      N1,185780
-EVEN,20524,real estate,False,EVEN3,ON      NM,9030638
-EZTC,20770,real estate,False,EZTC3,ON      NM,26420303
-FESA,3069,steel,False,FESA4,PN      N1,8958097
-FHER,20621,fertilizers,False,FHER3,ON      NM,513379
-FIQE,26050,telecommunications,False,FIQE3,ON      NM,1148217
-FLRY,21881,med hosp serv. anal and diagnostics,False,FLRY3,ON      NM,52644346
-FRAS,6211,transportation equipment/diversified,False,FRAS3,ON      N1,2587267
-FRIO,20613,machines and industrial equipments,False,FRIO3,ON      NM,9052
-FRTA,19658,agriculture,True,FRTA3,ON      NM,19461
-GEPA,18368,electric utilities,False,GEPA4,PN,10582
-GFSA,16101,real estate,False,GFSA3,ON      NM,40866843
-GGBR,3980,steel,False,GGBR3,ON      N1,692789
-GGPS,25712,diversified services,False,GGPS3,ON      NM,33007071
-GMAT,25186,food retailers,False,GMAT3,ON      NM,43189634
-GOAU,8656,steel,False,GOAU4,PN      N1,44737330
-GOLL,19569,airlines,False,GOLL4,PN      N2,169926999
-GRND,19615,footwear,False,GRND3,ON      NM,18781949
-GUAR,4669,apparel. fabric and footwear,False,GUAR3,ON      NM,21175589
-HAGA,13366,building products,False,HAGA4,PN,86560
-HAPV,24392,med hosp serv. anal and diagnostics,False,HAPV3,ON      NM,264476141
-HBOR,20877,real estate,False,HBOR3,ON      NM,2052019
-HBRE,25402,real estate,False,HBRE3,ON      NM,4764299
-HBSA,22675,marine and water transport,False,HBSA3,ON      NM,57873824
-HETA,6629,houseware utensils,False,HETA4,PN,14266
-HOOT,6700,hotels,True,HOOT4,PN,54344
-HYPE,21431,pharmaceutical and others products,False,HYPE3,ON  EJ  NM,104226263
-IFCM,25747,software and services,False,IFCM3,ON      NM,21059554
-IGTI,8672,real estate,False,IGTI3,ON      N1,202255
-INEP,7595,machines and industrial equipments,False,INEP3,ON,623384
-INTB,25453,hardware and equipments,False,INTB3,ON      NM,119543012
-IRBR,24180,reinsurance,False,IRBR3,ON      NM,128176083
-ITSA,7617,banks,False,ITSA3,ON      N1,1693683
-ITUB,19348,banks,False,ITUB4,PN  EJ  N1,511706933
-JALL,25496,sugar - alcohol,False,JALL3,ON      NM,6007011
-JBSS,20575,meat. poultry and others,False,JBSS3,ON      NM,188498120
-JFEN,7811,real estate,True,JFEN3,ON,990202
-JHSF,20605,real estate,False,JHSF3,ON      NM,35782878
-JOPA,13285,other food manufacturing,False,JOPA4,PN,3380
-JSLG,22020,trucking,False,JSLG3,ON      NM,1121130
-KEPL,7870,machines and industrial equipments,False,KEPL3,ON,17360161
-KLBN,12653,pulp and paper,False,KLBN11,UNT     N2,82079037
-KRSA,25879,med hosp serv. anal and diagnostics,False,KRSA3,ON      NM,1567214
-LAND,26000,agriculture,False,LAND3,ON      NM,353506
-LAVV,25062,real estate,False,LAVV3,ON      NM,13066995
-LEVE,8575,automobiles and motorcycles,False,LEVE3,ON      NM,8797252
-LIGT,19879,electric utilities,True,LIGT3,ON      NM,123226576
-LJQQ,25038,diversified retailers,False,LJQQ3,ON      NM,56262606
-LOGG,23272,real estate,False,LOGG3,ON      NM,8349026
-LOGN,20710,marine and water transport,False,LOGN3,ON      NM,6070991
-LPSB,20370,property agency,False,LPSB3,ON      NM,922876
-LREN,8133,apparel. fabric and footwear,False,LREN3,ON  EJ  NM,280065033
-LUPA,20060,equipment and services,False,LUPA3,ON      NM,1292843
-LVTC,25895,software and services,False,LVTC3,ON      NM,634773
-LWSA,24910,software and services,False,LWSA3,ON      NM,35800898
-MATD,25690,med hosp serv. anal and diagnostics,False,MATD3,ON      NM,5683598
-MBLY,25461,software and services,False,MBLY3,ON      NM,6932539
-MDIA,20338,other food manufacturing,False,MDIA3,ON      NM,47002545
-MDNE,21067,real estate,False,MDNE3,ON      NM,3435081
-MEAL,23574,restaurants and similars,False,MEAL3,ON      NM,2024234
-MEGA,26441,electric utilities,False,MEGA3,ON      NM,8771312
-MELK,25119,real estate,False,MELK3,ON      NM,659191
-MERC,8540,savings and loans,False,MERC4,PN,33798
-MGLU,22470,electronics and household appliance,False,MGLU3,ON      NM,564332107
-MILS,22012,machines and industrial equipments,False,MILS3,ON  EJ  NM,15735292
-MLAS,26034,hardware and equipments,False,MLAS3,ON      NM,8662640
-MNDL,5312,accessories,False,MNDL3,ON,27899
-MNPR,13765,meat. poultry and others,False,MNPR3,ON,35784
-MOAR,8893,holdings - diversified,False,MOAR3,ON,83995
-MOVI,23825,car rental,False,MOVI3,ON      NM,37961941
-MRFG,20788,meat. poultry and others,False,MRFG3,ON      NM,89999024
-MRVE,20915,real estate,False,MRVE3,ON      NM,272564385
-MTRE,24902,real estate,False,MTRE3,ON      NM,3373836
-MTSA,8753,agricultural and construction machinery,False,MTSA4,PN  EJ,197718
-MULT,20982,real estate,False,MULT3,ON  EJ  N2,147981145
-MYPK,11932,automobiles and motorcycles,False,MYPK3,ON      NM,16184246
-NEOE,15539,electric utilities,False,NEOE3,ON  EJ  NM,18626955
-NEXP,21180,property agency,True,NEXP3,ON      NM,9188
-NGRD,25399,software and services,False,NGRD3,ON      NM,3541975
-NINJ,25887,software and services,False,NINJ3,ON      NM,351903
-NTCO,24783,em branco,False,NTCO3,ON      NM,134067383
-NUTR,21334,fertilizers,True,NUTR3,ON      MA,21453
-ODPV,20125,med hosp serv. anal and diagnostics,False,ODPV3,ON  EJ  NM,15281422
-OFSA,23507,pharmaceutical and others products,False,OFSA3,ON      NM,512666
-OIBR,11312,telecommunications,True,OIBR4,PN      N1,86951
-ONCO,26123,med hosp serv. anal and diagnostics,False,ONCO3,ON      NM,54581469
-OPCT,25534,equipment and services,False,OPCT3,ON      NM,2717038
-ORVR,25550,water utilities,False,ORVR3,ON      NM,17844770
-OSXB,21342,equipment and services,False,OSXB3,ON      NM,33912
-PATI,94,iron and steel products,False,PATI3,ON,3465
-PCAR,14826,food retailers,False,PCAR3,ON      NM,68312163
-PDGR,20478,real estate,False,PDGR3,ON      NM,1605648
-PDTC,18414,software and services,False,PDTC3,ON      NM,3091900
-PETR,9512,exploration. refining and distribution,False,PETR3,ON      N2,476711295
-PETZ,25089,diversified retailers,False,PETZ3,ON  EJ  NM,84738802
-PFRM,20346,pharmaceutical and others products,False,PFRM3,ON      NM,927066
-PGMN,22608,pharmaceutical and others products,False,PGMN3,ON      NM,4710549
-PINE,20567,banks,False,PINE4,PN      N2,1015213
-PLPL,25070,real estate,False,PLPL3,ON      NM,6905178
-PMAM,9393,copper products,True,PMAM3,ON      NM,236794
-PNVL,9342,pharmaceutical and others products,False,PNVL3,ON      NM,10518961
-POMO,8451,transportation equipment/diversified,False,POMO4,PN      N2,57214103
-PORT,26247,warehousing and storage,False,PORT3,ON      NM,9607078
-POSI,20362,hardware and equipments,False,POSI3,ON      NM,17754461
-PRIO,22187,exploration. refining and distribution,False,PRIO3,ON      NM,400338635
-PRNR,24236,diversified services,False,PRNR3,ON      NM,1213933
-PSSA,16659,insurance,False,PSSA3,ON  EJ  NM,46891982
-PTBL,13773,building products,False,PTBL3,ON      NM,6788730
-PTNT,9539,fabric. thread and fibers,False,PTNT4,PN,132872
-QUAL,22497,med hosp serv. anal and diagnostics,False,QUAL3,ON      NM,17943218
-RADL,5258,pharmaceutical and others products,False,RADL3,ON      NM,127439480
-RAIL,17450,railroads,False,RAIL3,ON      NM,373882447
-RAIZ,25917,agriculture,False,RAIZ4,PN      N2,143729973
-RANI,2429,packaging,False,RANI3,ON      NM,8637012
-RAPT,14109,transportation equipment/diversified,False,RAPT4,PN      N1,17163063
-RCSL,12572,transportation equipment/diversified,False,RCSL3,ON,1973614
-RDNI,20451,real estate,False,RDNI3,ON      NM,74403
-RDOR,24821,med hosp serv. anal and diagnostics,False,RDOR3,ON      NM,195683812
-RECV,25780,exploration. refining and distribution,False,RECV3,ON      NM,40834555
-REDE,3190,electric utilities,False,REDE3,ON,89455
-RENT,19739,car rental,False,RENT3,ON  EJ  NM,305733117
-RNEW,21636,electric utilities,True,RNEW11,UNT     N2,18191
-ROMI,7510,machines and industrial equipments,False,ROMI3,ON      NM,6512230
-RPAD,9954,banks,False,RPAD5,PNA,710
-RPMG,9989,exploration. refining and distribution,True,RPMG3,ON,720017
-RRRP,25291,exploration. refining and distribution,False,RRRP3,ON      NM,165775559
-RSID,16306,real estate,True,RSID3,ON      NM,174129
-RSUL,13439,transportation equipment/diversified,False,RSUL4,PN,252350
-SANB,20532,banks,False,SANB3,ON,1409484
-SAPR,18627,water utilities,False,SAPR11,UNT EJ  N2,16377646
-SBFG,24694,diversified retailers,False,SBFG3,ON      NM,19947462
-SBSP,14443,water utilities,False,SBSP3,ON      NM,133211500
-SCAR,13781,real estate,False,SCAR3,ON      NM,593166
-SEER,23221,education services,False,SEER3,ON      NM,17398230
-SEQL,25160,diversified services,False,SEQL3,ON      NM,11347498
-SGPS,20966,fabric. thread and fibers,False,SGPS3,ON      NM,599829
-SHOW,22454,entertainment,False,SHOW3,ON      NM,436926
-SHUL,14664,motors and compressors,False,SHUL4,PN  EJ,2190858
-SIMH,25003,holdings - diversified,False,SIMH3,ON      NM,29731262
-SLCE,20745,agriculture,False,SLCE3,ON      NM,98700203
-SLED,10472,diversified retailers,True,SLED3,ON      N2,6450
-SMFT,24260,sports,False,SMFT3,ON      NM,23073098
-SMTO,20516,sugar - alcohol,False,SMTO3,ON      NM,74682130
-SNSY,12696,other materials,False,SNSY5,PNA,10111
-SOJA,25704,agriculture,False,SOJA3,ON      NM,2111886
-SOMA,25011,apparel. fabric and footwear,False,SOMA3,ON      NM,89328880
-SQIA,22799,software and services,False,SQIA3,ON      NM,22474907
-STBP,17892,warehousing and storage,False,STBP3,ON      NM,29624160
-SUZB,13986,pulp and paper,False,SUZB3,ON      NM,196709211
-SYNE,21040,real estate,False,SYNE3,ON      NM,2308182
-TAEE,20257,electric utilities,False,TAEE11,UNT     N2,94104462
-TASA,6173,weapons and munitions,False,TASA4,PN      N2,7629513
-TCSA,20435,real estate,False,TCSA3,ON      NM,596847
-TECN,22519,accessories,False,TECN3,ON      NM,1341591
-TELB,11258,telecommunications,False,TELB4,PN,310308
-TEND,21148,real estate,False,TEND3,ON      NM,57371387
-TFCO,25208,apparel and clothing,False,TFCO4,PN  EJ  N2,24158533
-TGMA,20800,trucking,False,TGMA3,ON      NM,10238755
-TIMS,24929,telecommunications,False,TIMS3,ON      NM,56983916
-TOTS,19992,software and services,False,TOTS3,ON      NM,89675346
-TPIS,19330,toll roads and highways,False,TPIS3,ON      NM,358616
-TRAD,26077,software and services,False,TRAD3,ON      NM,5655662
-TRIS,21130,real estate,False,TRIS3,ON      NM,8839877
-TRPL,18376,electric utilities,False,TRPL4,PN      N1,30971921
-TTEN,25950,agriculture,False,TTEN3,ON      NM,11370905
-TUPY,6343,transportation equipment/diversified,False,TUPY3,ON      NM,14871564
-TXRX,7544,fabric. thread and fibers,True,TXRX4,PN,70476
-UCAS,22780,home furnishing,False,UCAS3,ON      NM,127174
-UGPA,18465,exploration. refining and distribution,False,UGPA3,ON      NM,97743473
-UNIP,11592,chemicals - others,False,UNIP6,PNB,26344415
-USIM,14320,steel,False,USIM3,ON      N1,1857733
-VALE,4170,metalic minerals,False,VALE3,ON      NM,1789033147
-VAMO,24716,car rental,False,VAMO3,ON      NM,124533397
-VBBR,24295,exploration. refining and distribution,False,VBBR3,ON      NM,111922142
-VIIA,6505,electronics and household appliance,False,VIIA3,ON      NM,128372570
-VITT,25763,fertilizers,False,VITT3,ON      NM,900818
-VIVA,24805,accessories,False,VIVA3,ON      NM,64293569
-VIVR,20702,real estate,False,VIVR3,ON      NM,1640398
-VIVT,17671,telecommunications,False,VIVT3,ON,99230860
-VLID,20028,diversified services,False,VLID3,ON      NM,11415163
-VSTE,21440,apparel. fabric and footwear,False,VSTE3,ON      NM,223828
-VULC,11762,footwear,False,VULC3,ON      NM,6289084
-VVEO,25682,pharmaceutical and others products,False,VVEO3,ON      NM,1769873
-WEGE,5410,motors and compressors,False,WEGE3,ON  EJ  NM,175027072
-WEST,25518,software and services,False,WEST3,ON      NM,2738907
-WHRL,14346,household appliance,False,WHRL3,ON,13812
-WIZC,23590,insurance and reinsurance brokers,False,WIZC3,ON      NM,4950911
-WLMM,11070,transportation material,False,WLMM4,PN,199485
-YDUQ,21016,education services,False,YDUQ3,ON      NM,143951728
-ZAMP,24317,restaurants and similars,False,ZAMP3,ON      NM,6177694
+AALR,24058,med hosp serv. anal and diagnostics,False,AALR3,ON      NM,9822122
+ABCB,20958,banks,False,ABCB4,PN  EJS N2,12451550
+ABEV,23264,beer and soft drinks,False,ABEV3,ON,457210145
+AERI,25283,machines and industrial equipments,False,AERI3,ON      NM,5794624
+AESB,25640,electric utilities,False,AESB3,ON      NM,14255878
+AFLT,22179,electric utilities,False,AFLT3,ON,1898
+AGRO,20036,agriculture,False,AGRO3,ON      NM,8506132
+AGXY,25658,agriculture,False,AGXY3,ON      NM,464681
+ALLD,25330,electronics and household appliance,False,ALLD3,ON      NM,469983
+ALPA,10456,footwear,False,ALPA4,PN      N1,55002964
+ALPK,24953,diversified services,False,ALPK3,ON      NM,7348932
+ALSO,22357,real estate,False,ALSO3,ON      NM,57922570
+ALUP,21490,electric utilities,False,ALUP4,PN      N2,375945
+AMAR,22055,apparel. fabric and footwear,False,AMAR3,ON      NM,2954703
+AMBP,24961,water utilities,False,AMBP3,ON      NM,20380964
+AMER,20990,diversified retailers,True,AMER3,ON      NM,11282252
+ANIM,23248,education services,False,ANIM3,ON      NM,15059675
+APER,22217,insurance and reinsurance brokers,False,APER3,ON      NM,305634
+ARML,26069,machines and industrial equipments,False,ARML3,ON  EJ  NM,3796715
+ARZZ,22349,apparel. fabric and footwear,False,ARZZ3,ON  EJ  NM,91925108
+ASAI,25372,food retailers,False,ASAI3,ON      NM,125269463
+ATMP,19100,diversified services,True,ATMP3,ON,1819232
+ATOM,15423,others,False,ATOM3,ON,89827
+AURE,26620,electric utilities,False,AURE3,ON      NM,21664224
+AVLL,25275,real estate,False,AVLL3,ON      NM,8520
+AZEV,11975,heavy construction,False,AZEV3,ON,806860
+AZUL,24112,airlines,False,AZUL4,PN      N2,197542221
+B3SA,21610,diversified financial services,False,B3SA3,ON      NM,354872635
+BAHI,701,education services,False,BAHI3,ON      MA,6631
+BALM,1562,equipments,False,BALM3,ON,18902
+BAUH,1570,meat. poultry and others,False,BAUH4,PN,7300
+BAZA,922,banks,False,BAZA3,ON,190304
+BBAS,1023,banks,False,BBAS3,ON      NM,438372227
+BBDC,906,banks,False,BBDC3,ON  EJ  N1,37094925
+BBSE,23159,insurance,False,BBSE3,ON      NM,128056292
+BEEF,20931,meat. poultry and others,False,BEEF3,ON      NM,61483548
+BEES,1155,banks,False,BEES3,ON  EJ,110363
+BGIP,1120,banks,False,BGIP4,PN,16336
+BIOM,19305,pharmaceutical and others products,False,BIOM3,ON      MA,89912
+BLAU,24627,pharmaceutical and others products,False,BLAU3,ON      NM,9472545
+BMEB,1325,banks,False,BMEB4,PN      N1,37656
+BMGB,24600,banks,False,BMGB4,PN      N1,3316261
+BMIN,1309,banks,False,BMIN4,PN,21000
+BMKS,1694,bicycles,False,BMKS3,ON,5564
+BMOB,25500,software and services,False,BMOB3,ON      NM,5057183
+BOAS,25135,diversified financial services,False,BOAS3,ON      NM,6557440
+BOBR,12190,cleaning products,False,BOBR4,PN,22668
+BPAC,22616,banks,False,BPAC11,UNT     N2,243503003
+BPAN,21199,banks,False,BPAN4,PN      N1,20200880
+BRAP,18724,metalic minerals,False,BRAP4,PN      N1,51287773
+BRBI,25860,banks,False,BRBI11,UNT     N2,1997338
+BRFS,16292,meat. poultry and others,False,BRFS3,ON      NM,243853255
+BRGE,4707,insurance,False,BRGE6,PNB,23112
+BRIT,26085,telecommunications,False,BRIT3,ON      NM,1744034
+BRIV,1384,banks,False,BRIV4,PN,9158
+BRKM,4820,petrochemicals,False,BRKM5,PNA     N1,87387107
+BRPR,19925,real estate,False,BRPR3,ON,8118607
+BRSR,1210,banks,False,BRSR6,PNB     N1,13047687
+BSLI,14206,banks,False,BSLI3,ON,22960
+CAMB,2100,footwear,False,CAMB3,ON,284880
+CAML,24228,other food manufacturing,False,CAML3,ON      NM,4047247
+CASH,25232,software and services,False,CASH3,ON      NM,8365964
+CBAV,25984,metalic minerals,False,CBAV3,ON      NM,18993056
+CCRO,18821,toll roads and highways,False,CCRO3,ON      NM,39915736
+CEAB,24848,apparel. fabric and footwear,False,CEAB3,ON      NM,11677394
+CEBR,14451,electric utilities,False,CEBR6,PNB,96671
+CEDO,3077,fabric. thread and fibers,False,CEDO3,ON      N1,51261
+CEEB,14524,electric utilities,False,CEEB3,ON  EJ,8233
+CEED,20648,electric utilities,False,CEED3,ON,5000
+CGAS,15636,gas utilities,False,CGAS5,PNA,64819
+CGRA,4537,apparel. fabric and footwear,False,CGRA4,PN,106194
+CIEL,21733,diversified financial services,False,CIEL3,ON      NM,132305146
+CLSA,26093,diversified financial services,False,CLSA3,ON      NM,2903343
+CLSC,2461,electric utilities,False,CLSC4,PN  EJ  N2,281686
+CMIG,2453,electric utilities,False,CMIG3,ON      N1,4495244
+CMIN,25585,metalic minerals,False,CMIN3,ON      N2,29553588
+COCE,14869,electric utilities,False,COCE5,PNA,7642921
+COGN,17973,education services,False,COGN3,ON      NM,38384121
+CPFE,18660,electric utilities,False,CPFE3,ON      NM,36459157
+CPLE,14311,electric utilities,False,CPLE11,UNT     N2,3559421
+CRFB,24171,food retailers,False,CRFB3,ON      NM,69859045
+CRIV,3891,savings and loans,False,CRIV3,ON,12268
+CRPG,11398,chemicals - others,False,CRPG5,PNA,91767
+CSAN,19836,exploration. refining and distribution,False,CSAN3,ON      NM,122403618
+CSED,25526,education services,False,CSED3,ON      NM,1669378
+CSMG,19445,water utilities,False,CSMG3,ON      NM,21640500
+CSNA,4030,steel,False,CSNA3,ON,182292265
+CSUD,20044,diversified financial services,False,CSUD3,ON      NM,725887
+CTKA,4146,fabric. thread and fibers,False,CTKA4,PN,8324
+CTNM,3158,fabric. thread and fibers,False,CTNM4,PN,210179
+CTSA,4081,fabric. thread and fibers,False,CTSA4,PN,37437
+CURY,25100,real estate,False,CURY3,ON      NM,13835372
+CVCB,23310,travel and tourism,False,CVCB3,ON  ATZ NM,47845722
+CXSE,23795,insurance,False,CXSE3,ON      NM,13245778
+CYRE,14460,real estate,False,CYRE3,ON      NM,178571715
+DASA,19623,med hosp serv. anal and diagnostics,False,DASA3,ON      NM,3509360
+DESK,26026,telecommunications,False,DESK3,ON      NM,1428946
+DEXP,16632,petrochemicals,False,DEXP4,PN      N1,27492
+DIRR,21350,real estate,False,DIRR3,ON      NM,29763692
+DMVF,25046,pharmaceutical and others products,False,DMVF3,ON      NM,532688
+DOHL,5207,fabric. thread and fibers,False,DOHL4,PN,1628
+DOTZ,25836,loyalty programs,False,DOTZ3,ON      NM,358168
+DXCO,21091,wood,False,DXCO3,ON      NM,9184336
+EALT,5380,machines and industrial equipments,False,EALT3,ON,840
+ECOR,19453,toll roads and highways,False,ECOR3,ON      NM,14638070
+EGIE,17329,electric utilities,False,EGIE3,ON      NM,27128490
+ELET,2437,electric utilities,False,ELET3,ON      N1,165174858
+ELMD,25569,adversiting,False,ELMD3,ON      NM,2491160
+EMAE,16993,electric utilities,False,EMAE4,PN,272412
+EMBR,20087,aerospace and defense,False,EMBR3,ON      NM,77185659
+ENAT,22365,exploration. refining and distribution,False,ENAT3,ON      NM,17702213
+ENBR,19763,electric utilities,False,ENBR3,ON      NM,46998844
+ENEV,21237,electric utilities,False,ENEV3,ON      NM,41872217
+ENGI,15253,electric utilities,False,ENGI4,PN      N2,68213
+ENJU,25259,software and services,False,ENJU3,ON      NM,810092
+EQMA,16608,electric utilities,False,EQMA3B,ON      MB,5177
+EQPA,18309,electric utilities,False,EQPA3,ON,13309
+EQTL,20010,electric utilities,False,EQTL3,ON      NM,249185049
+ESPA,25445,diversified retailers,False,ESPA3,ON      NM,2399735
+ETER,5762,building products,True,ETER3,ON      NM,1430506
+EUCA,5770,wood,False,EUCA3,ON      N1,156318
+EVEN,20524,real estate,False,EVEN3,ON      NM,3121518
+EZTC,20770,real estate,False,EZTC3,ON      NM,54163855
+FESA,3069,steel,False,FESA4,PN      N1,5292228
+FHER,20621,fertilizers,False,FHER3,ON      NM,434203
+FIQE,26050,telecommunications,False,FIQE3,ON      NM,438123
+FLRY,21881,med hosp serv. anal and diagnostics,False,FLRY3,ON      NM,23471387
+FRAS,6211,transportation equipment/diversified,False,FRAS3,ON      N1,2060822
+FRTA,19658,agriculture,True,FRTA3,ON      NM,68690
+GEPA,18368,electric utilities,False,GEPA4,PN,20851
+GFSA,16101,real estate,False,GFSA3,ON      NM,24252273
+GGBR,3980,steel,False,GGBR4,PN      N1,121885812
+GGPS,25712,diversified services,False,GGPS3,ON      NM,34882056
+GMAT,25186,food retailers,False,GMAT3,ON      NM,26756856
+GOAU,8656,steel,False,GOAU3,ON      N1,455844
+GOLL,19569,airlines,False,GOLL4,PN      N2,181229595
+GRND,19615,footwear,False,GRND3,ON      NM,10026524
+GUAR,4669,apparel. fabric and footwear,False,GUAR3,ON      NM,11206794
+HAGA,13366,building products,False,HAGA3,ON,11263
+HAPV,24392,med hosp serv. anal and diagnostics,False,HAPV3,ON      NM,141674897
+HBOR,20877,real estate,False,HBOR3,ON      NM,1571030
+HBRE,25402,real estate,False,HBRE3,ON      NM,592847
+HBSA,22675,marine and water transport,False,HBSA3,ON      NM,34954929
+HETA,6629,houseware utensils,False,HETA4,PN,8597
+HOOT,6700,hotels,True,HOOT4,PN,5280
+HYPE,21431,pharmaceutical and others products,False,HYPE3,ON  EJ  NM,75125945
+IFCM,25747,software and services,False,IFCM3,ON      NM,25958448
+IGTI,8672,real estate,False,IGTI11,UNT     N1,44726210
+INEP,7595,machines and industrial equipments,False,INEP3,ON,1022303
+INTB,25453,hardware and equipments,False,INTB3,ON      NM,12258011
+IRBR,24180,reinsurance,False,IRBR3,ON      NM,177243894
+ITSA,7617,banks,False,ITSA3,ON      N1,3936248
+ITUB,19348,banks,False,ITUB4,PN  EJ  N1,383441326
+JALL,25496,sugar - alcohol,False,JALL3,ON      NM,5250932
+JBSS,20575,meat. poultry and others,False,JBSS3,ON      NM,101470649
+JFEN,7811,real estate,True,JFEN3,ON,135543
+JHSF,20605,real estate,False,JHSF3,ON      NM,10720452
+JSLG,22020,trucking,False,JSLG3,ON      NM,2421626
+KEPL,7870,machines and industrial equipments,False,KEPL3,ON,14994880
+KLBN,12653,pulp and paper,False,KLBN4,PN      N2,7083484
+KRSA,25879,med hosp serv. anal and diagnostics,False,KRSA3,ON      NM,4870291
+LAND,26000,agriculture,False,LAND3,ON      NM,488930
+LAVV,25062,real estate,False,LAVV3,ON      NM,4196911
+LEVE,8575,automobiles and motorcycles,False,LEVE3,ON      NM,8790051
+LIGT,19879,electric utilities,True,LIGT3,ON      NM,44262802
+LJQQ,25038,diversified retailers,False,LJQQ3,ON      NM,37898080
+LOGG,23272,real estate,False,LOGG3,ON      NM,9720364
+LOGN,20710,marine and water transport,False,LOGN3,ON      NM,2097738
+LPSB,20370,property agency,False,LPSB3,ON      NM,247280
+LREN,8133,apparel. fabric and footwear,False,LREN3,ON      NM,692062231
+LUPA,20060,equipment and services,False,LUPA3,ON      NM,2299328
+LVTC,25895,software and services,False,LVTC3,ON      NM,174602
+LWSA,24910,software and services,False,LWSA3,ON      NM,41907035
+MATD,25690,med hosp serv. anal and diagnostics,False,MATD3,ON      NM,3120228
+MBLY,25461,software and services,False,MBLY3,ON      NM,7891731
+MDIA,20338,other food manufacturing,False,MDIA3,ON      NM,40257709
+MDNE,21067,real estate,False,MDNE3,ON      NM,2207488
+MEAL,23574,restaurants and similars,False,MEAL3,ON      NM,1361141
+MEGA,26441,electric utilities,False,MEGA3,ON      NM,3955845
+MELK,25119,real estate,False,MELK3,ON      NM,1470458
+MERC,8540,savings and loans,False,MERC4,PN,2368
+MGEL,8397,iron and steel products,False,MGEL4,PN,24351
+MGLU,22470,electronics and household appliance,False,MGLU3,ON      NM,289572212
+MILS,22012,machines and industrial equipments,False,MILS3,ON      NM,7020820
+MLAS,26034,hardware and equipments,False,MLAS3,ON      NM,9963303
+MNPR,13765,meat. poultry and others,False,MNPR3,ON,229530
+MOVI,23825,car rental,False,MOVI3,ON      NM,22438901
+MRFG,20788,meat. poultry and others,False,MRFG3,ON      NM,46771721
+MRVE,20915,real estate,False,MRVE3,ON      NM,108297629
+MTRE,24902,real estate,False,MTRE3,ON      NM,3283230
+MTSA,8753,agricultural and construction machinery,False,MTSA4,PN,51850
+MULT,20982,real estate,False,MULT3,ON  EJ  N2,68998912
+MYPK,11932,automobiles and motorcycles,False,MYPK3,ON      NM,13214795
+NEOE,15539,electric utilities,False,NEOE3,ON  EJ  NM,26186602
+NEXP,21180,property agency,True,NEXP3,ON      NM,18264
+NGRD,25399,software and services,False,NGRD3,ON      NM,3232413
+NINJ,25887,software and services,False,NINJ3,ON      NM,678531
+NORD,9083,machines and industrial equipments,False,NORD3,ON,3720
+NTCO,24783,em branco,False,NTCO3,ON      NM,136254727
+NUTR,21334,fertilizers,True,NUTR3,ON      MA,60541
+ODPV,20125,med hosp serv. anal and diagnostics,False,ODPV3,ON  EJ  NM,21887940
+OFSA,23507,pharmaceutical and others products,False,OFSA3,ON      NM,958803
+OIBR,11312,telecommunications,True,OIBR3,ON      N1,4011991
+ONCO,26123,med hosp serv. anal and diagnostics,False,ONCO3,ON      NM,15402677
+OPCT,25534,equipment and services,False,OPCT3,ON      NM,14908219
+ORVR,25550,water utilities,False,ORVR3,ON      NM,14965313
+OSXB,21342,equipment and services,False,OSXB3,ON      NM,18948
+PCAR,14826,food retailers,False,PCAR3,ON      NM,44918183
+PDGR,20478,real estate,False,PDGR3,ON      NM,182198
+PDTC,18414,software and services,False,PDTC3,ON      NM,684930
+PETR,9512,exploration. refining and distribution,False,PETR4,PN      N2,754572078
+PETZ,25089,diversified retailers,False,PETZ3,ON  EJ  NM,89313344
+PFRM,20346,pharmaceutical and others products,False,PFRM3,ON      NM,293239
+PGMN,22608,pharmaceutical and others products,False,PGMN3,ON      NM,1374664
+PINE,20567,banks,False,PINE4,PN      N2,885764
+PLAS,13471,automobiles and motorcycles,False,PLAS3,ON,3331
+PLPL,25070,real estate,False,PLPL3,ON      NM,5401417
+PMAM,9393,copper products,True,PMAM3,ON      NM,692390
+PNVL,9342,pharmaceutical and others products,False,PNVL3,ON      NM,8941606
+POMO,8451,transportation equipment/diversified,False,POMO4,PN      N2,20690431
+PORT,26247,warehousing and storage,False,PORT3,ON      NM,4145072
+POSI,20362,hardware and equipments,False,POSI3,ON      NM,12616543
+PRIO,22187,exploration. refining and distribution,False,PRIO3,ON      NM,280065568
+PRNR,24236,diversified services,False,PRNR3,ON      NM,3701235
+PSSA,16659,insurance,False,PSSA3,ON  EJ  NM,87538651
+PTBL,13773,building products,False,PTBL3,ON      NM,9451142
+PTNT,9539,fabric. thread and fibers,False,PTNT3,ON,13994
+QUAL,22497,med hosp serv. anal and diagnostics,False,QUAL3,ON      NM,11629607
+RADL,5258,pharmaceutical and others products,False,RADL3,ON  EJ  NM,114845462
+RAIL,17450,railroads,False,RAIL3,ON      NM,256426766
+RAIZ,25917,agriculture,False,RAIZ4,PN      N2,70871363
+RANI,2429,packaging,False,RANI3,ON      NM,4398492
+RAPT,14109,transportation equipment/diversified,False,RAPT4,PN      N1,14526144
+RCSL,12572,transportation equipment/diversified,False,RCSL4,PN  EG,1898564
+RDNI,20451,real estate,False,RDNI3,ON      NM,36138
+RDOR,24821,med hosp serv. anal and diagnostics,False,RDOR3,ON      NM,86068239
+RECV,25780,exploration. refining and distribution,False,RECV3,ON      NM,43705032
+REDE,3190,electric utilities,False,REDE3,ON,2899
+RENT,19739,car rental,False,RENT3,ON  EJ  NM,295900101
+RNEW,21636,electric utilities,True,RNEW11,UNT     N2,44931
+ROMI,7510,machines and industrial equipments,False,ROMI3,ON      NM,6402154
+RPAD,9954,banks,False,RPAD5,PNA,1336
+RPMG,9989,exploration. refining and distribution,True,RPMG3,ON,197505
+RRRP,25291,exploration. refining and distribution,False,RRRP3,ON      NM,233798102
+RSID,16306,real estate,True,RSID3,ON      NM,124944
+RSUL,13439,transportation equipment/diversified,False,RSUL4,PN,25068
+SANB,20532,banks,False,SANB3,ON,1578976
+SAPR,18627,water utilities,False,SAPR4,PN  EJ  N2,6869049
+SBFG,24694,diversified retailers,False,SBFG3,ON      NM,15905414
+SBSP,14443,water utilities,False,SBSP3,ON      NM,147996573
+SCAR,13781,real estate,False,SCAR3,ON      NM,166792
+SEER,23221,education services,False,SEER3,ON      NM,3478405
+SEQL,25160,diversified services,False,SEQL3,ON      NM,7788618
+SGPS,20966,fabric. thread and fibers,False,SGPS3,ON      NM,692307
+SHOW,22454,entertainment,False,SHOW3,ON      NM,990764
+SHUL,14664,motors and compressors,False,SHUL4,PN,1123545
+SIMH,25003,holdings - diversified,False,SIMH3,ON      NM,20892171
+SLCE,20745,agriculture,False,SLCE3,ON      NM,69235268
+SLED,10472,diversified retailers,True,SLED4,PN      N2,972868
+SMFT,24260,sports,False,SMFT3,ON      NM,39867564
+SMTO,20516,sugar - alcohol,False,SMTO3,ON      NM,25404857
+SNSY,12696,other materials,False,SNSY5,PNA,33355
+SOJA,25704,agriculture,False,SOJA3,ON      NM,6702125
+SOMA,25011,apparel. fabric and footwear,False,SOMA3,ON      NM,125790222
+SOND,10880,consultive engeneering,False,SOND5,PNA,9000
+SQIA,22799,software and services,False,SQIA3,ON      NM,6557778
+STBP,17892,warehousing and storage,False,STBP3,ON      NM,19951623
+SUZB,13986,pulp and paper,False,SUZB3,ON      NM,103835197
+SYNE,21040,real estate,False,SYNE3,ON      NM,805637
+TAEE,20257,electric utilities,False,TAEE3,ON      N2,2056653
+TASA,6173,weapons and munitions,False,TASA4,PN      N2,6244664
+TCSA,20435,real estate,False,TCSA3,ON      NM,246848
+TECN,22519,accessories,False,TECN3,ON      NM,627120
+TEKA,11223,fabric. thread and fibers,True,TEKA4,PN,3896
+TELB,11258,telecommunications,False,TELB3,ON,3600
+TEND,21148,real estate,False,TEND3,ON      NM,23137179
+TFCO,25208,apparel and clothing,False,TFCO4,PN      N2,1388226
+TGMA,20800,trucking,False,TGMA3,ON      NM,740943
+TIMS,24929,telecommunications,False,TIMS3,ON      NM,125296632
+TKNO,11231,iron and steel products,False,TKNO4,PN,5999
+TOTS,19992,software and services,False,TOTS3,ON      NM,62777124
+TPIS,19330,toll roads and highways,False,TPIS3,ON      NM,372288
+TRAD,26077,software and services,False,TRAD3,ON      NM,3338363
+TRIS,21130,real estate,False,TRIS3,ON      NM,6164679
+TRPL,18376,electric utilities,False,TRPL4,PN      N1,23539143
+TTEN,25950,agriculture,False,TTEN3,ON      NM,18101660
+TUPY,6343,transportation equipment/diversified,False,TUPY3,ON      NM,24438089
+TXRX,7544,fabric. thread and fibers,True,TXRX4,PN,38249
+UCAS,22780,home furnishing,False,UCAS3,ON      NM,63321
+UGPA,18465,exploration. refining and distribution,False,UGPA3,ON      NM,94897223
+UNIP,11592,chemicals - others,False,UNIP6,PNB,13977482
+USIM,14320,steel,False,USIM3,ON      N1,2035589
+VALE,4170,metalic minerals,False,VALE3,ON      NM,2376940592
+VAMO,24716,car rental,False,VAMO3,ON      NM,52906557
+VBBR,24295,exploration. refining and distribution,False,VBBR3,ON      NM,98018130
+VIIA,6505,electronics and household appliance,False,VIIA3,ON      NM,108004300
+VITT,25763,fertilizers,False,VITT3,ON      NM,2291074
+VIVA,24805,accessories,False,VIVA3,ON      NM,50153125
+VIVR,20702,real estate,False,VIVR3,ON      NM,823314
+VIVT,17671,telecommunications,False,VIVT3,ON,50652840
+VLID,20028,diversified services,False,VLID3,ON      NM,4553176
+VSTE,21440,apparel. fabric and footwear,False,VSTE3,ON      NM,264558
+VULC,11762,footwear,False,VULC3,ON      NM,2691368
+VVEO,25682,pharmaceutical and others products,False,VVEO3,ON      NM,10296669
+WEGE,5410,motors and compressors,False,WEGE3,ON      NM,165811226
+WEST,25518,software and services,False,WEST3,ON      NM,2836587
+WHRL,14346,household appliance,False,WHRL4,PN,19588
+WIZC,23590,insurance and reinsurance brokers,False,WIZC3,ON      NM,3419721
+WLMM,11070,transportation material,False,WLMM4,PN,90693
+YDUQ,21016,education services,False,YDUQ3,ON      NM,44601208
+ZAMP,24317,restaurants and similars,False,ZAMP3,ON      NM,3348477
