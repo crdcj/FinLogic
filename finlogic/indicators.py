@@ -143,12 +143,9 @@ def process_indicators(df, is_annual: bool, insert_avg_col) -> pd.DataFrame:
     return df
 
 
-def build_indicators(dfi: pd.DataFrame) -> pd.DataFrame:
-    """Save indicators as pickle file.
-    dfi = input dataframe
-    dfo = output dataframe
-    """
-    start_df = filter_indicators_data(dfi)
+def build_indicators(financials_df: pd.DataFrame) -> pd.DataFrame:
+    """Build indicators dataframe."""
+    start_df = filter_indicators_data(financials_df)
 
     # Construct pivot tables for annual and quarterly
     dfa = pivot_df(start_df.query("is_annual"))
@@ -160,9 +157,9 @@ def build_indicators(dfi: pd.DataFrame) -> pd.DataFrame:
 
     # Build output dataframe
     sort_cols = ["cvm_id", "is_consolidated", "period_end"]
-    dfo = pd.concat([dfai, dfqi]).sort_values(by=sort_cols, ignore_index=True)
-    dfo.columns.name = None
-    return dfo
+    df = pd.concat([dfai, dfqi]).sort_values(by=sort_cols, ignore_index=True)
+    df.columns.name = None
+    return df
 
 
 def adjust_unit(df: pd.DataFrame, unit: float) -> pd.DataFrame:
@@ -186,8 +183,7 @@ def adjust_unit(df: pd.DataFrame, unit: float) -> pd.DataFrame:
         "ebitda",
         "invested_capital",
     ]
-    df[currency_cols] = df[currency_cols] / unit
-    return df
+    return df[currency_cols] / unit
 
 
 def reorder_index(df: pd.DataFrame) -> pd.DataFrame:
