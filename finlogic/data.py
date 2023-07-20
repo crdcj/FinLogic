@@ -45,12 +45,15 @@ def load(is_traded: bool = True, min_volume: int = 100_000):
     print("Loading last session data...")
     LAST_SESSION_DF = pd.read_csv(URL_LAST_SESSION)
     print("Loading financials data...")
-    FINANCIALS_DF = pd.read_csv(TRADED_FINANCIALS_URL)
+    date_cols = ["period_reference", "period_begin", "period_end"]
+    FINANCIALS_DF = pd.read_csv(TRADED_FINANCIALS_URL, parse_dates=date_cols)
     if not is_traded:
         FINANCIALS_DF = pd.concat(
             [FINANCIALS_DF, pd.read_csv(NOT_TRADED_FINANCIALS_URL)], ignore_index=True
         )
     LAST_SESSION_DF = LAST_SESSION_DF.query("volume >= @min_volume")
+    TRADED_CVM_IDS = LAST_SESSION_DF["cvm_id"].unique()
+    FINANCIALS_DF = FINANCIALS_DF.query("cvm_id in @TRADED_CVM_IDS")
 
     # ind.save_indicators()
     print(f"{CHECKMARK} FinLogic data loaded!")
