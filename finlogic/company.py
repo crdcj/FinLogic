@@ -22,8 +22,6 @@ RuntimeWarning:
 """
 from typing import Literal
 import pandas as pd
-from .language import language_df
-from . import reports as rep
 from . import indicators as ind
 
 

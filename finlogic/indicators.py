@@ -1,6 +1,4 @@
 import pandas as pd
-from . import config as cfg
-from . import reports as rep
 
 TAX_RATE = 0.34
 INDICATORS_CODES = {

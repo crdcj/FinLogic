@@ -1,11 +1,11 @@
 from datetime import date
 import finlogic as fl
-from finlogic import data_manager as dm
+from finlogic import data
 
 
 def test_info():
     """Test the info method of the Database module."""
-    info = dm.info()["FinLogic Info"]
+    info = data.info()["FinLogic Info"]
     first_report = date.fromisoformat(info["first_report"])
     assert first_report.year == 2009
     assert info["accounting_entries"] > 1_000_000
