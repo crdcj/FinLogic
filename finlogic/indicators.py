@@ -1,5 +1,6 @@
 import pandas as pd
 
+
 TAX_RATE = 0.34
 INDICATORS_CODES = {
     "1": "total_assets",
@@ -22,7 +23,7 @@ INDICATORS_CODES = {
 }
 
 
-def get_indicators_data() -> pd.DataFrame:
+def filter_indicators_data(dfi: pd.DataFrame) -> pd.DataFrame:
     codes = list(INDICATORS_CODES.keys())  # noqa: used in query below
 
     """There are 137 repeated entries in 208784 rows. These are from companies
@@ -40,16 +41,15 @@ def get_indicators_data() -> pd.DataFrame:
     ]
     subset_cols = ["cvm_id", "is_consolidated", "acc_code", "period_end"]
 
-    df = (
-        rep.get_reports()
-        .query("acc_code in @codes")
+    dfo = (
+        dfi.query("acc_code in @codes")
         .drop(columns=drop_cols)
         # .query("cvm_id == 9512 and is_consolidated")  # for testing
         .sort_values(by=sort_cols, ignore_index=True)
         .drop_duplicates(subset=subset_cols, keep="last", ignore_index=True)
         .astype({"acc_code": "string"})
     )
-    return df
+    return dfo
 
 
 def pivot_df(df) -> pd.DataFrame:
@@ -106,7 +106,7 @@ def insert_key_cols(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def build_indicators(df, is_annual: bool, insert_avg_col) -> pd.DataFrame:
+def process_indicators(df, is_annual: bool, insert_avg_col) -> pd.DataFrame:
     df.rename(columns=INDICATORS_CODES, inplace=True)
     df = insert_key_cols(df)
 
@@ -143,26 +143,25 @@ def build_indicators(df, is_annual: bool, insert_avg_col) -> pd.DataFrame:
     return df
 
 
-def save_indicators() -> pd.DataFrame:
+def build_indicators(dfi: pd.DataFrame) -> pd.DataFrame:
     """Save indicators as pickle file.
     dfi = input dataframe
     dfo = output dataframe
     """
-    dfi = get_indicators_data()
+    start_df = filter_indicators_data(dfi)
 
     # Construct pivot tables for annual and quarterly
-    dfa = pivot_df(dfi.query("is_annual"))
-    dfq = pivot_df(dfi.query("not is_annual"))
+    dfa = pivot_df(start_df.query("is_annual"))
+    dfq = pivot_df(start_df.query("not is_annual"))
 
     # Build indicators
-    dfai = build_indicators(dfa, True, insert_annual_avg_col)
-    dfqi = build_indicators(dfq, False, insert_quarterly_avg_col)
+    dfai = process_indicators(dfa, True, insert_annual_avg_col)
+    dfqi = process_indicators(dfq, False, insert_quarterly_avg_col)
 
     # Build output dataframe
     sort_cols = ["cvm_id", "is_consolidated", "period_end"]
     dfo = pd.concat([dfai, dfqi]).sort_values(by=sort_cols, ignore_index=True)
     dfo.columns.name = None
-    dfo.to_pickle(cfg.INDICATORS_PATH, compression="zstd")
     return dfo
 
 
@@ -243,13 +242,4 @@ def format_indicators(df: pd.DataFrame, unit: float) -> pd.DataFrame:
     df.columns.name = None
     df.index.name = None
     df = reorder_index(df)
-    return df
-
-
-def get_indicators() -> pd.DataFrame:
-    """Return a DataFrame with all indicators data"""
-    if cfg.INDICATORS_PATH.is_file():
-        df = pd.read_pickle(cfg.INDICATORS_PATH, compression="zstd")
-    else:
-        df = pd.DataFrame()
     return df

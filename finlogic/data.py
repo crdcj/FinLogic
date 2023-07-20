@@ -11,16 +11,16 @@ from . import indicators as ind
 
 CHECKMARK = "\033[32m\u2714\033[0m"
 # Load last session data
-URL_LAST_SESSION = (
+TRADE_DATA_URL = (
     "https://raw.githubusercontent.com/crdcj/FinLogic/main/data/last_session_data.csv"
 )
 TRADED_FINANCIALS_URL = "https://raw.githubusercontent.com/crdcj/FinLogic/main/data/financials_traded.csv.gz"
 NOT_TRADED_FINANCIALS_URL = "https://raw.githubusercontent.com/crdcj/FinLogic/main/data/financials_not_traded.csv.gz"
-URL_LANGUAGE = (
+LANGUAGE_DATA_URL = (
     "https://raw.githubusercontent.com/crdcj/FinLogic/main/data/pten_df.csv.gz"
 )
 FINANCIALS_DF = pd.DataFrame()
-LAST_SESSION_DF = pd.DataFrame()
+TRADE_DF = pd.DataFrame()
 LANGUAGE_DF = pd.DataFrame()
 
 
@@ -38,12 +38,12 @@ def load(is_traded: bool = True, min_volume: int = 100_000):
         None
     """
     global LANGUAGE_DF
-    global LAST_SESSION_DF
+    global TRADE_DF
     global FINANCIALS_DF
     print('Loading "language" data...')
-    LANGUAGE_DF = pd.read_csv(URL_LANGUAGE)
-    print("Loading last session data...")
-    LAST_SESSION_DF = pd.read_csv(URL_LAST_SESSION)
+    LANGUAGE_DF = pd.read_csv(LANGUAGE_DATA_URL)
+    print("Loading trading data...")
+    TRADE_DF = pd.read_csv(TRADE_DATA_URL)
     print("Loading financials data...")
     date_cols = ["period_reference", "period_begin", "period_end"]
     FINANCIALS_DF = pd.read_csv(TRADED_FINANCIALS_URL, parse_dates=date_cols)
@@ -51,11 +51,14 @@ def load(is_traded: bool = True, min_volume: int = 100_000):
         FINANCIALS_DF = pd.concat(
             [FINANCIALS_DF, pd.read_csv(NOT_TRADED_FINANCIALS_URL)], ignore_index=True
         )
-    LAST_SESSION_DF = LAST_SESSION_DF.query("volume >= @min_volume")
-    TRADED_CVM_IDS = LAST_SESSION_DF["cvm_id"].unique()
-    FINANCIALS_DF = FINANCIALS_DF.query("cvm_id in @TRADED_CVM_IDS")
-
-    # ind.save_indicators()
+    TRADE_DF = TRADE_DF.query("volume >= @min_volume")
+    TRADED_CVM_IDS = TRADE_DF["cvm_id"].unique()  # noqa
+    FINANCIALS_DF = FINANCIALS_DF.query("cvm_id in @TRADED_CVM_IDS").reset_index(
+        drop=True
+    )
+    print("Building indicators data...")
+    global INDICATORS_DF
+    INDICATORS_DF = ind.build_indicators(FINANCIALS_DF)
     print(f"{CHECKMARK} FinLogic data loaded!")
 
 
@@ -78,9 +81,12 @@ def info() -> pd.DataFrame:
     if FINANCIALS_DF.empty:
         return pd.DataFrame()
 
-    # info["data_url"] = f"{cfg.DATA_PATH}"
-    # info["data_size"] = f"{cfg.REPORTS_PATH.stat().st_size / 1024**2:.1f} MB"
-    # db_last_modified = datetime.fromtimestamp(cfg.REPORTS_PATH.stat().st_mtime)
+    info["data_url"] = f"{TRADED_FINANCIALS_URL}"
+    data_size = (
+        FINANCIALS_DF.memory_usage(deep=True).sum()
+        + TRADE_DF.memory_usage(deep=True).sum()
+    )
+    info["memory_usage"] = f"{data_size / 1024**2:.1f} MB"
     # info["updated_on"] = db_last_modified.strftime("%Y-%m-%d %H:%M:%S")
 
     info["accounting_entries"] = FINANCIALS_DF.shape[0]
@@ -99,7 +105,7 @@ def info() -> pd.DataFrame:
 
 
 def search_segment(search_value: str):
-    series = LAST_SESSION_DF["segment"].drop_duplicates().sort_values(ignore_index=True)
+    series = TRADE_DF["segment"].drop_duplicates().sort_values(ignore_index=True)
     mask = series.str.contains(search_value)
     return series[mask].reset_index(drop=True)
 
@@ -129,7 +135,7 @@ def search_company(
     df = FINANCIALS_DF[search_cols].drop_duplicates(
         subset=["cvm_id"], ignore_index=True
     )
-    df = pd.merge(df, LAST_SESSION_DF, on="cvm_id")
+    df = pd.merge(df, TRADE_DF, on="cvm_id")
     match search_by:
         case "name_id":
             # Company name is stored in uppercase in the database
@@ -188,7 +194,7 @@ def rank(
         .sort_values(by=["cvm_id", "period_end", "is_consolidated"], ignore_index=True)
         # .query("cvm_id == 922")
         .drop_duplicates(subset=["cvm_id"], keep="last")
-        .merge(LAST_SESSION_DF, on="cvm_id")
+        .merge(TRADE_DF, on="cvm_id")
         .query("segment.str.contains(@segment)")
         .sort_values(by=[rank_by], ascending=False, ignore_index=True)
         .head(n)[show_cols]

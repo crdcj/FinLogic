@@ -22,7 +22,7 @@ RuntimeWarning:
 """
 from typing import Literal
 import pandas as pd
-from . import indicators as ind
+from . import data as dt
 
 
 class Company:
@@ -73,6 +73,11 @@ class Company:
         # Only set _df after identifier, is_consolidated and acc_unit are setted
         self._set_df()
 
+    @staticmethod
+    def convert_to_sl(expr: str) -> str:
+        """Converts a string to a single line."""
+        return expr.replace("\n", "")
+
     @property
     def identifier(self) -> int | str:
         """Set a unique identifier to select the company in FinLogic Database.
@@ -100,7 +105,7 @@ class Company:
     def identifier(self, identifier: int | str):
         # Create custom data frame for ID selection
         df = (
-            rep.get_reports()[["cvm_id", "tax_id", "name_id"]]
+            dt.FINANCIALS_DF[["cvm_id", "tax_id", "name_id"]]
             .query("cvm_id == @identifier or tax_id == @identifier")
             .drop_duplicates(ignore_index=True)
         )
@@ -250,14 +255,8 @@ class Company:
         This method creates a dataframe with the company's financial
         statements.
         """
-        df = (
-            rep.get_reports()
-            .query(
-                "cvm_id == @self._cvm_id and \
-                 is_consolidated == @self._is_consolidated"
-            )
-            .reset_index(drop=True)
-        )
+        expr = "cvm_id == @self._cvm_id and is_consolidated == @self._is_consolidated"
+        df = dt.FINANCIALS_DF.query(expr).reset_index(drop=True)
 
         # Convert category columns back to string
         columns = df.columns
