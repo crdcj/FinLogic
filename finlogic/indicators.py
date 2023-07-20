@@ -183,7 +183,8 @@ def adjust_unit(df: pd.DataFrame, unit: float) -> pd.DataFrame:
         "ebitda",
         "invested_capital",
     ]
-    return df[currency_cols] / unit
+    df.loc[:, currency_cols] /= unit
+    return df
 
 
 def reorder_index(df: pd.DataFrame) -> pd.DataFrame:
