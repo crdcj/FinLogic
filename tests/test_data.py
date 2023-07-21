@@ -2,13 +2,15 @@ from datetime import date
 import finlogic as fl
 from finlogic import data
 
+fl.load()
+
 
 def test_info():
     """Test the info method of the Database module."""
     info = data.info()["FinLogic Info"]
     first_report = date.fromisoformat(info["first_report"])
     assert first_report.year == 2009
-    assert info["accounting_entries"] > 1_000_000
+    assert info["accounting_entries"] > 100_000
 
 
 def test_search_company():

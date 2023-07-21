@@ -19,26 +19,19 @@ INDICATORS_CODES = {
     "3.11": "net_income",
     "6.01": "operating_cash_flow",
     "6.01.01.04": "depreciation_amortization",
-    "8.01.01": "eps",
+    "3.99.01.01": "eps",
 }
 
 
 def filter_indicators_data(dfi: pd.DataFrame) -> pd.DataFrame:
     codes = list(INDICATORS_CODES.keys())  # noqa: used in query below
-
     """There are 137 repeated entries in 208784 rows. These are from companies
     with some exotic period_end dates, as for cvm_id 3450. These entries will be
     removed in the next step, when we drop duplicates and the last entry
     published will be kept.
     """
     drop_cols = ["tax_id", "acc_name", "period_begin"]
-    sort_cols = [
-        "cvm_id",
-        "is_consolidated",
-        "acc_code",
-        "period_end",
-        "period_reference",
-    ]
+    sort_cols = ["cvm_id", "is_consolidated", "acc_code", "period_end"]
     subset_cols = ["cvm_id", "is_consolidated", "acc_code", "period_end"]
 
     dfo = (

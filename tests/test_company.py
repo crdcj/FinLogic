@@ -1,6 +1,8 @@
 import finlogic as fl
 import pytest
 
+fl.load()
+
 
 def test_identifier():
     """Test the identifier method of the Company class."""

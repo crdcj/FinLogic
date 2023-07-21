@@ -12,10 +12,10 @@ from . import indicators as ind
 CHECKMARK = "\033[32m\u2714\033[0m"
 # Load last session data
 TRADE_DATA_URL = (
-    "https://raw.githubusercontent.com/crdcj/FinLogic/main/data/last_session_data.csv"
+    "https://raw.githubusercontent.com/crdcj/FinLogic/main/data/trades.csv.gz"
 )
-TRADED_FINANCIALS_URL = "https://raw.githubusercontent.com/crdcj/FinLogic/main/data/financials_traded.csv.gz"
-NOT_TRADED_FINANCIALS_URL = "https://raw.githubusercontent.com/crdcj/FinLogic/main/data/financials_not_traded.csv.gz"
+TRADED_FINANCIALS_URL = "https://raw.githubusercontent.com/crdcj/FinLogic/main/data/traded_companies_financials.csv.gz"
+NOT_TRADED_FINANCIALS_URL = "https://raw.githubusercontent.com/crdcj/FinLogic/main/data/not_traded_companies_financials.csv.gz"
 LANGUAGE_DATA_URL = (
     "https://raw.githubusercontent.com/crdcj/FinLogic/main/data/pten_df.csv.gz"
 )
@@ -45,7 +45,7 @@ def load(is_traded: bool = True, min_volume: int = 100_000):
     print("Loading trading data...")
     TRADE_DF = pd.read_csv(TRADE_DATA_URL)
     print("Loading financials data...")
-    date_cols = ["period_reference", "period_begin", "period_end"]
+    date_cols = ["period_begin", "period_end"]
     FINANCIALS_DF = pd.read_csv(TRADED_FINANCIALS_URL, parse_dates=date_cols)
     if not is_traded:
         FINANCIALS_DF = pd.concat(
