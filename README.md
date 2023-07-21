@@ -9,7 +9,9 @@
 
 ---
 
-**FinLogic** offers a Pythonic way to analyze the financial data of companies listed in Brazil, using information made publicly available by the local securities market authority, CVM. FinLogic processes approximately 20 million accounting entries using Pandas, and constructs a local DataFrame for ultra-fast access to this information.
+**FinLogic** provides a Pythonic approach to analyzing the financial data of companies listed in Brazil. The library pre-processes approximately 50 million accounting entries from the local securities market authority data repository.
+
+The extensive pre-processing stage is automated using Polars within an AWS Lambda Function, and it is scheduled to check for updates overnight. After the CVM repository data is updated and pre-processed, the job saves the cleaned data in the FinLogic data folder on GitHub. This arrangement allows the library to access the data quickly and easily.
 
 ---
 
@@ -34,34 +36,36 @@ pip install finlogic
 
 ## Quick Start
 
-### Create FinLogic Database
+### Load FinLogic Data
 
-The 'update' function is responsible for downloading and updating raw financial data from the CVM, processing approximately 20 million accounting entries, and storing them for local data analysis. During the initial run, the process might take some minutes, depending on the CVM server connection and local CPU power. For subsequent updates, only the updated CVM files will be downloaded and processed, which should expedite the operation.
+The 'load' function is responsible for downloading and reading the financial data stored on GitHub data folder.
 
 ```python
 >>> import finlogic as fl
 
-# Compile FinLogic database for the first time:
->>> fl.update()
+# Load the accounting data in memory:
+>>> fl.load()
+```
+    Loading "language" data...
+    Loading trading data...
+    Loading financials data...
+    Building indicators data...
+    ✔ FinLogic is ready!
 
-Updating CVM raw files...
-...
-FinLogic database updated ✅
-
+```python
 # Show database info:
 >>> fl.info()
 ```
 
-|                     |       FinLogic Info |
-| :------------------ | ------------------: |
-| data_path           |   .../finlogic/data |
-| data_size           |             12.1 MB |
-| last_modified_on    | 2023-04-20 07:29:08 |
-| accounting_entries  |           2,806,635 |
-| number_of_reports   |              11,635 |
-| first_report        |          2009-01-31 |
-| last_report         |          2023-03-31 |
-| number_of_companies |               1,139 |
+|                     |                    FinLogic Info |
+| :------------------ | -------------------------------: |
+| data_url            | https://raw.githubusercontent... |
+| memory_usage        |                          12.1 MB |
+| accounting_entries  |                          755,635 |
+| number_of_reports   |                            2,635 |
+| first_report        |                       2009-01-31 |
+| last_report         |                       2023-03-31 |
+| number_of_companies |                              208 |
 
 ```python
 # Search for a company in database:
@@ -108,8 +112,7 @@ The Company Class allows you to easily access financial data from Brazilian comp
 | Selected Accounting Method |                       consolidated |
 | Selected Accounting Unit   |                      1,000,000,000 |
 | First Report               |                         2009-12-31 |
-| Last Report                |                         2021-12-31 |
-| Last Report Type           |                          quarterly |
+| Last Report                |                         2023-03-31 |
 
 ```python
 # Show company assets in Brazilian currency:

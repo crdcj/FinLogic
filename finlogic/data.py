@@ -59,7 +59,7 @@ def load(is_traded: bool = True, min_volume: int = 100_000):
     print("Building indicators data...")
     global INDICATORS_DF
     INDICATORS_DF = ind.build_indicators(FINANCIALS_DF)
-    print(f"{CHECKMARK} FinLogic data loaded!")
+    print(f"{CHECKMARK} FinLogic is ready!")
 
 
 def info() -> pd.DataFrame:
