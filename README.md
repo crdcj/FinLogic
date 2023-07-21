@@ -29,7 +29,6 @@ pip install finlogic
 
 - [Python](https://www.python.org) \>= 3.10
 - [Pandas](https://github.com/pydata/pandas) \>= 1.5.0
-- [Requests](http://docs.python-requests.org/en/master/) \>= 2.30.0
 
 ---
 
