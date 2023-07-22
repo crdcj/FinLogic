@@ -78,6 +78,20 @@ The 'load' function is responsible for downloading and reading the financial dat
 | 3R PETROLEUM ÓLEO E GÁS S.A.       |  25291 | 12.091.809/0001-55 | exploration... | False            | RRRP3             |
 | PETRORECÔNCAVO S.A.                |  25780 | 03.342.704/0001-30 | exploration... | False            | RECV3             |
 
+```python
+# Search company by segment:
+fl.search_company(search_by="segment", search_value="electric")
+```
+| name_id                                | cvm_id | tax_id             | segment            | is_restructuring | most_traded_stock |
+|:---------------------------------------|-------:|:-------------------|:-------------------|:-----------------|:------------------|
+| CENTRAIS ELET BRAS S.A. - ELETROBRAS   |   2437 | 00.001.180/0001-26 | electric utilities | False            | ELET3             |
+| CIA ENERGETICA DE MINAS GERAIS - CEMIG |   2453 | 17.155.730/0001-64 | electric utilities | False            | CMIG4             |
+| CIA PARANAENSE DE ENERGIA - COPEL      |  14311 | 76.483.817/0001-20 | electric utilities | False            | CPLE6             |
+| CIA ENERGETICA DO CEARA - COELCE       |  14869 | 07.047.251/0001-70 | electric utilities | False            | COCE5             |
+| ENERGISA S.A.                          |  15253 | 00.864.214/0001-06 | electric utilities | False            | ENGI11            |
+| NEOENERGIA S.A.                        |  15539 | 01.083.200/0001-18 | electric utilities | False            | NEOE3             |
+| ENGIE BRASIL ENERGIA S.A.              |  17329 | 02.474.103/0001-19 | electric utilities | False            | EGIE3             |
+...
 
 ### The Company Class
 
