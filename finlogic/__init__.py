@@ -8,7 +8,7 @@
 from .data import load, search_company, info, search_segment, rank
 from .company import Company
 
-__version__ = "0.5.2"
+__version__ = "0.6.0"
 __author__ = "Carlos Carvalho"
 
 __all__ = ["Company", "load", "search_company", "info", "search_segment", "rank"]

@@ -11,7 +11,7 @@
 
 **FinLogic** provides a Pythonic approach to analyzing the financial data of companies listed in Brazil. The library pre-processes approximately 50 million accounting entries from the local securities market authority data repository.
 
-The extensive pre-processing stage is automated using Polars within an AWS Lambda Function, and it is scheduled to check for updates overnight. After the CVM repository data is updated and pre-processed, the job saves the cleaned data in the FinLogic data folder on GitHub. This arrangement allows the library to access the data quickly and easily.
+The extensive pre-processing stage is automated using Polars within an AWS Lambda Function, and it is scheduled to check for updates overnight. After the CVM repository data is updated and pre-processed, the job saves the cleaned data in FinLogic data folder on GitHub. This arrangement allows the library to access the data quickly and easily.
 
 ---
 
@@ -60,28 +60,24 @@ The 'load' function is responsible for downloading and reading the financial dat
 |                     |                    FinLogic Info |
 | :------------------ | -------------------------------: |
 | data_url            | https://raw.githubusercontent... |
-| memory_usage        |                          12.1 MB |
+| memory_usage        |                         255.1 MB |
 | accounting_entries  |                          755,635 |
 | number_of_reports   |                            2,635 |
 | first_report        |                       2009-01-31 |
 | last_report         |                       2023-03-31 |
-| number_of_companies |                              208 |
+| number_of_companies |                              210 |
 
 ```python
 # Search for a company in database:
 >>> fl.search_company('petro')
 ```
 
-|     | name_id                                | cvm_id | tax_id             |
-| --: | :------------------------------------- | -----: | :----------------- |
-|   0 | 3R PETROLEUM ÓLEO E GÁS S.A.           |  25291 | 12.091.809/0001-55 |
-|   1 | PETRO RIO S.A.                         |  22187 | 10.629.105/0001-68 |
-|   2 | PETROBRAS DISTRIBUIDORA S/A            |  24295 | 34.274.233/0001-02 |
-|   3 | PETROLEO BRASILEIRO S.A. PETROBRAS     |   9512 | 33.000.167/0001-01 |
-|   4 | PETROLEO LUB DO NORDESTE SA            |   9520 | 07.275.159/0001-68 |
-|   5 | PETRORECÔNCAVO S.A.                    |  25780 | 03.342.704/0001-30 |
-|   6 | PRONOR PETROQUIMICA SA                 |   9784 | 13.552.070/0001-02 |
-|   7 | REFINARIA DE PETROLEOS MANGUINHOS S.A. |   9989 | 33.412.081/0001-96 |
+| name_id                            | cvm_id | tax_id             | segment        | is_restructuring | most_traded_stock |
+|:-----------------------------------|-------:|:-------------------|:---------------|:-----------------|:------------------|
+| PETROLEO BRASILEIRO S.A. PETROBRAS |   9512 | 33.000.167/0001-01 | exploration... | False            | PETR4             |
+| 3R PETROLEUM ÓLEO E GÁS S.A.       |  25291 | 12.091.809/0001-55 | exploration... | False            | RRRP3             |
+| PETRORECÔNCAVO S.A.                |  25780 | 03.342.704/0001-30 | exploration... | False            | RECV3             |
+
 
 ### The Company Class
 
@@ -155,25 +151,35 @@ The Company Class allows you to easily access financial data from Brazilian comp
 >>> petro.indicators(num_years=3)
 ```
 
-| Company Financial Indicators | 2019-12-31 | 2020-12-31 | 2021-12-31 |
-| :--------------------------- | ---------: | ---------: | ---------: |
-| revenues                     |    302.245 |    272.069 |    452.668 |
-| operating_cash_flow          |    101.766 |    148.106 |    203.126 |
-| ebitda                       |    140.203 |    107.926 |    273.879 |
-| ebit                         |     81.701 |     49.621 |    210.831 |
-| net_income                   |     40.970 |      6.246 |    107.264 |
-| total_cash                   |     33.294 |     64.280 |     62.040 |
-| total_debt                   |    351.161 |    392.548 |    327.818 |
-| net_debt                     |    317.867 |    328.268 |    265.778 |
-| working_capital              |     -4.046 |      6.036 |     33.334 |
-| invested_capital             |    617.004 |    639.418 |    655.359 |
-| return_on_assets             |      0.062 |      0.035 |      0.140 |
-| return_on_equity             |      0.144 |      0.020 |      0.344 |
-| roic                         |      0.097 |      0.053 |      0.217 |
-| gross_margin                 |      0.403 |      0.455 |      0.485 |
-| ebitda_margin                |      0.463 |      0.396 |      0.605 |
-| operating_margin             |      0.178 |      0.120 |      0.307 |
-| net_margin                   |      0.135 |      0.022 |      0.236 |
+| 2021-12-31 | 2022-12-31 | 2023-03-31 |
+|-----------:|-----------:|-----------:|
+|    972.951 |    976.709 |    978.577 |
+|    168.247 |    163.052 |    157.194 |
+|     62.04  |     56.193 |     66.906 |
+|     33.334 |     -0.679 |     28.744 |
+|    655.359 |    588.895 |    607.53  |
+|    134.913 |    163.731 |    128.45  |
+|    327.818 |    280.703 |    271.031 |
+|    265.778 |    224.51  |    204.125 |
+|    389.581 |    364.385 |    403.405 |
+|    452.668 |    641.256 |    638.683 |
+|    219.637 |    334.1   |    332.645 |
+|    107.264 |    189.005 |    182.529 |
+|    273.879 |    362.457 |    355.838 |
+|    210.831 |    294.255 |    289.054 |
+|    151.575 |    274.998 |    263.614 |
+|    -44.311 |    -85.993 |    -81.085 |
+|    203.126 |    255.41  |    256.345 |
+|     63.048 |     68.202 |     66.784 |
+|      0.292 |      0.312 |      0.307 |
+|      0.141 |      0.199 |      0.192 |
+|      0.397 |      0.515 |      0.453 |
+|      0.214 |      0.312 |      0.309 |
+|      0.485 |      0.521 |      0.520 |
+|      0.605 |      0.565 |      0.557 |
+|      0.465 |      0.458 |      0.452 |
+|      0.236 |      0.294 |      0.285 |
+|      8.18  |     14.44  |     13.95  |
 
 ---
 
