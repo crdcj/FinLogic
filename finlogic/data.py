@@ -5,84 +5,61 @@ Portal. It allows updating, processing and consolidating financial statements,
 as well as searching for company names in the FinLogic Database and retrieving
 information about the database itself.
 """
-from pathlib import Path
 from typing import Literal
-from datetime import datetime
 import pandas as pd
-from . import config as cfg
-from . import cvm
-from . import language as lng
-from . import reports as rep
 from . import indicators as ind
 
 CHECKMARK = "\033[32m\u2714\033[0m"
+# Load last session data
+TRADE_DATA_URL = (
+    "https://raw.githubusercontent.com/crdcj/FinLogic/main/data/trades.csv.gz"
+)
+TRADED_FINANCIALS_URL = "https://raw.githubusercontent.com/crdcj/FinLogic/main/data/traded_companies_financials.csv.gz"
+NOT_TRADED_FINANCIALS_URL = "https://raw.githubusercontent.com/crdcj/FinLogic/main/data/not_traded_companies_financials.csv.gz"
+LANGUAGE_DATA_URL = (
+    "https://raw.githubusercontent.com/crdcj/FinLogic/main/data/pten_df.csv.gz"
+)
+FINANCIALS_DF = pd.DataFrame()
+TRADES_DF = pd.DataFrame()
+LANGUAGE_DF = pd.DataFrame()
 
 
-def get_filepaths_to_process(df1: pd.DataFrame, df2: pd.DataFrame) -> list[Path]:
-    """Return a list of CVM files that has to be processed by comparing
-    the files mtimes from the raw folder.
-    """
-    df = pd.concat([df1, df2]).drop_duplicates(keep=False)
-    file_sources = sorted(df["file_source"].drop_duplicates())
-    return [cfg.CVM_RAW_DIR / file_source for file_source in file_sources]
-
-
-def update(
-    rebuild: bool = False,
-    is_listed: bool = True,
-    min_volume: int = 100_000,
-):
+def load(is_traded: bool = True, min_volume: int = 100_000):
     """Verify changes in CVM files and update Finlogic Database if necessary.
 
     Args:
-        rebuild (bool, optional): If True, process all CVM files and rebuilds
-            the database. Defaults to False.
-        is_listed (bool, optional): If True, only currently listed companies are
-        processed.
+        is_traded (bool, optional): If True, only currently traded companies are
+        loaded.
         min_volume (int): The minimum daily volume of the stock. Defaults
-            to 100,000, which is a reasonable value to remove extremely illiquid
-            stocks.
+            to R$ 100k (aprox. USD 20k), which is a reasonable value to remove
+            extremely illiquid stocks.
 
     Returns:
         None
     """
-    # Language files
-    print('\nUpdating "language" database...')
-    lng.process_language_df()
-
-    # CVM raw files
-    # Get files mtimes from the raw folder before updating
-    df_raw1 = cvm.get_raw_file_mtimes()
-    urls = cvm.get_all_file_urls()
-    updated_raw_filepaths = cvm.update_raw_files(urls)
-    print(f"Number of CVM files updated = {len(updated_raw_filepaths)}")
-    # Get files mtimes from the raw folder after updating
-    df_raw2 = cvm.get_raw_file_mtimes()
-
-    # CVM processed files
-    if rebuild:
-        # Process all files
-        filepaths_to_process = sorted(cfg.CVM_RAW_DIR.glob("*.zip"))
-    else:
-        # Process only updated files
-        filepaths_to_process = get_filepaths_to_process(df1=df_raw1, df2=df_raw2)
-    print(f"Number of new files to process = {len(filepaths_to_process)}")
-
-    # Determine which companies to process
-    if is_listed:
-        companies_to_process = sorted(
-            cfg.LAST_SESSION_DF.query("volume >= @min_volume")["cvm_id"]
+    global LANGUAGE_DF
+    global TRADES_DF
+    global FINANCIALS_DF
+    print('Loading "language" data...')
+    LANGUAGE_DF = pd.read_csv(LANGUAGE_DATA_URL)
+    print("Loading trading data...")
+    TRADES_DF = pd.read_csv(TRADE_DATA_URL)
+    print("Loading financials data...")
+    date_cols = ["period_begin", "period_end"]
+    FINANCIALS_DF = pd.read_csv(TRADED_FINANCIALS_URL, parse_dates=date_cols)
+    if not is_traded:
+        FINANCIALS_DF = pd.concat(
+            [FINANCIALS_DF, pd.read_csv(NOT_TRADED_FINANCIALS_URL)], ignore_index=True
         )
-    else:
-        companies_to_process = None
-
-    cvm.process_files_with_progress(filepaths_to_process, companies_to_process)
-
-    # FinLogic Database
-    print("\nBuilding FinLogic main DataFrame...")
-    rep.save_reports()
-    ind.save_indicators()
-    print(f"{CHECKMARK} FinLogic updated!")
+    TRADES_DF = TRADES_DF.query("volume >= @min_volume")
+    TRADED_CVM_IDS = TRADES_DF["cvm_id"].unique()  # noqa
+    FINANCIALS_DF = FINANCIALS_DF.query("cvm_id in @TRADED_CVM_IDS").reset_index(
+        drop=True
+    )
+    print("Building indicators data...")
+    global INDICATORS_DF
+    INDICATORS_DF = ind.build_indicators(FINANCIALS_DF)
+    print(f"{CHECKMARK} FinLogic is ready!")
 
 
 def info() -> pd.DataFrame:
@@ -101,23 +78,25 @@ def info() -> pd.DataFrame:
     Returns: None
     """
     info = {}
-    df = rep.get_reports()
-    if df.empty:
+    if FINANCIALS_DF.empty:
         return pd.DataFrame()
 
-    info["data_path"] = f"{cfg.DATA_PATH}"
-    info["data_size"] = f"{cfg.REPORTS_PATH.stat().st_size / 1024**2:.1f} MB"
-    db_last_modified = datetime.fromtimestamp(cfg.REPORTS_PATH.stat().st_mtime)
-    info["updated_on"] = db_last_modified.strftime("%Y-%m-%d %H:%M:%S")
+    info["data_url"] = f"{TRADED_FINANCIALS_URL}"
+    data_size = (
+        FINANCIALS_DF.memory_usage(deep=True).sum()
+        + TRADES_DF.memory_usage(deep=True).sum()
+    )
+    info["memory_usage"] = f"{data_size / 1024**2:.1f} MB"
+    # info["updated_on"] = db_last_modified.strftime("%Y-%m-%d %H:%M:%S")
 
-    info["accounting_entries"] = df.shape[0]
+    info["accounting_entries"] = FINANCIALS_DF.shape[0]
 
     report_cols = ["cvm_id", "is_annual", "period_end"]
-    info["number_of_reports"] = df[report_cols].drop_duplicates().shape[0]
-    info["first_report"] = df["period_end"].min().strftime("%Y-%m-%d")
-    info["last_report"] = df["period_end"].max().strftime("%Y-%m-%d")
+    info["number_of_reports"] = FINANCIALS_DF[report_cols].drop_duplicates().shape[0]
+    info["first_report"] = FINANCIALS_DF["period_end"].min().strftime("%Y-%m-%d")
+    info["last_report"] = FINANCIALS_DF["period_end"].max().strftime("%Y-%m-%d")
 
-    info["number_of_companies"] = df["cvm_id"].nunique()
+    info["number_of_companies"] = FINANCIALS_DF["cvm_id"].nunique()
 
     s = pd.Series(info)
     s.name = "FinLogic Info"
@@ -126,9 +105,7 @@ def info() -> pd.DataFrame:
 
 
 def search_segment(search_value: str):
-    series = (
-        cfg.LAST_SESSION_DF["segment"].drop_duplicates().sort_values(ignore_index=True)
-    )
+    series = TRADES_DF["segment"].drop_duplicates().sort_values(ignore_index=True)
     mask = series.str.contains(search_value)
     return series[mask].reset_index(drop=True)
 
@@ -155,10 +132,10 @@ def search_company(
             matches the search criteria.
     """
     search_cols = ["name_id", "cvm_id", "tax_id"]
-    df = rep.get_reports()[search_cols].drop_duplicates(
+    df = FINANCIALS_DF[search_cols].drop_duplicates(
         subset=["cvm_id"], ignore_index=True
     )
-    df = pd.merge(df, cfg.LAST_SESSION_DF, on="cvm_id")
+    df = pd.merge(df, TRADES_DF, on="cvm_id")
     match search_by:
         case "name_id":
             # Company name is stored in uppercase in the database
@@ -217,7 +194,7 @@ def rank(
         .sort_values(by=["cvm_id", "period_end", "is_consolidated"], ignore_index=True)
         # .query("cvm_id == 922")
         .drop_duplicates(subset=["cvm_id"], keep="last")
-        .merge(cfg.LAST_SESSION_DF, on="cvm_id")
+        .merge(TRADES_DF, on="cvm_id")
         .query("segment.str.contains(@segment)")
         .sort_values(by=[rank_by], ascending=False, ignore_index=True)
         .head(n)[show_cols]

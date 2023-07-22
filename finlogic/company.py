@@ -22,9 +22,8 @@ RuntimeWarning:
 """
 from typing import Literal
 import pandas as pd
-from .language import language_df
-from . import reports as rep
-from . import indicators as ind
+from . import data as dt
+from . import indicators as ic
 
 
 class Company:
@@ -75,6 +74,11 @@ class Company:
         # Only set _df after identifier, is_consolidated and acc_unit are setted
         self._set_df()
 
+    @staticmethod
+    def convert_to_sl(expr: str) -> str:
+        """Converts a string to a single line."""
+        return expr.replace("\n", "")
+
     @property
     def identifier(self) -> int | str:
         """Set a unique identifier to select the company in FinLogic Database.
@@ -102,7 +106,7 @@ class Company:
     def identifier(self, identifier: int | str):
         # Create custom data frame for ID selection
         df = (
-            rep.get_reports()[["cvm_id", "tax_id", "name_id"]]
+            dt.FINANCIALS_DF[["cvm_id", "tax_id", "name_id"]]
             .query("cvm_id == @identifier or tax_id == @identifier")
             .drop_duplicates(ignore_index=True)
         )
@@ -252,14 +256,8 @@ class Company:
         This method creates a dataframe with the company's financial
         statements.
         """
-        df = (
-            rep.get_reports()
-            .query(
-                "cvm_id == @self._cvm_id and \
-                 is_consolidated == @self._is_consolidated"
-            )
-            .reset_index(drop=True)
-        )
+        expr = "cvm_id == @self._cvm_id and is_consolidated == @self._is_consolidated"
+        df = dt.FINANCIALS_DF.query(expr).reset_index(drop=True)
 
         # Convert category columns back to string
         columns = df.columns
@@ -267,7 +265,7 @@ class Company:
         df[cat_cols] = df[cat_cols].astype("string")
 
         # Adjust for unit change only where it is not EPS (acc_code 8...)
-        mask = ~df["acc_code"].str.startswith("8")
+        mask = ~df["acc_code"].str.startswith("3.99")
         df.loc[mask, "acc_value"] = df.loc[mask, "acc_value"] / self._acc_unit
 
         self._first_period = df["period_end"].min()
@@ -311,7 +309,6 @@ class Company:
             "Selected Tax Rate": self._tax_rate,
             "First Report": self._first_period.strftime("%Y-%m-%d"),
             "Last Report": self._last_period.strftime("%Y-%m-%d"),
-            "Last Report Type": self._last_period_type,
         }
         s = pd.Series(company_info)
         s.name = "Company Info"
@@ -382,9 +379,7 @@ class Company:
             "liabilities_and_equity",
             "equity",
             "income_statement",
-            "comprehensive_income",
             "cash_flow",
-            "added_value",
             "earnings_per_share",
         ],
         acc_level: Literal[0, 1, 2, 3, 4] = 0,
@@ -449,7 +444,7 @@ class Company:
                 return "(pt) " + key
 
         if self._language == "English":
-            _pten_dict = dict(language_df.values)
+            _pten_dict = dict(dt.LANGUAGE_DF.values)
             _pten_dict = MyDict(_pten_dict)
             df["acc_name"] = df["acc_name"].map(_pten_dict)
 
@@ -480,10 +475,8 @@ class Company:
             "liabilities_and_equity": ("2"),
             "equity": ("2.03"),
             "income_statement": ("3"),
-            "comprehensive_income": ("4"),
+            "earnings_per_share": ("3.99"),
             "cash_flow": ("6"),
-            "added_value": ("7"),
-            "earnings_per_share": ("8"),
         }
         acc_codes = report_types[report_type]  # noqa
         df.query("acc_code.str.startswith(@acc_codes)", inplace=True)
@@ -536,12 +529,12 @@ class Company:
             pd.DataFrame: Dataframe containing calculated financial indicators.
         """
         expr = "cvm_id == @self._cvm_id and is_consolidated == @self._is_consolidated"
-        dfi = ind.get_indicators().query(expr)
-        dfo = ind.format_indicators(dfi, unit=self._acc_unit)
+        df = dt.INDICATORS_DF.query(expr)
+        df = ic.format_indicators(df, unit=self._acc_unit)
         # Columns cvm_id and is_consolidated are redundant for the Company class
-        dfo.drop(columns=["cvm_id", "is_consolidated"], inplace=True)
+        df.drop(columns=["cvm_id", "is_consolidated"], inplace=True)
         # Show only the selected number of years
         if num_years > 0:
-            dfo = dfo[dfo.columns[-num_years:]].copy()
+            df = df[df.columns[-num_years:]].copy()
 
-        return dfo
+        return df
