@@ -194,6 +194,10 @@ The Company Class allows you to easily access financial data from Brazilian comp
 | operating_margin          |      0.465 |      0.458 |      0.452 |
 | net_margin                |      0.236 |      0.294 |      0.285 |
 | eps                       |      8.180 |     14.440 |     13.950 |
+<<<<<<< HEAD
+=======
+
+>>>>>>> 09ed54610af5e9d61b25dcb3dc8f9157c36a4b81
 ---
 
 P.S.: All contributors are welcome, from beginner to advanced.
