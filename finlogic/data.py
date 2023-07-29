@@ -22,6 +22,7 @@ LANGUAGE_DATA_URL = (
 FINANCIALS_DF = pd.DataFrame()
 TRADES_DF = pd.DataFrame()
 LANGUAGE_DF = pd.DataFrame()
+INDICATORS_DF = pd.DataFrame()
 
 
 def load(is_traded: bool = True, min_volume: int = 100_000):
@@ -161,7 +162,10 @@ def search_company(
 
 
 def rank(
-    segment: str = None, n: int = 10, rank_by: str = "operating_margin"
+    segment: str = None,
+    n: int = 10,
+    rank_by: str = "operating_margin",
+    is_consolidated: bool = True,
 ) -> pd.DataFrame:
     """Rank companies by a given indicator.
 
@@ -182,20 +186,25 @@ def rank(
     """
     show_cols = [
         "name_id",
-        "cvm_id",
         "most_traded_stock",
-        "segment",
+        "cvm_id",
         "is_restructuring",
+        "is_consolidated",
+        "segment",
         "period_end",
         rank_by,
     ]
     df = (
-        ind.get_indicators()
-        .sort_values(by=["cvm_id", "period_end", "is_consolidated"], ignore_index=True)
-        # .query("cvm_id == 922")
+        FINANCIALS_DF.sort_values(
+            by=["cvm_id", "period_end", "is_consolidated"], ignore_index=True
+        )
         .drop_duplicates(subset=["cvm_id"], keep="last")
         .merge(TRADES_DF, on="cvm_id")
-        .query("segment.str.contains(@segment)")
+        .merge(
+            INDICATORS_DF[["cvm_id", rank_by, "is_consolidated", "period_end"]],
+            on=["cvm_id", "period_end", "is_consolidated"],
+        )
+        .query("segment.str.contains(@segment) and is_consolidated == @is_consolidated")
         .sort_values(by=[rank_by], ascending=False, ignore_index=True)
         .head(n)[show_cols]
     )
