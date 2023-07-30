@@ -93,6 +93,23 @@ fl.search_company(search_by="segment", search_value="electric")
 | ENGIE BRASIL ENERGIA S.A.              |  17329 | 02.474.103/0001-19 | electric utilities | False            | EGIE3             |
 ...
 
+```python
+# Rank companies by a given indicator:
+fl.rank(segment='electric utilities', rank_by='roic')
+```
+| name_id                                           | most_traded_stock | cvm_id | is_restructuring | is_consolidated | segment            | period_end |     roic |
+|:--------------------------------------------------|:------------------|-------:|:-----------------|:----------------|:-------------------|:-----------|---------:|
+| CPFL ENERGIA S.A.                                 | CPFE3             |  18660 | False            | True            | electric utilities | 2023-03-31 | 0.194192 |
+| ENGIE BRASIL ENERGIA S.A.                         | EGIE3             |  17329 | False            | True            | electric utilities | 2023-03-31 | 0.164053 |
+| CIA ENERGETICA DE MINAS GERAIS - CEMIG            | CMIG4             |   2453 | False            | True            | electric utilities | 2023-03-31 | 0.133991 |
+| CENTRAIS ELET DE SANTA CATARINA S.A.              | CLSC4             |   2461 | False            | True            | electric utilities | 2023-03-31 | 0.121432 |
+| ENERGISA S.A.                                     | ENGI11            |  15253 | False            | True            | electric utilities | 2023-03-31 | 0.119336 |
+| CTEEP - CIA TRANSMISSÃO ENERGIA ELÉTRICA PAULISTA | TRPL4             |  18376 | False            | True            | electric utilities | 2023-03-31 | 0.106645 |
+| TRANSMISSORA ALIANÇA DE ENERGIA ELÉTRICA S.A.     | TAEE11            |  20257 | False            | True            | electric utilities | 2023-03-31 | 0.106197 |
+| NEOENERGIA S.A.                                   | NEOE3             |  15539 | False            | True            | electric utilities | 2023-06-30 | 0.094746 |
+| ALUPAR INVESTIMENTO S/A                           | ALUP11            |  21490 | False            | True            | electric utilities | 2023-03-31 | 0.087673 |
+| EQUATORIAL ENERGIA S.A.                           | EQTL3             |  20010 | False            | True            | electric utilities | 2023-03-31 | 0.081835 |
+
 ### The Company Class
 
 The Company Class allows you to easily access financial data from Brazilian companies. All values are in local currency (Real).
