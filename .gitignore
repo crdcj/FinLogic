@@ -1,0 +1,16 @@
+__pycache__/
+dist/
+build/
+finlogic/data/
+dev/
+venv/
+.venv/
+.vscode/
+finlogic.egg-info/
+# Jupyter Notebook extensions
+*.ipynb
+debug*
+# PDM files
+pdm.*
+.pdm*
+data/
