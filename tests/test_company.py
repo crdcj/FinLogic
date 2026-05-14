@@ -1,5 +1,7 @@
-import finlogic as fl
+import polars as pl
 import pytest
+
+import finlogic as fl
 
 fl.load()
 
@@ -40,9 +42,15 @@ def test_report():
 
     petro_report = petro_con.report(report_type="assets")
     # Get Total Assets
-    assets_2009 = round(petro_report.query("acc_code == '1'")["2009-12-31"][0], 3)
-    assets_2015 = round(petro_report.query("acc_code == '1'")["2015-12-31"][0], 3)
-    assets_2020 = round(petro_report.query("acc_code == '1'")["2020-12-31"][0], 3)
+    assets_2009 = round(
+        petro_report.filter(pl.col("acc_code") == "1")["2009-12-31"][0], 3
+    )
+    assets_2015 = round(
+        petro_report.filter(pl.col("acc_code") == "1")["2015-12-31"][0], 3
+    )
+    assets_2020 = round(
+        petro_report.filter(pl.col("acc_code") == "1")["2020-12-31"][0], 3
+    )
     # Check the reports
     assert assets_2009 == 350.419
     assert assets_2015 == 900.135
@@ -57,13 +65,33 @@ def test_indicators():
     petro_indicators_sep = petro_sep.indicators()
     petro_indicators_con = petro_con.indicators()
     # Get the indicators (rounded to 4 decimals)
-    revenues_2009_sep = round(petro_indicators_sep.at["revenues", "2009-12-31"], 4)
-    total_debt_2015_sep = round(petro_indicators_sep.at["total_debt", "2015-12-31"], 4)
-    roic_2021_sep = round(petro_indicators_sep.at["roic", "2021-12-31"], 4)
+    revenues_2009_sep = round(
+        petro_indicators_sep.filter(pl.col("indicator") == "revenues")["2009-12-31"][0],
+        4,
+    )
+    total_debt_2015_sep = round(
+        petro_indicators_sep.filter(pl.col("indicator") == "total_debt")["2015-12-31"][
+            0
+        ],
+        4,
+    )
+    roic_2021_sep = round(
+        petro_indicators_sep.filter(pl.col("indicator") == "roic")["2021-12-31"][0], 4
+    )
     # Get the indicators (rounded to 4 decimals)
-    revenues_2009_con = round(petro_indicators_con.at["revenues", "2009-12-31"], 4)
-    total_debt_2015_con = round(petro_indicators_con.at["total_debt", "2015-12-31"], 4)
-    roic_2021_con = round(petro_indicators_con.at["roic", "2021-12-31"], 4)
+    revenues_2009_con = round(
+        petro_indicators_con.filter(pl.col("indicator") == "revenues")["2009-12-31"][0],
+        4,
+    )
+    total_debt_2015_con = round(
+        petro_indicators_con.filter(pl.col("indicator") == "total_debt")["2015-12-31"][
+            0
+        ],
+        4,
+    )
+    roic_2021_con = round(
+        petro_indicators_con.filter(pl.col("indicator") == "roic")["2021-12-31"][0], 4
+    )
     # Check the indicators
     assert roic_2021_sep == 0.1512
     assert revenues_2009_sep == 134.0339

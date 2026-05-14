@@ -10,7 +10,7 @@ requires-python = ">=3.14"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
-keywords = ["pandas", "cvm", "finance", "investment", "accounting"]
+keywords = ["polars", "cvm", "finance", "investment", "accounting"]
 authors = [
     {name = "Carlos Carvalho", email = "cr.cj@outlook.com"}
 ]
@@ -20,7 +20,7 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-    "pandas>=2.0.0",
+    "polars>=1.0.0",
 ]
 
 [dependency-groups]

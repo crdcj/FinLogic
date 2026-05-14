@@ -8,7 +8,7 @@ information about the database itself.
 
 from typing import Literal
 
-import pandas as pd
+import polars as pl
 
 from . import indicators as ind
 
@@ -19,10 +19,10 @@ TRADED_FINANCIALS_URL = f"{DATA_REPO}traded_companies_financials.csv.gz"
 NOT_TRADED_FINANCIALS_URL = f"{DATA_REPO}not_traded_companies_financials.csv.gz"
 LANGUAGE_DATA_URL = f"{DATA_REPO}pten_df.csv.gz"
 
-FINANCIALS_DF = pd.DataFrame()
-TRADES_DF = pd.DataFrame()
-LANGUAGE_DF = pd.DataFrame()
-INDICATORS_DF = pd.DataFrame()
+FINANCIALS_DF = pl.DataFrame()
+TRADES_DF = pl.DataFrame()
+LANGUAGE_DF = pl.DataFrame()
+INDICATORS_DF = pl.DataFrame()
 
 
 def load(is_traded: bool = True, min_volume: int = 100_000):
@@ -42,26 +42,29 @@ def load(is_traded: bool = True, min_volume: int = 100_000):
     global TRADES_DF
     global FINANCIALS_DF
     print('✔ Loading "language" data...')
-    LANGUAGE_DF = pd.read_csv(LANGUAGE_DATA_URL)
+    LANGUAGE_DF = pl.read_csv(LANGUAGE_DATA_URL)
     print("✔ Loading trading data...")
-    TRADES_DF = pd.read_csv(TRADE_DATA_URL)
+    TRADES_DF = pl.read_csv(TRADE_DATA_URL)
     print("✔ Loading financials data...")
     date_cols = ["period_begin", "period_end"]
-    FINANCIALS_DF = pd.read_csv(TRADED_FINANCIALS_URL, parse_dates=date_cols)
+    FINANCIALS_DF = pl.read_csv(TRADED_FINANCIALS_URL).with_columns(
+        [pl.col(c).str.to_date() for c in date_cols]
+    )
     if not is_traded:
-        df_not_traded = pd.read_csv(NOT_TRADED_FINANCIALS_URL, parse_dates=date_cols)
-        FINANCIALS_DF = pd.concat([FINANCIALS_DF, df_not_traded], ignore_index=True)
-    TRADES_DF.query("volume >= @min_volume", inplace=True)
-    traded_cvm_ids = TRADES_DF["cvm_id"].unique()  # noqa
-    FINANCIALS_DF.query("cvm_id in @traded_cvm_ids", inplace=True)
-    FINANCIALS_DF = FINANCIALS_DF.reset_index(drop=True)
+        df_not_traded = pl.read_csv(NOT_TRADED_FINANCIALS_URL).with_columns(
+            [pl.col(c).str.to_date() for c in date_cols]
+        )
+        FINANCIALS_DF = pl.concat([FINANCIALS_DF, df_not_traded])
+    TRADES_DF = TRADES_DF.filter(pl.col("volume") >= min_volume)
+    traded_cvm_ids = TRADES_DF["cvm_id"].to_list()
+    FINANCIALS_DF = FINANCIALS_DF.filter(pl.col("cvm_id").is_in(traded_cvm_ids))
     print("✔ Building indicators data...")
     global INDICATORS_DF
     INDICATORS_DF = ind.build_indicators(FINANCIALS_DF)
     print("✔ FinLogic is ready!")
 
 
-def info() -> pd.DataFrame:
+def info() -> pl.DataFrame:
     """Print a concise summary of FinLogic available data.
 
     This function returns a dataframe containing main information about
@@ -76,43 +79,35 @@ def info() -> pd.DataFrame:
 
     Returns: None
     """
-    info = {}
-    if FINANCIALS_DF.empty:
-        return pd.DataFrame()
+    if FINANCIALS_DF.is_empty():
+        return pl.DataFrame()
 
-    info["data_url"] = f"{TRADED_FINANCIALS_URL}"
-    data_size = (
-        FINANCIALS_DF.memory_usage(deep=True).sum()
-        + TRADES_DF.memory_usage(deep=True).sum()
-    )
-    info["memory_usage"] = f"{data_size / 1024**2:.1f} MB"
-    # info["updated_on"] = db_last_modified.strftime("%Y-%m-%d %H:%M:%S")
-
-    info["accounting_entries"] = FINANCIALS_DF.shape[0]
-
+    data_size = FINANCIALS_DF.estimated_size() + TRADES_DF.estimated_size()
     report_cols = ["cvm_id", "is_annual", "period_end"]
-    info["number_of_reports"] = FINANCIALS_DF[report_cols].drop_duplicates().shape[0]
-    info["first_report"] = FINANCIALS_DF["period_end"].min().strftime("%Y-%m-%d")
-    info["last_report"] = FINANCIALS_DF["period_end"].max().strftime("%Y-%m-%d")
 
-    info["number_of_companies"] = FINANCIALS_DF["cvm_id"].nunique()
+    info_data = {
+        "data_url": TRADED_FINANCIALS_URL,
+        "memory_usage": f"{data_size / 1024**2:.1f} MB",
+        "accounting_entries": str(FINANCIALS_DF.height),
+        "number_of_reports": str(FINANCIALS_DF.select(report_cols).unique().height),
+        "first_report": str(FINANCIALS_DF["period_end"].min()),
+        "last_report": str(FINANCIALS_DF["period_end"].max()),
+        "number_of_companies": str(FINANCIALS_DF["cvm_id"].n_unique()),
+    }
+    return pl.DataFrame(
+        {"key": list(info_data.keys()), "FinLogic Info": list(info_data.values())}
+    )
 
-    s = pd.Series(info)
-    s.name = "FinLogic Info"
 
-    return s.to_frame()
-
-
-def search_segment(search_value: str):
-    series = TRADES_DF["segment"].drop_duplicates().sort_values(ignore_index=True)
-    mask = series.str.contains(search_value)
-    return series[mask].reset_index(drop=True)
+def search_segment(search_value: str) -> pl.Series:
+    series = TRADES_DF["segment"].unique().sort()
+    return series.filter(series.str.contains(search_value))
 
 
 def search_company(
     search_value: str,
     search_by: Literal["name_id", "cvm_id", "tax_id", "segment"] = "name_id",
-) -> pd.DataFrame:
+) -> pl.DataFrame:
     """Search for a company name in FinLogic Database.
 
     This function searches the specified column in the FinLogic Database for
@@ -126,25 +121,25 @@ def search_company(
             values are 'name_id', 'cvm_id', and 'tax_id'. Defaults to 'name_id'.
 
     Returns:
-        pd.DataFrame: A DataFrame containing the search results, with columns
+        pl.DataFrame: A DataFrame containing the search results, with columns
             'name_id', 'cvm_id', and 'tax_id' for each unique company that
             matches the search criteria.
     """
     search_cols = ["name_id", "cvm_id", "tax_id"]
-    df = FINANCIALS_DF[search_cols].drop_duplicates(
-        subset=["cvm_id"], ignore_index=True
+    df = (
+        FINANCIALS_DF.select(search_cols)
+        .unique(subset=["cvm_id"], maintain_order=True)
+        .join(TRADES_DF, on="cvm_id")
     )
-    df = pd.merge(df, TRADES_DF, on="cvm_id")
     match search_by:
         case "name_id":
-            # Company name is stored in uppercase in the database
-            df.query(f"name_id.str.contains('{search_value.upper()}')", inplace=True)
+            df = df.filter(pl.col("name_id").str.contains(search_value.upper()))
         case "cvm_id":
-            df.query(f"cvm_id == {search_value}", inplace=True)
+            df = df.filter(pl.col("cvm_id") == int(search_value))
         case "tax_id":
-            df.query(f"tax_id == '{search_value}'", inplace=True)
+            df = df.filter(pl.col("tax_id") == search_value)
         case "segment":
-            df.query(f"segment.str.contains('{search_value}')", inplace=True)
+            df = df.filter(pl.col("segment").str.contains(search_value))
         case _:
             raise ValueError("Invalid value for 'search_by' argument.")
 
@@ -156,7 +151,7 @@ def search_company(
         "is_restructuring",
         "most_traded_stock",
     ]
-    return df[show_cols].reset_index(drop=True)
+    return df.select(show_cols)
 
 
 def rank(
@@ -164,7 +159,7 @@ def rank(
     n: int = 10,
     rank_by: str = "operating_margin",
     is_consolidated: bool = True,
-) -> pd.DataFrame:
+) -> pl.DataFrame:
     """Rank companies by a given indicator.
 
     This function returns a DataFrame containing the top n companies in the
@@ -192,19 +187,20 @@ def rank(
         "period_end",
         rank_by,
     ]
+    seg_filter = (
+        pl.lit(True) if segment is None else pl.col("segment").str.contains(segment)
+    )
     df = (
-        FINANCIALS_DF.sort_values(
-            by=["cvm_id", "period_end", "is_consolidated"], ignore_index=True
-        )
-        .drop_duplicates(subset=["cvm_id"], keep="last")
-        .merge(TRADES_DF, on="cvm_id")
-        .merge(
-            INDICATORS_DF[["cvm_id", rank_by, "is_consolidated", "period_end"]],
+        FINANCIALS_DF.sort(["cvm_id", "period_end", "is_consolidated"])
+        .unique(subset=["cvm_id"], keep="last", maintain_order=True)
+        .join(TRADES_DF, on="cvm_id")
+        .join(
+            INDICATORS_DF.select(["cvm_id", rank_by, "is_consolidated", "period_end"]),
             on=["cvm_id", "period_end", "is_consolidated"],
         )
-        .query("segment.str.contains(@segment) and is_consolidated == @is_consolidated")
-        .sort_values(by=[rank_by], ascending=False, ignore_index=True)
-        .head(n)[show_cols]
+        .filter(seg_filter & (pl.col("is_consolidated") == is_consolidated))
+        .sort(rank_by, descending=True)
+        .head(n)
+        .select(show_cols)
     )
-
     return df

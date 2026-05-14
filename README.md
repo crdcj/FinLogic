@@ -1,5 +1,5 @@
 [![PyPI version](https://img.shields.io/pypi/v/finlogic.svg)](https://pypi.python.org/pypi/finlogic)
-[![Made with Python](https://img.shields.io/badge/Python->=3.10-blue?logo=python&logoColor=white)](https://python.org "Go to Python homepage")
+[![Made with Python](https://img.shields.io/badge/Python->=3.14-blue?logo=python&logoColor=white)](https://python.org "Go to Python homepage")
 [![License](https://img.shields.io/badge/License-MIT-blue)](#license)
 [![Code Style: black](https://img.shields.io/badge/code%20style-black-blue.svg)](https://github.com/psf/black)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/crdcj/FinLogic/blob/main/examples/finlogic_quickstart.ipynb)
@@ -30,8 +30,8 @@ pip install finlogic
 
 ### Requirements
 
-- [Python](https://www.python.org) \>= 3.10
-- [Pandas](https://github.com/pydata/pandas) \>= 1.5.0
+- [Python](https://www.python.org) \>= 3.14
+- [Polars](https://github.com/pola-rs/polars) \>= 1.0.0
 
 ---
 
@@ -47,10 +47,10 @@ The 'load' function is responsible for downloading and reading the financial dat
 # Load the accounting data in memory:
 >>> fl.load()
 ```
-    Loading "language" data...
-    Loading trading data...
-    Loading financials data...
-    Building indicators data...
+    ✔ Loading "language" data...
+    ✔ Loading trading data...
+    ✔ Loading financials data...
+    ✔ Building indicators data...
     ✔ FinLogic is ready!
 
 ```python

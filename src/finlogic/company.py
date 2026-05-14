@@ -23,7 +23,7 @@ RuntimeWarning:
 
 from typing import Literal
 
-import pandas as pd
+import polars as pl
 
 from . import data as dt
 from . import indicators as ic
@@ -108,15 +108,22 @@ class Company:
     @identifier.setter
     def identifier(self, identifier: int | str):
         # Create custom data frame for ID selection
-        df = (
-            dt.FINANCIALS_DF[["cvm_id", "tax_id", "name_id"]]
-            .query("cvm_id == @identifier or tax_id == @identifier")
-            .drop_duplicates(ignore_index=True)
-        )
-        if not df.empty:
-            self._cvm_id = df.loc[0, "cvm_id"]
-            self.tax_id = df.loc[0, "tax_id"]
-            self.name_id = df.loc[0, "name_id"]
+        if isinstance(identifier, int):
+            df = (
+                dt.FINANCIALS_DF.select(["cvm_id", "tax_id", "name_id"])
+                .filter(pl.col("cvm_id") == identifier)
+                .unique()
+            )
+        else:
+            df = (
+                dt.FINANCIALS_DF.select(["cvm_id", "tax_id", "name_id"])
+                .filter(pl.col("tax_id") == identifier)
+                .unique()
+            )
+        if not df.is_empty():
+            self._cvm_id = df["cvm_id"][0]
+            self.tax_id = df["tax_id"][0]
+            self.name_id = df["name_id"][0]
             self._identifier = identifier
         else:
             raise KeyError(f"Company 'identifier' {identifier} not found.")
@@ -259,96 +266,92 @@ class Company:
         This method creates a dataframe with the company's financial
         statements.
         """
-        expr = "cvm_id == @self._cvm_id and is_consolidated == @self._is_consolidated"
-        df = dt.FINANCIALS_DF.query(expr).reset_index(drop=True)
+        df = dt.FINANCIALS_DF.filter(
+            (pl.col("cvm_id") == self._cvm_id)
+            & (pl.col("is_consolidated") == self._is_consolidated)
+        )
 
-        # Convert category columns back to string
-        columns = df.columns
-        cat_cols = [c for c in columns if df[c].dtype == "category"]
-        df[cat_cols] = df[cat_cols].astype("string")
-
-        # Adjust for unit change only where it is not EPS (acc_code 8...)
-        mask = ~df["acc_code"].str.startswith("3.99")
-        df.loc[mask, "acc_value"] = df.loc[mask, "acc_value"] / self._acc_unit
+        # Adjust for unit change only where it is not EPS (acc_code 3.99...)
+        df = df.with_columns(
+            pl.when(~pl.col("acc_code").str.starts_with("3.99"))
+            .then(pl.col("acc_value") / self._acc_unit)
+            .otherwise(pl.col("acc_value"))
+            .alias("acc_value")
+        )
 
         self._first_period = df["period_end"].min()
         self._last_period = df["period_end"].max()
 
         # Not necessarily there will be a quarterly report for the last period
-        self._last_annual = df.query("is_annual")["period_end"].max()
+        self._last_annual = df.filter(pl.col("is_annual"))["period_end"].max()
 
         if self._last_period == self._last_annual:
             self._last_period_type = "annual"
             self._last_quarterly = None
         else:
             self._last_period_type = "quarterly"
-            self._last_quarterly = df.query("not is_annual")["period_end"].max()
+            self._last_quarterly = df.filter(~pl.col("is_annual"))["period_end"].max()
 
         # Drop columns that are already company attributes or will not be used
-        df.drop(
-            columns=["name_id", "cvm_id", "tax_id", "is_consolidated"],
-            inplace=True,
-        )
+        self._df = df.drop(["name_id", "cvm_id", "tax_id", "is_consolidated"])
 
-        # Set company data frame
-        self._df = df
-
-    def info(self) -> pd.DataFrame | None:
+    def info(self) -> pl.DataFrame | None:
         """Print a concise summary of a company."""
-        if self._df.empty:
+        if self._df.is_empty():
             acc_method = "consolidated" if self._is_consolidated else "separate"
             print("There is no avaible accounting data for:")
             print(f"    cvm_id = {self._cvm_id} and accounting method = {acc_method}")
             return None
         company_info = {
             "Name": self.name_id,
-            "CVM ID": self._cvm_id,
+            "CVM ID": str(self._cvm_id),
             "Fiscal ID (CNPJ)": self.tax_id,
-            "Total Accounting Rows": len(self._df.index),
+            "Total Accounting Rows": str(len(self._df)),
             "Selected Accounting Method": "consolidated"
             if self._is_consolidated
             else "separate",
-            "Selected Accounting Unit": self._acc_unit,
-            "Selected Tax Rate": self._tax_rate,
-            "First Report": self._first_period.strftime("%Y-%m-%d"),
-            "Last Report": self._last_period.strftime("%Y-%m-%d"),
+            "Selected Accounting Unit": str(self._acc_unit),
+            "Selected Tax Rate": str(self._tax_rate),
+            "First Report": str(self._first_period),
+            "Last Report": str(self._last_period),
         }
-        s = pd.Series(company_info)
-        s.name = "Company Info"
-        return s.to_frame()
+        return pl.DataFrame(
+            {
+                "key": list(company_info.keys()),
+                "Company Info": list(company_info.values()),
+            }
+        )
 
     @staticmethod
-    def _build_report_index(dfi: pd.DataFrame) -> pd.DataFrame:
+    def _build_report_index(dfi: pl.DataFrame) -> pl.DataFrame:
         """Build the index for the report. This function is used by the
         _build_report function. The index is built from the annual reports
         "acc_code" works as a primary key. Other columns set the preference order
         """
-        df = (
-            dfi[["acc_code", "acc_name", "period_end"]]
-            .sort_values(by=["acc_code", "period_end"])
-            .drop_duplicates(subset=["acc_code"], keep="last", ignore_index=True)[
-                ["acc_code", "acc_name"]
-            ]
+        return (
+            dfi.select(["acc_code", "acc_name", "period_end"])
+            .sort(["acc_code", "period_end"])
+            .unique(subset=["acc_code"], keep="last", maintain_order=True)
+            .select(["acc_code", "acc_name"])
         )
-        return df
 
-    def _build_report(self, dfi: pd.DataFrame) -> pd.DataFrame:
+    def _build_report(self, dfi: pl.DataFrame) -> pl.DataFrame:
         # Start "dfo" with the index
         dfo = self._build_report_index(dfi)
-        year_cols = ["acc_code", "acc_value"]
-        periods = sorted(dfi["period_end"].drop_duplicates())
+        periods = sorted(dfi["period_end"].unique().to_list())
         for period in periods:
-            df_year = dfi.query("period_end == @period")[year_cols].copy()
+            df_year = dfi.filter(pl.col("period_end") == period).select(
+                ["acc_code", "acc_value"]
+            )
             period_str = period.strftime("%Y-%m-%d")
             if period == self._last_period and self._last_period_type == "quarterly":
                 period_str += " ltm"
-            df_year.rename(columns={"acc_value": period_str}, inplace=True)
-            dfo = pd.merge(dfo, df_year, how="left", on=["acc_code"])
-        dfo.fillna(0, inplace=True)
-        return dfo.sort_values("acc_code", ignore_index=True)
+            df_year = df_year.rename({"acc_value": period_str})
+            dfo = dfo.join(df_year, on="acc_code", how="left")
+        return dfo.fill_null(0).sort("acc_code")
 
     @staticmethod
-    def _remove_not_last_quarters(df: pd.DataFrame) -> pd.DataFrame:
+    def _remove_not_last_quarters(df: pl.DataFrame) -> pl.DataFrame:
         """Remove quarters that are not the last one.
 
         This function removes quarters that are not the last one.
@@ -361,11 +364,8 @@ class Company:
             Dataframe with the financial statements without the quarters that are not
             the last one.
         """
-        mask1 = ~df["is_annual"]
-        mask2 = df["period_end"] != df["period_end"].max()
-        mask = mask1 & mask2
-        df = df[~mask].reset_index(drop=True)
-        return df
+        max_period = df["period_end"].max()
+        return df.filter(pl.col("is_annual") | (pl.col("period_end") == max_period))
 
     def report(
         self,
@@ -387,7 +387,7 @@ class Company:
         ],
         acc_level: Literal[0, 1, 2, 3, 4] = 0,
         num_years: int = 0,
-    ) -> pd.DataFrame:
+    ) -> pl.DataFrame:
         """Generate an accounting report for the company.
 
         This function generates a report representing one of the financial
@@ -422,34 +422,37 @@ class Company:
                 (all years).
 
         Returns:
-            pd.DataFrame: Generated financial report as a pandas DataFrame.
+            pl.DataFrame: Generated financial report as a Polars DataFrame.
 
         Raises:
             ValueError: If some argument is invalid.
         """
-        # Copy company dataframe to avoid changing it
-        df = self._df.copy()
-        df = self._remove_not_last_quarters(df)
-        # Check input arguments.
+        df = self._remove_not_last_quarters(self._df)
         if acc_level not in [0, 1, 2, 3, 4]:
             raise ValueError("acc_level expects 0, 1, 2, 3 or 4")
 
         # Filter dataframe for selected acc_level
         # Example of an acc_code: "7.08.04.04" -> 4 levels and 3 dots
         if acc_level:
-            df.query(rf"acc_code.str.count('\\.') <= {acc_level - 1}", inplace=True)
+            df = df.filter(pl.col("acc_code").str.count_matches("[.]") <= acc_level - 1)
 
         # Set language
-        class MyDict(dict):
-            """Custom dictionary class to return key if key is not found."""
-
-            def __missing__(self, key):
-                return "(pt) " + key
-
         if self._language == "English":
-            _pten_dict = dict(dt.LANGUAGE_DF.values)
-            _pten_dict = MyDict(_pten_dict)
-            df["acc_name"] = df["acc_name"].map(_pten_dict)
+            cols = dt.LANGUAGE_DF.columns
+            _pten_dict = dict(
+                zip(
+                    dt.LANGUAGE_DF[cols[0]].to_list(),
+                    dt.LANGUAGE_DF[cols[1]].to_list(),
+                )
+            )
+            pt_col = pl.col("acc_name")
+            en_col = pl.col("acc_name").replace_strict(_pten_dict, default=None)
+            df = df.with_columns(
+                pl.when(en_col.is_null())
+                .then(pl.lit("(pt) ") + pt_col)
+                .otherwise(en_col)
+                .alias("acc_name")
+            )
 
         """
         Filter dataframe for selected acc_code
@@ -466,29 +469,32 @@ class Company:
             8 -> Earnings per Share
         """
         report_types = {
-            "balance_sheet": ("1", "2"),
-            "assets": ("1"),
-            "cash": ("1.01.01", "1.01.02"),
-            "current_assets": ("1.01"),
-            "non_current_assets": ("1.02"),
-            "liabilities": ("2.01", "2.02"),
-            "debt": ("2.01.04", "2.02.01"),
-            "current_liabilities": ("2.01"),
-            "non_current_liabilities": ("2.02"),
-            "liabilities_and_equity": ("2"),
-            "equity": ("2.03"),
-            "income_statement": ("3"),
-            "earnings_per_share": ("3.99"),
-            "cash_flow": ("6"),
+            "balance_sheet": ["1", "2"],
+            "assets": ["1"],
+            "cash": ["1.01.01", "1.01.02"],
+            "current_assets": ["1.01"],
+            "non_current_assets": ["1.02"],
+            "liabilities": ["2.01", "2.02"],
+            "debt": ["2.01.04", "2.02.01"],
+            "current_liabilities": ["2.01"],
+            "non_current_liabilities": ["2.02"],
+            "liabilities_and_equity": ["2"],
+            "equity": ["2.03"],
+            "income_statement": ["3"],
+            "earnings_per_share": ["3.99"],
+            "cash_flow": ["6"],
         }
-        acc_codes = report_types[report_type]  # noqa
-        df.query("acc_code.str.startswith(@acc_codes)", inplace=True)
-        df.reset_index(drop=True, inplace=True)
+        acc_codes = report_types[report_type]
+        df = df.filter(
+            pl.any_horizontal(
+                [pl.col("acc_code").str.starts_with(c) for c in acc_codes]
+            )
+        )
 
         # Show only selected years
-        all_periods = sorted(df["period_end"].drop_duplicates())
-        selected_periods = all_periods[-num_years:]  # noqa
-        df.query("period_end in @selected_periods", inplace=True)
+        all_periods = sorted(df["period_end"].unique().to_list())
+        selected_periods = all_periods[-num_years:] if num_years else all_periods
+        df = df.filter(pl.col("period_end").is_in(selected_periods))
 
         return self._build_report(df)
 
@@ -496,7 +502,7 @@ class Company:
         self,
         acc_list: list[str],
         num_years: int = 0,
-    ) -> pd.DataFrame:
+    ) -> pl.DataFrame:
         """Generate a financial report from custom list of accounting codes
 
         Args:
@@ -506,7 +512,7 @@ class Company:
                 Defaults to 0 (show all years)
 
         Returns:
-            pd.DataFrame: Generated financial report as a pandas DataFrame.
+            pl.DataFrame: Generated financial report as a Polars DataFrame.
 
         Raises:
             ValueError: If some argument is invalid.
@@ -514,14 +520,11 @@ class Company:
         df_bs = self.report("balance_sheet", num_years=num_years)
         df_is = self.report("income_statement", num_years=num_years)
         df_cf = self.report("cash_flow", num_years=num_years)
-        df = (
-            pd.concat([df_bs, df_is, df_cf])
-            .query(f"acc_code == {acc_list}")
-            .reset_index(drop=True)
+        return pl.concat([df_bs, df_is, df_cf]).filter(
+            pl.col("acc_code").is_in(acc_list)
         )
-        return df
 
-    def indicators(self, num_years: int = 0) -> pd.DataFrame:
+    def indicators(self, num_years: int = 0) -> pl.DataFrame:
         """Calculate the company main operating indicators.
 
         Args:
@@ -529,15 +532,17 @@ class Company:
                 all available years. Defaults to 0.
 
         Returns:
-            pd.DataFrame: Dataframe containing calculated financial indicators.
+            pl.DataFrame: Dataframe containing calculated financial indicators.
         """
-        expr = "cvm_id == @self._cvm_id and is_consolidated == @self._is_consolidated"
-        df = dt.INDICATORS_DF.query(expr)
+        df = dt.INDICATORS_DF.filter(
+            (pl.col("cvm_id") == self._cvm_id)
+            & (pl.col("is_consolidated") == self._is_consolidated)
+        )
         df = ic.format_indicators(df, unit=self._acc_unit)
         # Columns cvm_id and is_consolidated are redundant for the Company class
-        df.drop(columns=["cvm_id", "is_consolidated"], inplace=True)
+        df = df.drop(["cvm_id", "is_consolidated"])
         # Show only the selected number of years
         if num_years > 0:
-            df = df[df.columns[-num_years:]].copy()
-
+            period_cols = df.columns[1:]  # everything after "indicator"
+            df = df.select(["indicator"] + list(period_cols[-num_years:]))
         return df
