@@ -6,11 +6,10 @@ dev/
 venv/
 .venv/
 .vscode/
-finlogic.egg-info/
+
 # Jupyter Notebook extensions
 *.ipynb
 debug*
-# PDM files
-pdm.*
-.pdm*
 data/
+
+uv.lock
