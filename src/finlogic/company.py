@@ -7,18 +7,9 @@ Classes:
     users to generate financial reports and indicators.
 
 Main variables:
-    cfg.DF  memory dataframe with all accounting data
     _df     company dataframe (protected)
     dfi     function input dataframe
     dfo     function output dataframe
-
-RuntimeWarning:
-    Pandas query + numexpr module -> Engine has switched to 'python' because
-    numexpr does not support extension array dtypes (category not supported
-    yet). Please set your engine to python manually. That means that the query
-    method has to use engine='python' to work with category dtype. N.B. Only
-    FinLogic Dataframe uses category dtype for efficiency.
-
 """
 
 from typing import Literal
@@ -77,11 +68,6 @@ class Company:
         # Only set _df after identifier, is_consolidated and acc_unit are setted
         self._set_df()
 
-    @staticmethod
-    def convert_to_sl(expr: str) -> str:
-        """Converts a string to a single line."""
-        return expr.replace("\n", "")
-
     @property
     def identifier(self) -> int | str:
         """Set a unique identifier to select the company in FinLogic Database.
@@ -110,13 +96,13 @@ class Company:
         # Create custom data frame for ID selection
         if isinstance(identifier, int):
             df = (
-                dt.FINANCIALS_DF.select(["cvm_id", "tax_id", "name_id"])
+                dt.FINANCIALS_DF.select("cvm_id", "tax_id", "name_id")
                 .filter(pl.col("cvm_id") == identifier)
                 .unique()
             )
         else:
             df = (
-                dt.FINANCIALS_DF.select(["cvm_id", "tax_id", "name_id"])
+                dt.FINANCIALS_DF.select("cvm_id", "tax_id", "name_id")
                 .filter(pl.col("tax_id") == identifier)
                 .unique()
             )
@@ -148,10 +134,9 @@ class Company:
 
     @is_consolidated.setter
     def is_consolidated(self, value: bool):
-        if type(value) is bool:
-            self._is_consolidated = value
-        else:
+        if not isinstance(value, bool):
             raise ValueError("Company 'is_consolidated' value is invalid")
+        self._is_consolidated = value
         # If object was already initialized, reset company dataframe
         if self._initialized:
             self._set_df()
@@ -252,13 +237,13 @@ class Company:
 
     @language.setter
     def language(self, language: Literal["english", "portuguese"]):
-        # Supported languages
-        list_languages = ["english", "portuguese"]
-        if language.lower() in list_languages:
-            self._language = language.capitalize()
-        else:
-            sup_lang = f"Supported languages: {', '.join(list_languages)}"
-            raise KeyError(f"'{language}' not supported. {sup_lang}")
+        match language.lower():
+            case "english" | "portuguese":
+                self._language = language.capitalize()
+            case _:
+                raise KeyError(
+                    f"'{language}' not supported. Supported languages: english, portuguese"
+                )
 
     def _set_df(self) -> None:
         """Sets the company data frame.
@@ -267,8 +252,8 @@ class Company:
         statements.
         """
         df = dt.FINANCIALS_DF.filter(
-            (pl.col("cvm_id") == self._cvm_id)
-            & (pl.col("is_consolidated") == self._is_consolidated)
+            pl.col("cvm_id") == self._cvm_id,
+            pl.col("is_consolidated") == self._is_consolidated,
         )
 
         # Adjust for unit change only where it is not EPS (acc_code 3.99...)
@@ -293,7 +278,7 @@ class Company:
             self._last_quarterly = df.filter(~pl.col("is_annual"))["period_end"].max()
 
         # Drop columns that are already company attributes or will not be used
-        self._df = df.drop(["name_id", "cvm_id", "tax_id", "is_consolidated"])
+        self._df = df.drop("name_id", "cvm_id", "tax_id", "is_consolidated")
 
     def info(self) -> pl.DataFrame | None:
         """Print a concise summary of a company."""
@@ -329,10 +314,10 @@ class Company:
         "acc_code" works as a primary key. Other columns set the preference order
         """
         return (
-            dfi.select(["acc_code", "acc_name", "period_end"])
-            .sort(["acc_code", "period_end"])
+            dfi.select("acc_code", "acc_name", "period_end")
+            .sort("acc_code", "period_end")
             .unique(subset=["acc_code"], keep="last", maintain_order=True)
-            .select(["acc_code", "acc_name"])
+            .select("acc_code", "acc_name")
         )
 
     def _build_report(self, dfi: pl.DataFrame) -> pl.DataFrame:
@@ -341,7 +326,7 @@ class Company:
         periods = sorted(dfi["period_end"].unique().to_list())
         for period in periods:
             df_year = dfi.filter(pl.col("period_end") == period).select(
-                ["acc_code", "acc_value"]
+                "acc_code", "acc_value"
             )
             period_str = period.strftime("%Y-%m-%d")
             if period == self._last_period and self._last_period_type == "quarterly":
@@ -535,14 +520,14 @@ class Company:
             pl.DataFrame: Dataframe containing calculated financial indicators.
         """
         df = dt.INDICATORS_DF.filter(
-            (pl.col("cvm_id") == self._cvm_id)
-            & (pl.col("is_consolidated") == self._is_consolidated)
+            pl.col("cvm_id") == self._cvm_id,
+            pl.col("is_consolidated") == self._is_consolidated,
         )
         df = ic.format_indicators(df, unit=self._acc_unit)
         # Columns cvm_id and is_consolidated are redundant for the Company class
-        df = df.drop(["cvm_id", "is_consolidated"])
+        df = df.drop("cvm_id", "is_consolidated")
         # Show only the selected number of years
         if num_years > 0:
             period_cols = df.columns[1:]  # everything after "indicator"
-            df = df.select(["indicator"] + list(period_cols[-num_years:]))
+            df = df.select(["indicator"] + period_cols[-num_years:])
         return df

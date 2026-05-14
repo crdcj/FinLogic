@@ -26,7 +26,7 @@ INDICATORS_DF = pl.DataFrame()
 
 
 def load(is_traded: bool = True, min_volume: int = 100_000):
-    """Verify changes in CVM files and update Finlogic Database if necessary.
+    """Download and load financial data into memory.
 
     Args:
         is_traded (bool, optional): If True, only currently traded companies are
@@ -38,46 +38,35 @@ def load(is_traded: bool = True, min_volume: int = 100_000):
     Returns:
         None
     """
-    global LANGUAGE_DF
-    global TRADES_DF
-    global FINANCIALS_DF
+    global LANGUAGE_DF, TRADES_DF, FINANCIALS_DF, INDICATORS_DF
     print('✔ Loading "language" data...')
     LANGUAGE_DF = pl.read_csv(LANGUAGE_DATA_URL)
     print("✔ Loading trading data...")
     TRADES_DF = pl.read_csv(TRADE_DATA_URL)
     print("✔ Loading financials data...")
-    date_cols = ["period_begin", "period_end"]
     FINANCIALS_DF = pl.read_csv(TRADED_FINANCIALS_URL).with_columns(
-        [pl.col(c).str.to_date() for c in date_cols]
+        pl.col("period_begin", "period_end").str.to_date()
     )
     if not is_traded:
         df_not_traded = pl.read_csv(NOT_TRADED_FINANCIALS_URL).with_columns(
-            [pl.col(c).str.to_date() for c in date_cols]
+            pl.col("period_begin", "period_end").str.to_date()
         )
         FINANCIALS_DF = pl.concat([FINANCIALS_DF, df_not_traded])
     TRADES_DF = TRADES_DF.filter(pl.col("volume") >= min_volume)
     traded_cvm_ids = TRADES_DF["cvm_id"].to_list()
     FINANCIALS_DF = FINANCIALS_DF.filter(pl.col("cvm_id").is_in(traded_cvm_ids))
     print("✔ Building indicators data...")
-    global INDICATORS_DF
     INDICATORS_DF = ind.build_indicators(FINANCIALS_DF)
     print("✔ FinLogic is ready!")
 
 
 def info() -> pl.DataFrame:
-    """Print a concise summary of FinLogic available data.
+    """Return a summary of FinLogic available data.
 
-    This function returns a dataframe containing main information about
-    FinLogic Database, such as the database path, file size, last update call,
-    last modified dates, size in memory, number of accounting rows, unique
-    accounting codes, companies, unique financial statements, first financial
-    statement date and last financial statement date.
-
-    Args:
-        return_dict (bool, optional): If True, returns a dictionary with the
-            database information and do not print it.
-
-    Returns: None
+    Returns:
+        pl.DataFrame: A DataFrame with keys: data_url, memory_usage,
+            accounting_entries, number_of_reports, first_report,
+            last_report, number_of_companies.
     """
     if FINANCIALS_DF.is_empty():
         return pl.DataFrame()
@@ -121,9 +110,8 @@ def search_company(
             values are 'name_id', 'cvm_id', and 'tax_id'. Defaults to 'name_id'.
 
     Returns:
-        pl.DataFrame: A DataFrame containing the search results, with columns
-            'name_id', 'cvm_id', and 'tax_id' for each unique company that
-            matches the search criteria.
+        pl.DataFrame: A DataFrame with columns 'name_id', 'cvm_id', 'tax_id',
+            'segment', 'is_restructuring', 'most_traded_stock'.
     """
     search_cols = ["name_id", "cvm_id", "tax_id"]
     df = (
@@ -191,11 +179,11 @@ def rank(
         pl.lit(True) if segment is None else pl.col("segment").str.contains(segment)
     )
     df = (
-        FINANCIALS_DF.sort(["cvm_id", "period_end", "is_consolidated"])
+        FINANCIALS_DF.sort("cvm_id", "period_end", "is_consolidated")
         .unique(subset=["cvm_id"], keep="last", maintain_order=True)
         .join(TRADES_DF, on="cvm_id")
         .join(
-            INDICATORS_DF.select(["cvm_id", rank_by, "is_consolidated", "period_end"]),
+            INDICATORS_DF.select("cvm_id", rank_by, "is_consolidated", "period_end"),
             on=["cvm_id", "period_end", "is_consolidated"],
         )
         .filter(seg_filter & (pl.col("is_consolidated") == is_consolidated))
