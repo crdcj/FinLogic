@@ -13,15 +13,15 @@ import polars as pl
 from . import indicators as ind
 
 # URLs for the data files
-DATA_REPO = "https://raw.githubusercontent.com/crdcj/finlogic-data/main/"
-TRADE_DATA_URL = f"{DATA_REPO}trades.csv.gz"
-TRADED_FINANCIALS_URL = f"{DATA_REPO}traded_companies_financials.csv.gz"
-NOT_TRADED_FINANCIALS_URL = f"{DATA_REPO}not_traded_companies_financials.csv.gz"
-LANGUAGE_DATA_URL = f"{DATA_REPO}pten_df.csv.gz"
+DATA_REPO = "https://github.com/crdcj/finlogic-data/releases/download/latest/"
+FINANCIALS_URL = f"{DATA_REPO}financials.parquet"
+TRADES_URL = f"{DATA_REPO}trades.parquet"
+LANGUAGE_DATA_URL = f"{DATA_REPO}language.parquet"
 
 FINANCIALS_DF = pl.DataFrame()
 TRADES_DF = pl.DataFrame()
 LANGUAGE_DF = pl.DataFrame()
+LANGUAGE_DICT: dict[str, str] = {}
 INDICATORS_DF = pl.DataFrame()
 
 
@@ -38,23 +38,30 @@ def load(is_traded: bool = True, min_volume: int = 100_000):
     Returns:
         None
     """
-    global LANGUAGE_DF, TRADES_DF, FINANCIALS_DF, INDICATORS_DF
-    print('✔ Loading "language" data...')
-    LANGUAGE_DF = pl.read_csv(LANGUAGE_DATA_URL)
-    print("✔ Loading trading data...")
-    TRADES_DF = pl.read_csv(TRADE_DATA_URL)
+    global TRADES_DF, FINANCIALS_DF, LANGUAGE_DF, LANGUAGE_DICT, INDICATORS_DF
     print("✔ Loading financials data...")
-    FINANCIALS_DF = pl.read_csv(TRADED_FINANCIALS_URL).with_columns(
-        pl.col("period_begin", "period_end").str.to_date()
+    cat_cols = ["name_id", "tax_id", "acc_code", "acc_name"]
+    FINANCIALS_DF = pl.read_parquet(FINANCIALS_URL).with_columns(
+        pl.col(cat_cols).cast(pl.String)
     )
-    if not is_traded:
-        df_not_traded = pl.read_csv(NOT_TRADED_FINANCIALS_URL).with_columns(
-            pl.col("period_begin", "period_end").str.to_date()
+    print("✔ Loading trading data...")
+    TRADES_DF = (
+        pl.read_parquet(TRADES_URL)
+        .filter(pl.col("volume") >= min_volume)
+        .sort("trade_date")
+        .unique(subset=["cvm_id"], keep="last", maintain_order=True)
+    )
+    if is_traded:
+        traded_cvm_ids = TRADES_DF["cvm_id"].to_list()
+        FINANCIALS_DF = FINANCIALS_DF.filter(pl.col("cvm_id").is_in(traded_cvm_ids))
+    print('✔ Loading "language" data...')
+    LANGUAGE_DF = pl.read_parquet(LANGUAGE_DATA_URL)
+    LANGUAGE_DICT = dict(
+        zip(
+            LANGUAGE_DF["pt"].to_list(),
+            LANGUAGE_DF["en"].to_list(),
         )
-        FINANCIALS_DF = pl.concat([FINANCIALS_DF, df_not_traded])
-    TRADES_DF = TRADES_DF.filter(pl.col("volume") >= min_volume)
-    traded_cvm_ids = TRADES_DF["cvm_id"].to_list()
-    FINANCIALS_DF = FINANCIALS_DF.filter(pl.col("cvm_id").is_in(traded_cvm_ids))
+    )
     print("✔ Building indicators data...")
     INDICATORS_DF = ind.build_indicators(FINANCIALS_DF)
     print("✔ FinLogic is ready!")
@@ -75,7 +82,7 @@ def info() -> pl.DataFrame:
     report_cols = ["cvm_id", "is_annual", "period_end"]
 
     info_data = {
-        "data_url": TRADED_FINANCIALS_URL,
+        "data_url": FINANCIALS_URL,
         "memory_usage": f"{data_size / 1024**2:.1f} MB",
         "accounting_entries": str(FINANCIALS_DF.height),
         "number_of_reports": str(FINANCIALS_DF.select(report_cols).unique().height),

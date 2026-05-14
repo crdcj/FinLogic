@@ -29,3 +29,14 @@ def test_search_company():
     """
     # Check results
     assert set(search_result["cvm_id"].to_list()) == {9512}
+
+
+def test_load_is_traded_false_loads_more_companies():
+    """Test that is_traded=False keeps non-traded companies in FINANCIALS_DF."""
+    fl.load(is_traded=True)
+    traded_count = data.FINANCIALS_DF["cvm_id"].n_unique()
+
+    fl.load(is_traded=False)
+    all_count = data.FINANCIALS_DF["cvm_id"].n_unique()
+
+    assert all_count > traded_count

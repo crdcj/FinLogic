@@ -57,6 +57,20 @@ def test_report():
     assert assets_2020 == 987.419
 
 
+def test_report_english_translation():
+    """Test if the English report uses the published translation data."""
+    petro_con = fl.Company(9512, is_consolidated=True, acc_unit="b", language="english")
+
+    petro_report = petro_con.report(report_type="assets", acc_level=2)
+    total_assets_name = petro_report.filter(pl.col("acc_code") == "1")["acc_name"][0]
+    current_assets_name = petro_report.filter(pl.col("acc_code") == "1.01")["acc_name"][
+        0
+    ]
+
+    assert total_assets_name == "Total Assets"
+    assert current_assets_name == "Current Assets"
+
+
 def test_indicators():
     """Test the indicators method of the Company class."""
     petro_sep = fl.Company(9512, is_consolidated=False, acc_unit="b")

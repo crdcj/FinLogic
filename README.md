@@ -12,7 +12,7 @@
 
 **FinLogic** provides a Pythonic approach to analyzing the financial data of companies listed in Brazil. The library pre-processes approximately 50 million accounting entries from the local securities market authority data repository.
 
-The extensive pre-processing stage is automated using Polars within an AWS Lambda Function, and it is scheduled to check for updates overnight. After the CVM repository data is updated and pre-processed, the job saves the cleaned data in FinLogic data folder on GitHub. This arrangement allows the library to access the data quickly and easily.
+The extensive pre-processing stage is automated using Polars within an AWS Lambda Function, and it is scheduled to check for updates overnight. After the CVM repository data is updated and pre-processed, the job publishes the cleaned datasets as release assets in `finlogic-data` on GitHub. This arrangement allows the library to access the data quickly and easily.
 
 ---
 
@@ -39,7 +39,7 @@ pip install finlogic
 
 ### Load FinLogic Data
 
-The 'load' function is responsible for downloading and reading the financial data stored on GitHub data folder.
+The `load` function downloads and reads the financial datasets published in the `finlogic-data` GitHub release.
 
 ```python
 >>> import finlogic as fl
@@ -47,9 +47,9 @@ The 'load' function is responsible for downloading and reading the financial dat
 # Load the accounting data in memory:
 >>> fl.load()
 ```
-    ✔ Loading "language" data...
-    ✔ Loading trading data...
     ✔ Loading financials data...
+    ✔ Loading trading data...
+    ✔ Loading "language" data...
     ✔ Building indicators data...
     ✔ FinLogic is ready!
 
@@ -60,7 +60,7 @@ fl.info()
 
 |                     |                    FinLogic Info |
 | :------------------ | -------------------------------: |
-| data_url            | https://raw.githubusercontent... |
+| data_url            | https://github.com/crdcj/finlogic-data/releases/download/latest/financials.parquet |
 | memory_usage        |                         255.1 MB |
 | accounting_entries  |                          755,635 |
 | number_of_reports   |                            2,635 |

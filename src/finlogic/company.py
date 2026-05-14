@@ -423,15 +423,8 @@ class Company:
 
         # Set language
         if self._language == "English":
-            cols = dt.LANGUAGE_DF.columns
-            _pten_dict = dict(
-                zip(
-                    dt.LANGUAGE_DF[cols[0]].to_list(),
-                    dt.LANGUAGE_DF[cols[1]].to_list(),
-                )
-            )
             pt_col = pl.col("acc_name")
-            en_col = pl.col("acc_name").replace_strict(_pten_dict, default=None)
+            en_col = pl.col("acc_name").replace_strict(dt.LANGUAGE_DICT, default=None)
             df = df.with_columns(
                 pl.when(en_col.is_null())
                 .then(pl.lit("(pt) ") + pt_col)
