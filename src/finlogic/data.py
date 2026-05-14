@@ -160,7 +160,7 @@ def search_company(
 
 
 def rank(
-    segment: str = None,
+    segment: str | None = None,
     n: int = 10,
     rank_by: str = "operating_margin",
     is_consolidated: bool = True,

@@ -253,7 +253,7 @@ class Company:
             sup_lang = f"Supported languages: {', '.join(list_languages)}"
             raise KeyError(f"'{language}' not supported. {sup_lang}")
 
-    def _set_df(self) -> pd.DataFrame:
+    def _set_df(self) -> None:
         """Sets the company data frame.
 
         This method creates a dataframe with the company's financial
@@ -293,7 +293,7 @@ class Company:
         # Set company data frame
         self._df = df
 
-    def info(self) -> pd.DataFrame:
+    def info(self) -> pd.DataFrame | None:
         """Print a concise summary of a company."""
         if self._df.empty:
             acc_method = "consolidated" if self._is_consolidated else "separate"
