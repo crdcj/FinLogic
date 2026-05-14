@@ -323,7 +323,7 @@ class Company:
     def _build_report(self, dfi: pl.DataFrame) -> pl.DataFrame:
         # Start "dfo" with the index
         dfo = self._build_report_index(dfi)
-        periods = sorted(dfi["period_end"].unique().to_list())
+        periods = dfi["period_end"].unique().sort().to_list()
         for period in periods:
             df_year = dfi.filter(pl.col("period_end") == period).select(
                 "acc_code", "acc_value"
@@ -477,7 +477,7 @@ class Company:
         )
 
         # Show only selected years
-        all_periods = sorted(df["period_end"].unique().to_list())
+        all_periods = df["period_end"].unique().sort().to_list()
         selected_periods = all_periods[-num_years:] if num_years else all_periods
         df = df.filter(pl.col("period_end").is_in(selected_periods))
 

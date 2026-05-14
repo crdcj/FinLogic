@@ -181,7 +181,7 @@ def adjust_unit(df: pl.DataFrame, unit: float) -> pl.DataFrame:
         "invested_capital",
     ]
     existing_cols = [c for c in currency_cols if c in df.columns]
-    return df.with_columns([(pl.col(c) / unit).alias(c) for c in existing_cols])
+    return df.with_columns(pl.col(existing_cols) / unit)
 
 
 def reorder_index(df: pl.DataFrame) -> pl.DataFrame:
